@@ -1,0 +1,150 @@
+version: '3.9'
+
+services:
+  # PostgreSQL database
+  db:
+    image: postgres:15-alpine
+    container_name: labcontrol_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-labcontrol_db}
+      - POSTGRES_USER=${POSTGRES_USER:-labcontrol_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-labcontrol_password}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-labcontrol_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - labcontrol_network
+
+  # Redis for caching and Celery broker
+  redis:
+    image: redis:7-alpine
+    container_name: labcontrol_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - labcontrol_network
+
+  # Django web application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: labcontrol_web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      # Mount source code for hot-reload in development
+      - .:/app
+      # Prevent overwriting of node_modules and other directories
+      - /app/__pycache__
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.dev}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://labcontrol_user:labcontrol_password@db:5432/labcontrol_db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - labcontrol_network
+    stdin_open: true
+    tty: true
+
+  # Celery worker for background tasks
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: labcontrol_celery_worker
+    command: celery -A config worker -l info --concurrency=2
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.dev}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://labcontrol_user:labcontrol_password@db:5432/labcontrol_db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - labcontrol_network
+
+  # Celery beat for scheduled tasks
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: labcontrol_celery_beat
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.dev}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://labcontrol_user:labcontrol_password@db:5432/labcontrol_db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - labcontrol_network
+
+  # Flower for Celery monitoring
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: labcontrol_flower
+    command: celery -A config flower --port=5555
+    volumes:
+      - .:/app
+    ports:
+      - "5555:5555"
+    environment:
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.dev}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://labcontrol_user:labcontrol_password@db:5432/labcontrol_db}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/0}
+    depends_on:
+      - redis
+      - celery_worker
+    networks:
+      - labcontrol_network
+
+volumes:
+  postgres_data:
+    name: labcontrol_postgres_data
+  redis_data:
+    name: labcontrol_redis_data
+
+networks:
+  labcontrol_network:
+    name: labcontrol_network
+    driver: bridge

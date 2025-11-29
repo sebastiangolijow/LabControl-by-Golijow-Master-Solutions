@@ -1,0 +1,15 @@
+# Include base requirements
+-r base.txt
+
+# Production WSGI Server
+gunicorn==21.2.0
+gevent==24.2.1
+
+# Production Monitoring & Error Tracking
+sentry-sdk==1.45.0
+
+# Production Security
+django-health-check==3.18.1
+
+# WhiteNoise for serving static files
+whitenoise==6.6.0

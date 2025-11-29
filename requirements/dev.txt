@@ -1,0 +1,37 @@
+# Include base requirements
+-r base.txt
+
+# Development & Debugging
+django-debug-toolbar==4.3.0
+django-extensions==3.2.3
+ipython==8.23.0
+ipdb==0.13.13
+
+# Testing
+pytest==8.1.1
+pytest-django==4.8.0
+pytest-cov==5.0.0
+pytest-xdist==3.5.0
+pytest-watch==4.2.0
+factory-boy==3.3.0
+faker==24.4.0
+coverage==7.4.4
+
+# Code Quality
+black==24.3.0
+flake8==7.0.0
+isort==5.13.2
+mypy==1.9.0
+pylint==3.1.0
+django-stubs==4.2.7
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
+
+# Performance & Monitoring
+django-silk==5.1.0
+werkzeug==3.0.2
+
+# Celery Monitoring
+flower==2.0.1
