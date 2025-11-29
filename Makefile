@@ -60,18 +60,24 @@ superuser: ## Create superuser
 collectstatic: ## Collect static files
 	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py collectstatic --noinput
 
+setup-periodic-tasks: ## Setup Celery Beat periodic tasks
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py setup_periodic_tasks
+
 # Testing Commands
 test: ## Run tests
-	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) pytest
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) bash -c "DJANGO_SETTINGS_MODULE=config.settings.test pytest"
 
 test-coverage: ## Run tests with coverage report
-	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) pytest --cov=apps --cov-report=html --cov-report=term
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) bash -c "DJANGO_SETTINGS_MODULE=config.settings.test pytest --cov=apps --cov-report=html --cov-report=term"
 
 test-watch: ## Run tests in watch mode
-	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) ptw
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) bash -c "DJANGO_SETTINGS_MODULE=config.settings.test ptw"
 
 test-verbose: ## Run tests with verbose output
-	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) pytest -v
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) bash -c "DJANGO_SETTINGS_MODULE=config.settings.test pytest -v"
+
+test-fast: ## Run tests without coverage
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) bash -c "DJANGO_SETTINGS_MODULE=config.settings.test pytest -q"
 
 # Code Quality Commands
 format: ## Format code with Black

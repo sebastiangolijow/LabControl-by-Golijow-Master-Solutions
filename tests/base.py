@@ -105,6 +105,9 @@ class BaseTestMixin:
         """
         from apps.studies.models import StudyType
 
+        # Increment counter to ensure unique codes
+        self._user_counter += 1
+
         defaults = {
             "name": "Complete Blood Count",
             "code": f"CBC{self._user_counter}",
