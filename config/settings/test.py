@@ -75,5 +75,8 @@ for template in TEMPLATES:  # noqa
 # No file storage in tests
 DEFAULT_FILE_STORAGE = "django.core.files.storage.InMemoryStorage"
 
+# Use simple static files storage (no manifest/compression)
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
 # Simple history doesn't need middleware in tests
 MIDDLEWARE = [m for m in MIDDLEWARE if "HistoryRequestMiddleware" not in m]  # noqa
