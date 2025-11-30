@@ -11,6 +11,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = [
             "id",
+            "uuid",
             "transaction_id",
             "amount",
             "payment_method",
@@ -19,7 +20,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "created_at",
             "completed_at",
         ]
-        read_only_fields = ["transaction_id", "created_at"]
+        read_only_fields = ["uuid", "transaction_id", "created_at"]
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -35,6 +36,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = [
             "id",
+            "uuid",
             "invoice_number",
             "patient",
             "patient_email",
@@ -53,4 +55,4 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "payments",
             "created_at",
         ]
-        read_only_fields = ["invoice_number", "created_at"]
+        read_only_fields = ["uuid", "invoice_number", "created_at"]

@@ -1,8 +1,11 @@
 """User models for the LabControl platform."""
+import uuid
+
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from simple_history.models import HistoricalRecords
 
 from .managers import UserManager
 
@@ -13,7 +16,22 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     This model supports multi-tenant architecture where users can be associated
     with specific laboratory clients.
+
+    Production features:
+    - UUID for secure identification
+    - Audit trail with django-simple-history
+    - Multi-tenant support
+    - Email-based authentication
     """
+
+    # UUID for secure, non-enumerable identification
+    uuid = models.UUIDField(
+        _("UUID"),
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
 
     # Email is the primary identifier
     email = models.EmailField(_("email address"), unique=True)
@@ -73,20 +91,36 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_login = models.DateTimeField(_("last login"), null=True, blank=True)
     updated_at = models.DateTimeField(_("updated at"), auto_now=True)
 
+    # Audit: Who created this user account (e.g., admin who created the account)
+    created_by = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_users",
+        verbose_name=_("created by"),
+        help_text=_("User who created this account"),
+    )
+
     # Use email for authentication
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []  # Email is required by default
 
     objects = UserManager()
 
+    # Audit trail - track all changes to user records
+    history = HistoricalRecords()
+
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
         ordering = ["-date_joined"]
         indexes = [
+            models.Index(fields=["uuid"]),
             models.Index(fields=["email"]),
             models.Index(fields=["lab_client_id"]),
             models.Index(fields=["role"]),
+            models.Index(fields=["is_active", "role"]),  # Common query pattern
         ]
 
     def __str__(self):

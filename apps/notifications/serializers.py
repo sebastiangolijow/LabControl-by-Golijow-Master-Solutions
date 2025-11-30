@@ -13,6 +13,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = [
             "id",
+            "uuid",
             "title",
             "message",
             "notification_type",
@@ -26,4 +27,4 @@ class NotificationSerializer(serializers.ModelSerializer):
             "created_at",
             "read_at",
         ]
-        read_only_fields = ["created_at"]
+        read_only_fields = ["uuid", "created_at"]

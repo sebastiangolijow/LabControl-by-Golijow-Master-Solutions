@@ -2,9 +2,13 @@
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from simple_history.models import HistoricalRecords
+
+from apps.core.models import BaseModel
+from .managers import NotificationManager
 
 
-class Notification(models.Model):
+class Notification(BaseModel):
     """
     System notification for users.
 
@@ -95,17 +99,22 @@ class Notification(models.Model):
     delivered_at = models.DateTimeField(_("delivered at"), null=True, blank=True)
     read_at = models.DateTimeField(_("read at"), null=True, blank=True)
 
-    # Timestamps
-    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    # Audit trail - track all changes to notification records
+    history = HistoricalRecords()
+
+    # Custom manager
+    objects = NotificationManager()
 
     class Meta:
         verbose_name = _("notification")
         verbose_name_plural = _("notifications")
         ordering = ["-created_at"]
         indexes = [
+            models.Index(fields=["uuid"]),
             models.Index(fields=["user", "status"]),
             models.Index(fields=["user", "read_at"]),
             models.Index(fields=["created_at"]),
+            models.Index(fields=["status", "created_at"]),  # Common query pattern
         ]
 
     def __str__(self):

@@ -14,6 +14,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = [
             "id",
+            "uuid",
             "appointment_number",
             "patient",
             "patient_email",
@@ -28,4 +29,4 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "reminder_sent",
             "created_at",
         ]
-        read_only_fields = ["appointment_number", "created_at"]
+        read_only_fields = ["uuid", "appointment_number", "created_at"]

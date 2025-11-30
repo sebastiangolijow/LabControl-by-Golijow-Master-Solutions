@@ -169,6 +169,9 @@ class BaseTestMixin:
         if patient is None:
             patient = self.create_patient()
 
+        # Increment counter to ensure unique appointment numbers
+        self._user_counter += 1
+
         # Default to tomorrow at 10 AM
         tomorrow = timezone.now().date() + timedelta(days=1)
 
@@ -205,6 +208,9 @@ class BaseTestMixin:
         if patient is None:
             patient = self.create_patient()
 
+        # Increment counter to ensure unique invoice numbers
+        self._user_counter += 1
+
         today = timezone.now().date()
 
         defaults = {
@@ -238,6 +244,9 @@ class BaseTestMixin:
 
         if invoice is None:
             invoice = self.create_invoice()
+
+        # Increment counter to ensure unique transaction IDs
+        self._user_counter += 1
 
         defaults = {
             "invoice": invoice,
@@ -301,9 +310,9 @@ class BaseTestMixin:
         user = self.create_patient()
         return self.authenticate(user), user
 
-    def authenticate_as_lab_manager(self):
+    def authenticate_as_lab_manager(self, lab_client_id=1, **kwargs):
         """Authenticate as a lab manager user."""
-        user = self.create_lab_manager()
+        user = self.create_lab_manager(lab_client_id=lab_client_id, **kwargs)
         return self.authenticate(user), user
 
     def authenticate_as_admin(self):

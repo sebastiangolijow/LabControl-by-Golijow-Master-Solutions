@@ -13,6 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
+            "uuid",
             "email",
             "first_name",
             "last_name",
@@ -23,7 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "date_joined",
         ]
-        read_only_fields = ["id", "date_joined", "is_verified"]
+        read_only_fields = ["id", "uuid", "date_joined", "is_verified"]
 
 
 class UserDetailSerializer(UserSerializer):

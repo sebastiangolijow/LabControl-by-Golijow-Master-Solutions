@@ -2,9 +2,13 @@
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from simple_history.models import HistoricalRecords
+
+from apps.core.models import BaseModel, LabClientModel
+from .managers import InvoiceManager, PaymentManager
 
 
-class Invoice(models.Model):
+class Invoice(BaseModel, LabClientModel):
     """
     Invoice for medical services rendered.
 
@@ -86,21 +90,22 @@ class Invoice(models.Model):
     # Notes
     notes = models.TextField(_("notes"), blank=True)
 
-    # Multi-tenant support
-    lab_client_id = models.IntegerField(_("laboratory client ID"), null=True)
+    # Audit trail - track all changes to invoice records
+    history = HistoricalRecords()
 
-    # Timestamps
-    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
-    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+    # Custom manager
+    objects = InvoiceManager()
 
     class Meta:
         verbose_name = _("invoice")
         verbose_name_plural = _("invoices")
         ordering = ["-issue_date"]
         indexes = [
+            models.Index(fields=["uuid"]),
             models.Index(fields=["invoice_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["lab_client_id"]),
+            models.Index(fields=["status", "due_date"]),  # Common query pattern
         ]
 
     def __str__(self):
@@ -117,7 +122,7 @@ class Invoice(models.Model):
         return self.status == "paid"
 
 
-class Payment(models.Model):
+class Payment(BaseModel):
     """
     Payment transaction for an invoice.
 
@@ -187,17 +192,24 @@ class Payment(models.Model):
     # Notes
     notes = models.TextField(_("notes"), blank=True)
 
-    # Timestamps
-    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    # Additional timestamp
     completed_at = models.DateTimeField(_("completed at"), null=True, blank=True)
+
+    # Audit trail - track all changes to payment records
+    history = HistoricalRecords()
+
+    # Custom manager
+    objects = PaymentManager()
 
     class Meta:
         verbose_name = _("payment")
         verbose_name_plural = _("payments")
         ordering = ["-created_at"]
         indexes = [
+            models.Index(fields=["uuid"]),
             models.Index(fields=["transaction_id"]),
             models.Index(fields=["invoice", "status"]),
+            models.Index(fields=["status", "created_at"]),  # Common query pattern
         ]
 
     def __str__(self):

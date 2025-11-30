@@ -2,9 +2,13 @@
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from simple_history.models import HistoricalRecords
+
+from apps.core.models import BaseModel, LabClientModel
+from .managers import AppointmentManager
 
 
-class Appointment(models.Model):
+class Appointment(BaseModel, LabClientModel):
     """
     Patient appointment for sample collection or consultation.
 
@@ -73,22 +77,23 @@ class Appointment(models.Model):
         _("reminder sent at"), null=True, blank=True
     )
 
-    # Multi-tenant support
-    lab_client_id = models.IntegerField(_("laboratory client ID"), null=True)
+    # Audit trail - track all changes to appointment records
+    history = HistoricalRecords()
 
-    # Timestamps
-    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
-    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+    # Custom manager
+    objects = AppointmentManager()
 
     class Meta:
         verbose_name = _("appointment")
         verbose_name_plural = _("appointments")
         ordering = ["scheduled_date", "scheduled_time"]
         indexes = [
+            models.Index(fields=["uuid"]),
             models.Index(fields=["appointment_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["scheduled_date", "scheduled_time"]),
             models.Index(fields=["lab_client_id"]),
+            models.Index(fields=["status", "scheduled_date"]),  # Common query pattern
         ]
 
     def __str__(self):
