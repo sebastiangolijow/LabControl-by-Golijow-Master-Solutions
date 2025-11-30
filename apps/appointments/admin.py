@@ -1,4 +1,5 @@
 """Admin configuration for appointments app."""
+
 from django.contrib import admin
 
 from .models import Appointment

@@ -4,11 +4,14 @@ Base test class for LabControl platform.
 Provides common test utilities, fixtures, and helpers following TDD best practices.
 Inspired by production backends with extensive test infrastructure.
 """
-from decimal import Decimal
+
 from datetime import date, time, timedelta
+from decimal import Decimal
+
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
+
 from apps.users.models import User
 
 

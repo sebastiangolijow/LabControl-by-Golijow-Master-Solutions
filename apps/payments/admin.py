@@ -1,4 +1,5 @@
 """Admin configuration for payments app."""
+
 from django.contrib import admin
 
 from .models import Invoice, Payment

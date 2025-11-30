@@ -7,6 +7,7 @@ These settings are optimized for local development:
 - Console email backend
 - Relaxed security settings
 """
+
 from .base import *  # noqa
 
 # Development mode

@@ -1,4 +1,5 @@
 """Views for studies app."""
+
 from rest_framework import permissions, viewsets
 
 from .models import Study, StudyType

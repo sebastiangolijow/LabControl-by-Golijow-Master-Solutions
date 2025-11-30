@@ -1,4 +1,5 @@
 """User models for the LabControl platform."""
+
 import uuid
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin

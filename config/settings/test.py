@@ -7,6 +7,7 @@ These settings are optimized for fast test execution:
 - Fast password hashing
 - Synchronous Celery execution
 """
+
 from .base import *  # noqa
 
 # Use in-memory SQLite for blazing fast tests

@@ -7,6 +7,7 @@ This module configures Celery for handling asynchronous tasks such as:
 - Data exports
 - Scheduled appointment reminders
 """
+
 import os
 
 from celery import Celery

@@ -1,8 +1,10 @@
 """Tests for notifications app following TDD principles."""
+
 from django.utils import timezone
-from tests.base import BaseTestCase
-from apps.notifications.models import Notification
 from rest_framework import status
+
+from apps.notifications.models import Notification
+from tests.base import BaseTestCase
 
 
 class TestNotificationModel(BaseTestCase):

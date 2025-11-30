@@ -7,6 +7,7 @@ These settings are optimized for production deployment:
 - Sentry error tracking
 - Cloud storage for media files
 """
+
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 

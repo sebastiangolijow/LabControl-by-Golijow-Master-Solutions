@@ -8,7 +8,9 @@ These base classes provide common functionality following production best practi
 - Soft delete capability
 - Audit trail with django-simple-history
 """
+
 import uuid
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone

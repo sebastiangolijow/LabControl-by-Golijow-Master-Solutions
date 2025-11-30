@@ -1,4 +1,5 @@
 """Custom managers for Notification model."""
+
 from django.db import models
 
 

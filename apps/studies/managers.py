@@ -1,6 +1,8 @@
 """Custom managers and querysets for studies app."""
+
 from django.db import models
-from django.db.models import Q, OuterRef
+from django.db.models import OuterRef, Q
+
 from apps.core.managers import LabClientManager, LabClientQuerySet
 from apps.core.querysets import SubqueryCount
 

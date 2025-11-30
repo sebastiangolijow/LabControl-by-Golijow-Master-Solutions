@@ -1,10 +1,13 @@
 """Tests for payments app following TDD principles."""
+
 from datetime import date, timedelta
 from decimal import Decimal
+
 from django.utils import timezone
-from tests.base import BaseTestCase
-from apps.payments.models import Invoice, Payment
 from rest_framework import status
+
+from apps.payments.models import Invoice, Payment
+from tests.base import BaseTestCase
 
 
 class TestInvoiceModel(BaseTestCase):

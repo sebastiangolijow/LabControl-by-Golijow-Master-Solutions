@@ -1,4 +1,5 @@
 """Admin configuration for notifications app."""
+
 from django.contrib import admin
 
 from .models import Notification

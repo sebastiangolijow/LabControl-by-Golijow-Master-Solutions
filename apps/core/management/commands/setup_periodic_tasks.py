@@ -4,9 +4,11 @@ Management command to set up periodic tasks for Celery Beat.
 This command creates the default periodic tasks in the database
 for django-celery-beat scheduler.
 """
+
+import json
+
 from django.core.management.base import BaseCommand
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
-import json
 
 
 class Command(BaseCommand):
@@ -69,9 +71,7 @@ class Command(BaseCommand):
                 self.style.WARNING("○ Already exists: Cleanup Old Notifications")
             )
 
-        self.stdout.write(
-            self.style.SUCCESS("\n✓ Periodic tasks setup complete!")
-        )
+        self.stdout.write(self.style.SUCCESS("\n✓ Periodic tasks setup complete!"))
         self.stdout.write(
             "\nYou can manage these tasks in Django Admin -> Periodic Tasks"
         )
