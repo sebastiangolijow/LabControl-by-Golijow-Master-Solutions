@@ -56,6 +56,8 @@ class BaseAnalyticsView(APIView):
         Returns:
             tuple: (start_date, end_date) or (None, None)
         """
+        from django.utils import timezone
+
         start_date_str = request.query_params.get("start_date")
         end_date_str = request.query_params.get("end_date")
 
@@ -64,13 +66,23 @@ class BaseAnalyticsView(APIView):
 
         if start_date_str:
             try:
-                start_date = datetime.fromisoformat(start_date_str)
+                dt = datetime.fromisoformat(start_date_str)
+                # Make timezone-aware if naive
+                if dt.tzinfo is None:
+                    start_date = timezone.make_aware(dt)
+                else:
+                    start_date = dt
             except ValueError:
                 pass
 
         if end_date_str:
             try:
-                end_date = datetime.fromisoformat(end_date_str)
+                dt = datetime.fromisoformat(end_date_str)
+                # Make timezone-aware if naive
+                if dt.tzinfo is None:
+                    end_date = timezone.make_aware(dt)
+                else:
+                    end_date = dt
             except ValueError:
                 pass
 

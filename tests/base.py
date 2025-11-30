@@ -148,6 +148,9 @@ class BaseTestMixin:
         if study_type is None:
             study_type = self.create_study_type()
 
+        # Increment counter to ensure unique order numbers
+        self._user_counter += 1
+
         defaults = {
             "patient": patient,
             "study_type": study_type,
