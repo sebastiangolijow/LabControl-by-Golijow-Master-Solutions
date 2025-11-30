@@ -1,7 +1,9 @@
 """Tests for users app following TDD principles."""
-from tests.base import BaseTestCase
+
 from django.contrib.auth import get_user_model
 from rest_framework import status
+
+from tests.base import BaseTestCase
 
 User = get_user_model()
 

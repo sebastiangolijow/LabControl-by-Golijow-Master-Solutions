@@ -10,7 +10,9 @@ Events are triggered asynchronously via Celery, allowing:
 - Easy testing and mocking
 - Clear separation of concerns
 """
+
 from typing import Any, Dict, Type
+
 from celery import shared_task
 from django.conf import settings
 
@@ -142,9 +144,7 @@ class BaseEvent:
         Args:
             payload: Event data dictionary
         """
-        raise NotImplementedError(
-            f"{cls.__name__} must implement handle() method"
-        )
+        raise NotImplementedError(f"{cls.__name__} must implement handle() method")
 
     @classmethod
     def trigger_batch(cls, events: list):

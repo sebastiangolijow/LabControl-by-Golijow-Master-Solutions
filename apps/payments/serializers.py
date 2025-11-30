@@ -1,4 +1,5 @@
 """Serializers for payments app."""
+
 from rest_framework import serializers
 
 from .models import Invoice, Payment

@@ -1,8 +1,11 @@
 """Tests for studies app following TDD principles."""
+
 from decimal import Decimal
-from tests.base import BaseTestCase
-from apps.studies.models import Study, StudyType
+
 from rest_framework import status
+
+from apps.studies.models import Study, StudyType
+from tests.base import BaseTestCase
 
 
 class TestStudyTypeModel(BaseTestCase):

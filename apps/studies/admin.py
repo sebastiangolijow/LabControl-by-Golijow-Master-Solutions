@@ -1,4 +1,5 @@
 """Admin configuration for studies app."""
+
 from django.contrib import admin
 
 from .models import Study, StudyType

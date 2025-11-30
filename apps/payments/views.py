@@ -1,4 +1,5 @@
 """Views for payments app."""
+
 from rest_framework import permissions, viewsets
 
 from .models import Invoice, Payment
@@ -45,9 +46,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         if user.is_superuser or user.role in ["admin", "lab_manager"]:
             # Admins see all payments in their lab
             if user.lab_client_id:
-                return Payment.objects.filter(
-                    invoice__lab_client_id=user.lab_client_id
-                )
+                return Payment.objects.filter(invoice__lab_client_id=user.lab_client_id)
             return Payment.objects.all()
         elif user.is_patient:
             # Patients see payments for their invoices
@@ -55,7 +54,5 @@ class PaymentViewSet(viewsets.ModelViewSet):
         else:
             # Staff see all payments in their lab
             if user.lab_client_id:
-                return Payment.objects.filter(
-                    invoice__lab_client_id=user.lab_client_id
-                )
+                return Payment.objects.filter(invoice__lab_client_id=user.lab_client_id)
             return Payment.objects.none()

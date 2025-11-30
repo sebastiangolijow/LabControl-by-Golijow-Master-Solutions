@@ -1,10 +1,12 @@
 """Models for appointments app."""
+
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from simple_history.models import HistoricalRecords
 
 from apps.core.models import BaseModel, LabClientModel
+
 from .managers import AppointmentManager
 
 
@@ -97,7 +99,9 @@ class Appointment(BaseModel, LabClientModel):
         ]
 
     def __str__(self):
-        return f"{self.appointment_number} - {self.patient.email} on {self.scheduled_date}"
+        return (
+            f"{self.appointment_number} - {self.patient.email} on {self.scheduled_date}"
+        )
 
     @property
     def is_upcoming(self):

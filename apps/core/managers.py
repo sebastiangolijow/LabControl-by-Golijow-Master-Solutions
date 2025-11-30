@@ -3,6 +3,7 @@ Custom managers and querysets for LabControl platform.
 
 Provides reusable query logic that can be chained and composed.
 """
+
 from django.db import models
 from django.db.models import Q
 

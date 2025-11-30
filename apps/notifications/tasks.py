@@ -1,7 +1,8 @@
 """Celery tasks for notifications app."""
+
 from celery import shared_task
-from django.core.mail import send_mail
 from django.conf import settings
+from django.core.mail import send_mail
 
 
 @shared_task
@@ -37,8 +38,10 @@ def cleanup_old_notifications():
 
     This task runs weekly to keep the database clean.
     """
-    from django.utils import timezone
     from datetime import timedelta
+
+    from django.utils import timezone
+
     from .models import Notification
 
     cutoff_date = timezone.now() - timedelta(days=90)

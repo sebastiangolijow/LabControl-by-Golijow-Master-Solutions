@@ -1,9 +1,12 @@
 """Tests for appointments app following TDD principles."""
+
 from datetime import date, time, timedelta
+
 from django.utils import timezone
-from tests.base import BaseTestCase
-from apps.appointments.models import Appointment
 from rest_framework import status
+
+from apps.appointments.models import Appointment
+from tests.base import BaseTestCase
 
 
 class TestAppointmentModel(BaseTestCase):
@@ -279,7 +282,10 @@ class TestAppointmentAPI(BaseTestCase):
         response = client.get("/api/v1/appointments/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
-        assert response.data["results"][0]["appointment_number"] == appointment.appointment_number
+        assert (
+            response.data["results"][0]["appointment_number"]
+            == appointment.appointment_number
+        )
 
     def test_patient_cannot_see_other_appointments(self):
         """Test patient cannot see other patients' appointments."""

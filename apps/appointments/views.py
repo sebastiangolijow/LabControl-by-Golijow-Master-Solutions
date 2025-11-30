@@ -1,4 +1,5 @@
 """Views for appointments app."""
+
 from rest_framework import permissions, viewsets
 
 from .models import Appointment

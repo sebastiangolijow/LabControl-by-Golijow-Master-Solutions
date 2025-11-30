@@ -1,4 +1,5 @@
 """Serializers for studies app."""
+
 from rest_framework import serializers
 
 from .models import Study, StudyType

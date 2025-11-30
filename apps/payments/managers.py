@@ -1,7 +1,9 @@
 """Custom managers for Payment models."""
+
+from decimal import Decimal
+
 from django.db import models
 from django.utils import timezone
-from decimal import Decimal
 
 from apps.core.managers import LabClientManager, LabClientQuerySet
 
