@@ -4,18 +4,11 @@ Statistics service layer for analytics app.
 This module handles all statistical calculations and aggregations.
 Business logic is kept separate from views for better testability.
 """
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from django.db.models import (
-    Avg,
-    Count,
-    F,
-    FloatField,
-    Q,
-    Sum,
-    Value,
-)
+from django.db.models import Avg, Count, F, FloatField, Q, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate, TruncMonth, TruncWeek
 from django.utils import timezone
 
@@ -259,9 +252,7 @@ class StatisticsService:
         return trends
 
     @staticmethod
-    def get_appointment_statistics(
-        lab_client_id=None, start_date=None, end_date=None
-    ):
+    def get_appointment_statistics(lab_client_id=None, start_date=None, end_date=None):
         """
         Get appointment statistics.
 

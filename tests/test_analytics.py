@@ -1,12 +1,13 @@
 """Tests for analytics app following TDD principles."""
+
 from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
 from rest_framework import status
-from tests.base import BaseTestCase
 
 from apps.analytics.services import StatisticsService
+from tests.base import BaseTestCase
 
 
 class TestAnalyticsPermissions(BaseTestCase):

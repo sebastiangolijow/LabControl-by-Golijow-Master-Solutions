@@ -8,13 +8,13 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include
-from django.urls import path
-from drf_spectacular.views import SpectacularAPIView
-from drf_spectacular.views import SpectacularRedocView
-from drf_spectacular.views import SpectacularSwaggerView
+from django.urls import include, path
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 from rest_framework import routers
-
 
 # API Router
 router = routers.DefaultRouter()

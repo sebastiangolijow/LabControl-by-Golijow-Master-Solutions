@@ -1,4 +1,5 @@
 """Custom permissions for analytics app."""
+
 from rest_framework import permissions
 
 
