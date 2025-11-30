@@ -394,7 +394,7 @@ class TestPaymentAPI(BaseTestCase):
         patient2 = self.create_patient(email="other@test.com")
 
         own_invoice = self.create_invoice(patient=patient1)
-        other_invoice = self.create_invoice(patient=patient2)
+        _other_invoice = self.create_invoice(patient=patient2)  # noqa: F841
 
         response = client.get("/api/v1/payments/invoices/")
         assert response.status_code == status.HTTP_200_OK

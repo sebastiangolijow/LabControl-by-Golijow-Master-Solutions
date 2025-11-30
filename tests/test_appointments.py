@@ -293,7 +293,7 @@ class TestAppointmentAPI(BaseTestCase):
         patient2 = self.create_patient(email="other@test.com")
 
         own_appointment = self.create_appointment(patient=patient1)
-        other_appointment = self.create_appointment(patient=patient2)
+        _other_appointment = self.create_appointment(patient=patient2)  # noqa: F841
 
         response = client.get("/api/v1/appointments/")
         assert response.status_code == status.HTTP_200_OK

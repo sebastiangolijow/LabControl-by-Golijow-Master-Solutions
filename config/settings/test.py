@@ -2,39 +2,51 @@
 Test settings for LabControl platform.
 
 These settings are optimized for fast test execution:
-- In-memory SQLite database (fast, no I/O)
-- Disabled migrations
+- In-memory SQLite database for local testing (fast, no I/O)
+- PostgreSQL for CI pipeline (DATABASE_URL environment variable)
+- Disabled migrations for SQLite (fast), enabled for PostgreSQL (required)
 - Fast password hashing
 - Synchronous Celery execution
 """
 
+import os
+
+import dj_database_url
+
 from .base import *  # noqa
 
-# Use in-memory SQLite for blazing fast tests
+# Database configuration
+# Use DATABASE_URL if available (CI/CD), otherwise use in-memory SQLite (local)
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
-    }
+    "default": dj_database_url.config(
+        default="sqlite:///:memory:",
+        conn_max_age=600,
+    )
 }
 
-
-# Disable migrations for faster tests
-class DisableMigrations:
-    """
-    Disable migrations during tests.
-
-    This significantly speeds up test database creation.
-    """
-
-    def __contains__(self, item):
-        return True
-
-    def __getitem__(self, item):
-        return None
+# Detect if we're using PostgreSQL (CI) or SQLite (local)
+using_postgres = DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql"
 
 
-MIGRATION_MODULES = DisableMigrations()
+# Disable migrations only for SQLite (faster local tests)
+# Enable migrations for PostgreSQL (CI pipeline requires real migrations)
+if not using_postgres:
+
+    class DisableMigrations:
+        """
+        Disable migrations during tests.
+
+        This significantly speeds up test database creation.
+        Only used for SQLite (local development).
+        """
+
+        def __contains__(self, item):
+            return True
+
+        def __getitem__(self, item):
+            return None
+
+    MIGRATION_MODULES = DisableMigrations()
 
 # Fast password hashing for tests (MD5 is insecure but fast for tests)
 PASSWORD_HASHERS = [

@@ -272,7 +272,7 @@ class TestNotificationAPI(BaseTestCase):
         user2 = self.create_patient(email="other@test.com")
 
         own_notification = self.create_notification(user=user1)
-        other_notification = self.create_notification(user=user2)
+        _other_notification = self.create_notification(user=user2)  # noqa: F841
 
         response = client.get("/api/v1/notifications/")
         assert response.status_code == status.HTTP_200_OK

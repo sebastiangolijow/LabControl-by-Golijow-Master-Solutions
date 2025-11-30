@@ -198,7 +198,7 @@ class TestRevenueStatisticsAPI(BaseTestCase):
             paid_amount=Decimal("500.00"),
             status="paid",
         )
-        invoice2 = self.create_invoice(
+        _invoice2 = self.create_invoice(  # noqa: F841
             patient=patient,
             study=study,
             total_amount=Decimal("300.00"),
@@ -353,14 +353,14 @@ class TestTopRevenueStudyTypesAPI(BaseTestCase):
         mri_study = self.create_study(patient=patient, study_type=expensive)
         blood_study = self.create_study(patient=patient, study_type=cheap)
 
-        mri_invoice = self.create_invoice(
+        _mri_invoice = self.create_invoice(  # noqa: F841
             patient=patient,
             study=mri_study,
             total_amount=Decimal("1000.00"),
             paid_amount=Decimal("1000.00"),
             status="paid",
         )
-        blood_invoice = self.create_invoice(
+        _blood_invoice = self.create_invoice(  # noqa: F841
             patient=patient,
             study=blood_study,
             total_amount=Decimal("50.00"),
@@ -419,7 +419,7 @@ class TestStatisticsServiceLayer(BaseTestCase):
         patient = self.create_patient(lab_client_id=1)
         study = self.create_study(patient=patient)
 
-        invoice = self.create_invoice(
+        _invoice = self.create_invoice(  # noqa: F841
             patient=patient,
             study=study,
             total_amount=Decimal("500.00"),

@@ -141,7 +141,7 @@ class TestStudyAPI(BaseTestCase):
     def test_list_study_types(self):
         """Test listing active study types."""
         client, user = self.authenticate_as_patient()
-        study_type = self.create_study_type()
+        _study_type = self.create_study_type()  # noqa: F841
 
         response = client.get("/api/v1/studies/types/")
         assert response.status_code == status.HTTP_200_OK
@@ -163,7 +163,7 @@ class TestStudyAPI(BaseTestCase):
         patient2 = self.create_patient()
 
         # Create study for another patient
-        study = self.create_study(patient=patient2)
+        _study = self.create_study(patient=patient2)  # noqa: F841
 
         response = client.get("/api/v1/studies/")
         assert response.status_code == status.HTTP_200_OK
@@ -174,7 +174,7 @@ class TestStudyAPI(BaseTestCase):
         client, manager = self.authenticate_as_lab_manager()
         patient = self.create_patient(lab_client_id=manager.lab_client_id)
 
-        study = self.create_study(patient=patient)
+        _study = self.create_study(patient=patient)  # noqa: F841
 
         response = client.get("/api/v1/studies/")
         assert response.status_code == status.HTTP_200_OK
