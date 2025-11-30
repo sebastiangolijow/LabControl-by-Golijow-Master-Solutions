@@ -1,4 +1,5 @@
 """API views for analytics app."""
+
 from datetime import datetime
 
 from rest_framework import status
