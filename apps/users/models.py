@@ -1,4 +1,5 @@
 """User models for the LabControl platform."""
+
 import uuid
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -59,7 +60,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # Multi-tenant support - user can belong to a specific lab client
     # This will be a ForeignKey to a Lab/Client model (to be created later)
-    lab_client_id = models.IntegerField(
+    lab_client_id = models.IntegerField(  # TODO: Change it to a FK to a model: Company.
         _("laboratory client ID"),
         null=True,
         blank=True,

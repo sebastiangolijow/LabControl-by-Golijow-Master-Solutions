@@ -76,6 +76,12 @@ class BaseTestMixin:
         kwargs.setdefault("is_staff", True)
         return self.create_user(**kwargs)
 
+    def create_lab_staff(self, lab_client_id=1, **kwargs):
+        """Create a lab staff user."""
+        kwargs.setdefault("role", "lab_staff")
+        kwargs.setdefault("lab_client_id", lab_client_id)
+        return self.create_user(**kwargs)
+
     def create_technician(self, lab_client_id=1, **kwargs):
         """Create a laboratory technician user."""
         kwargs.setdefault("role", "technician")
