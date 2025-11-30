@@ -332,6 +332,19 @@ class BaseTestMixin:
         user = self.create_admin()
         return self.authenticate(user), user
 
+    def authenticate_user_by_email(self, email):
+        """
+        Authenticate as a user by email address.
+
+        Args:
+            email: Email address of the user
+
+        Returns:
+            tuple: (APIClient instance, User instance)
+        """
+        user = User.objects.get(email=email)
+        return self.authenticate(user), user
+
     # ======================
     # Assertion Helpers
     # ======================

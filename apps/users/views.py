@@ -2,10 +2,12 @@
 
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import User
 from .serializers import (
+    PatientRegistrationSerializer,
     UserCreateSerializer,
     UserDetailSerializer,
     UserSerializer,
@@ -67,3 +69,28 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class PatientRegistrationView(generics.CreateAPIView):
+    """
+    Public endpoint for patient self-registration.
+
+    Allows new patients to register without authentication.
+    """
+
+    permission_classes = [AllowAny]
+    serializer_class = PatientRegistrationSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Create a new patient account."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        return Response(
+            {
+                "message": "Registration successful. Please check your email to verify your account.",
+                "user": UserDetailSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )

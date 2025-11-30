@@ -85,3 +85,47 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
         ]
+
+
+class PatientRegistrationSerializer(serializers.ModelSerializer):
+    """Serializer for patient self-registration."""
+
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "email",
+            "password",
+            "password_confirm",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "lab_client_id",
+        ]
+
+    def validate(self, attrs):
+        """Validate password confirmation and set role to patient."""
+        if attrs.get("password") != attrs.get("password_confirm"):
+            raise serializers.ValidationError(
+                {"password_confirm": "Passwords do not match."}
+            )
+        attrs.pop("password_confirm")
+
+        # Force role to patient for public registration
+        attrs["role"] = "patient"
+
+        return attrs
+
+    def create(self, validated_data):
+        """Create patient user with encrypted password."""
+        password = validated_data.pop("password")
+        user = User.objects.create_user(**validated_data)
+        user.set_password(password)
+        user.save()
+
+        # TODO: Send verification email
+        # send_verification_email.delay(user.id)
+
+        return user

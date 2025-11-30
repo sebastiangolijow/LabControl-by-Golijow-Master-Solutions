@@ -23,6 +23,7 @@ class StudySerializer(serializers.ModelSerializer):
         model = Study
         fields = [
             "id",
+            "uuid",
             "order_number",
             "patient",
             "patient_email",
@@ -39,4 +40,31 @@ class StudySerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["uuid", "order_number", "created_at", "updated_at"]
+
+
+class StudyResultUploadSerializer(serializers.ModelSerializer):
+    """Serializer for uploading study results."""
+
+    results_file = serializers.FileField(required=True)
+    results = serializers.CharField(required=False, allow_blank=True)
+
+    class Meta:
+        model = Study
+        fields = ["results_file", "results"]
+
+    def validate_results_file(self, value):
+        """Validate file size and type."""
+        # Max file size: 10MB
+        max_size = 10 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError("File size cannot exceed 10MB.")
+
+        # Allowed file types
+        allowed_types = ["application/pdf", "image/jpeg", "image/png"]
+        if value.content_type not in allowed_types:
+            raise serializers.ValidationError(
+                "Only PDF, JPEG, and PNG files are allowed."
+            )
+
+        return value
