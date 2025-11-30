@@ -473,11 +473,6 @@ make migrations-reset
 - [ ] Run test suite: `make test`
 - [ ] Read architecture docs
 - [ ] Set up IDE with Black formatter
-- [ ] Join team Slack channel
 - [ ] Review open issues
 - [ ] Deploy to local environment
-- [ ] Complete "Hello World" task (create simple API endpoint)
 
-## Contact
-
-For questions, contact the development team at dev@labcontrol.com
