@@ -312,10 +312,11 @@ class BaseTestMixin:
             user: User instance to authenticate as
 
         Returns:
-            APIClient instance (self.client)
+            APIClient instance (new instance for isolation)
         """
-        self.client.force_authenticate(user=user)
-        return self.client
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client
 
     def authenticate_as_patient(self):
         """Authenticate as a patient user."""

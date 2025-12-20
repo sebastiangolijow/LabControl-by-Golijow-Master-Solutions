@@ -218,9 +218,9 @@ class MVPFullScenarioTest(BaseTestCase):
         assert new_result is not None
         assert new_result["status"] == "completed"
         assert new_result["results_file"] is not None
-        assert new_result["study_type"]["name"] == "Complete Blood Count"
+        assert new_result["study_type_detail"]["name"] == "Complete Blood Count"
         print(f"✓ Patient sees {len(results)} results (new result visible)")
-        print(f"  New result: {new_result['study_type']['name']} - {new_result['status']}")
+        print(f"  New result: {new_result['study_type_detail']['name']} - {new_result['status']}")
 
         # ===================================================================
         # US3: Patient Downloads Result PDF
@@ -327,10 +327,15 @@ class MVPFullScenarioTest(BaseTestCase):
         print(f"✓ Study status reset to: {study.status}")
 
         # Verify lab staff CANNOT delete results
-        # Re-upload first
+        # Re-upload first (need to create new PDF file as the old one was consumed)
+        reupload_pdf_file = SimpleUploadedFile(
+            "reupload_results.pdf",
+            b"%PDF-1.4\nReupload content\n",
+            content_type="application/pdf"
+        )
         response = admin_client.post(
             f"/api/v1/studies/{study.id}/upload_result/",
-            {"results_file": pdf_file, "results": "Test"},
+            {"results_file": reupload_pdf_file, "results": "Test"},
             format="multipart"
         )
         assert response.status_code == status.HTTP_200_OK
