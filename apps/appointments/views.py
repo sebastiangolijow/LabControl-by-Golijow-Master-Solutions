@@ -83,10 +83,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def upcoming(self, request):
         """Get upcoming appointments for the current user."""
-        queryset = self.get_queryset().filter(
-            scheduled_date__gte=timezone.now().date(),
-            status__in=["scheduled", "confirmed"],
-        ).order_by("scheduled_date", "scheduled_time")
+        queryset = (
+            self.get_queryset()
+            .filter(
+                scheduled_date__gte=timezone.now().date(),
+                status__in=["scheduled", "confirmed"],
+            )
+            .order_by("scheduled_date", "scheduled_time")
+        )
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

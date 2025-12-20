@@ -185,7 +185,9 @@ class PatientSearchTests(BaseTestCase):
         """Test searching patients by email."""
         client = self.authenticate(self.admin)
 
-        response = client.get("/api/v1/users/search-patients/?email=jane.smith@example.com")
+        response = client.get(
+            "/api/v1/users/search-patients/?email=jane.smith@example.com"
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = response.data.get("results", response.data)
@@ -312,7 +314,9 @@ class AdminResultsManagementTests(BaseTestCase):
 
         # Try to delete as lab staff
         staff_client = self.authenticate(self.lab_staff)
-        response = staff_client.delete(f"/api/v1/studies/{self.study.id}/delete-result/")
+        response = staff_client.delete(
+            f"/api/v1/studies/{self.study.id}/delete-result/"
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_can_list_studies_with_results(self):

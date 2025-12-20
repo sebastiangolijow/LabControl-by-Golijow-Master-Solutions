@@ -74,9 +74,7 @@ class TestPatientWorkflow(BaseTestCase):
             "notes": "Fasting since last night",
         }
 
-        response = client.post(
-            "/api/v1/appointments/", appointment_data, format="json"
-        )
+        response = client.post("/api/v1/appointments/", appointment_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["patient"] == patient_id
@@ -141,7 +139,9 @@ class TestPatientWorkflow(BaseTestCase):
             user=patient, notification_type="result_ready"
         )
         assert result_notifications.count() == 1
-        assert "results are now available" in result_notifications.first().message.lower()
+        assert (
+            "results are now available" in result_notifications.first().message.lower()
+        )
 
         # ======================================================================
         # STEP 4: Patient Views and Downloads Results
@@ -285,9 +285,7 @@ class TestPatientWorkflow(BaseTestCase):
             "reason": "Test",
         }
 
-        response = client.post(
-            "/api/v1/appointments/", appointment_data, format="json"
-        )
+        response = client.post("/api/v1/appointments/", appointment_data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "past" in str(response.data).lower()

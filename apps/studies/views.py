@@ -15,7 +15,11 @@ from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
 from .models import Study, StudyType
-from .serializers import StudyResultUploadSerializer, StudySerializer, StudyTypeSerializer
+from .serializers import (
+    StudyResultUploadSerializer,
+    StudySerializer,
+    StudyTypeSerializer,
+)
 
 
 class StudyTypeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -38,7 +42,12 @@ class StudyViewSet(viewsets.ModelViewSet):
         filters.OrderingFilter,
     ]
     filterset_fields = ["status", "patient", "study_type", "lab_client_id"]
-    search_fields = ["order_number", "patient__email", "patient__first_name", "patient__last_name"]
+    search_fields = [
+        "order_number",
+        "patient__email",
+        "patient__first_name",
+        "patient__last_name",
+    ]
     ordering_fields = ["created_at", "completed_at", "order_number"]
     ordering = ["-created_at"]
 
