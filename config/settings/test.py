@@ -80,6 +80,10 @@ AUTH_PASSWORD_VALIDATORS = []
 
 # Use simple email backend for tests
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@labcontrol.test"
+
+# Frontend URL for email templates
+FRONTEND_URL = "http://localhost:3000"
 
 # Disable template caching
 for template in TEMPLATES:  # noqa
