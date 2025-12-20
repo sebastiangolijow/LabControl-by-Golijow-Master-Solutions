@@ -5,8 +5,7 @@ This test validates ALL 11 MVP user stories (US1-US11) in a single comprehensive
 It simulates real-world usage of the patient results portal from both patient and admin perspectives.
 """
 
-from datetime import date
-from datetime import timedelta
+from datetime import date, timedelta
 from io import BytesIO
 
 from django.core import mail
