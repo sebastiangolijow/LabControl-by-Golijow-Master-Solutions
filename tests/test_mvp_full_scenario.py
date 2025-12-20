@@ -78,9 +78,7 @@ class MVPFullScenarioTest(BaseTestCase):
 
         # Patient registers (public endpoint)
         response = self.client.post(
-            "/api/v1/users/register/",
-            registration_data,
-            format="json"
+            "/api/v1/users/register/", registration_data, format="json"
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["user"]["role"] == "patient"
@@ -102,12 +100,18 @@ class MVPFullScenarioTest(BaseTestCase):
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         assert len(results) >= 1
-        found_patient = next((p for p in results if p["email"] == "patient@mvptest.com"), None)
+        found_patient = next(
+            (p for p in results if p["email"] == "patient@mvptest.com"), None
+        )
         assert found_patient is not None
-        print(f"✓ Admin found patient by name: {found_patient['first_name']} {found_patient['last_name']}")
+        print(
+            f"✓ Admin found patient by name: {found_patient['first_name']} {found_patient['last_name']}"
+        )
 
         # Search by email
-        response = admin_client.get("/api/v1/users/search-patients/?email=patient@mvptest.com")
+        response = admin_client.get(
+            "/api/v1/users/search-patients/?email=patient@mvptest.com"
+        )
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         assert len(results) == 1
@@ -149,7 +153,7 @@ class MVPFullScenarioTest(BaseTestCase):
         pdf_file = SimpleUploadedFile(
             "complete_blood_count_results.pdf",
             pdf_content,
-            content_type="application/pdf"
+            content_type="application/pdf",
         )
 
         upload_data = {
@@ -164,7 +168,7 @@ class MVPFullScenarioTest(BaseTestCase):
         response = admin_client.post(
             f"/api/v1/studies/{study.id}/upload_result/",
             upload_data,
-            format="multipart"
+            format="multipart",
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["message"] == "Results uploaded successfully."
@@ -184,9 +188,7 @@ class MVPFullScenarioTest(BaseTestCase):
 
         # Check in-app notification was created
         in_app_notifications = Notification.objects.filter(
-            user=patient,
-            notification_type="result_ready",
-            channel="in_app"
+            user=patient, notification_type="result_ready", channel="in_app"
         )
         assert in_app_notifications.count() >= 1
         notification = in_app_notifications.first()
@@ -220,7 +222,9 @@ class MVPFullScenarioTest(BaseTestCase):
         assert new_result["results_file"] is not None
         assert new_result["study_type"]["name"] == "Complete Blood Count"
         print(f"✓ Patient sees {len(results)} results (new result visible)")
-        print(f"  New result: {new_result['study_type']['name']} - {new_result['status']}")
+        print(
+            f"  New result: {new_result['study_type']['name']} - {new_result['status']}"
+        )
 
         # ===================================================================
         # US3: Patient Downloads Result PDF
@@ -295,13 +299,13 @@ class MVPFullScenarioTest(BaseTestCase):
         new_pdf_file = SimpleUploadedFile(
             "complete_blood_count_results_v2.pdf",
             new_pdf_content,
-            content_type="application/pdf"
+            content_type="application/pdf",
         )
 
         response = admin_client.post(
             f"/api/v1/studies/{study.id}/upload_result/",
             {"results_file": new_pdf_file, "results": "Updated results"},
-            format="multipart"
+            format="multipart",
         )
         assert response.status_code == status.HTTP_200_OK
         print("✓ Admin replaced result successfully")
@@ -310,7 +314,7 @@ class MVPFullScenarioTest(BaseTestCase):
         response = staff_client.post(
             f"/api/v1/studies/{study.id}/upload_result/",
             {"results_file": new_pdf_file, "results": "Unauthorized update"},
-            format="multipart"
+            format="multipart",
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         print("✓ Lab staff correctly denied result replacement")
@@ -331,7 +335,7 @@ class MVPFullScenarioTest(BaseTestCase):
         response = admin_client.post(
             f"/api/v1/studies/{study.id}/upload_result/",
             {"results_file": pdf_file, "results": "Test"},
-            format="multipart"
+            format="multipart",
         )
         assert response.status_code == status.HTTP_200_OK
 
@@ -346,14 +350,13 @@ class MVPFullScenarioTest(BaseTestCase):
 
         # Create another patient with different lab
         other_patient = self.create_patient(
-            email="other@mvptest.com",
-            lab_client_id=2  # Different lab
+            email="other@mvptest.com", lab_client_id=2  # Different lab
         )
         other_study = self.create_study(
             patient=other_patient,
             study_type=study_type,
             status="completed",
-            lab_client_id=2
+            lab_client_id=2,
         )
 
         # Original patient tries to view other patient's results
@@ -367,7 +370,9 @@ class MVPFullScenarioTest(BaseTestCase):
         print("✓ Patient CANNOT see other patients' results in list")
 
         # Original patient tries to download other patient's result
-        response = patient_client.get(f"/api/v1/studies/{other_study.id}/download_result/")
+        response = patient_client.get(
+            f"/api/v1/studies/{other_study.id}/download_result/"
+        )
         # Should get 404 because queryset filters it out
         assert response.status_code == status.HTTP_404_NOT_FOUND
         print("✓ Patient CANNOT download other patients' results")
@@ -401,10 +406,11 @@ class MVPFullScenarioTest(BaseTestCase):
         # ===================================================================
         # SUMMARY
         # ===================================================================
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("MVP FULL SCENARIO TEST COMPLETE - ALL USER STORIES VALIDATED ✓")
-        print("="*70)
-        print(f"""
+        print("=" * 70)
+        print(
+            f"""
 Summary:
 - US1  ✓ Patient registration and login
 - US2  ✓ View list of results
@@ -423,10 +429,10 @@ Total User Stories Covered: 11/11 (100%)
 Multi-tenant Security: ✓ Verified
 RBAC Permissions: ✓ Verified
 Email Notifications: ✓ Verified
-""")
+"""
+        )
 
         print("All MVP features working as expected! 🎉")
-
 
     def test_mvp_workflow_edge_cases(self):
         """Test edge cases and error scenarios in MVP workflow."""
@@ -443,18 +449,24 @@ Email Notifications: ✓ Verified
             "lab_client_id": 1,
         }
 
-        response = self.client.post("/api/v1/users/register/", registration_data, format="json")
+        response = self.client.post(
+            "/api/v1/users/register/", registration_data, format="json"
+        )
         assert response.status_code == status.HTTP_201_CREATED
 
         # Try to register again with same email
-        response = self.client.post("/api/v1/users/register/", registration_data, format="json")
+        response = self.client.post(
+            "/api/v1/users/register/", registration_data, format="json"
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         print("✓ Duplicate email registration correctly rejected")
 
         # Test password mismatch
         registration_data["email"] = "newuser@test.com"
         registration_data["password_confirm"] = "DifferentPass!"
-        response = self.client.post("/api/v1/users/register/", registration_data, format="json")
+        response = self.client.post(
+            "/api/v1/users/register/", registration_data, format="json"
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         print("✓ Password mismatch correctly rejected")
 
@@ -471,15 +483,13 @@ Email Notifications: ✓ Verified
         staff_client = self.authenticate(lab_staff)
 
         invalid_file = SimpleUploadedFile(
-            "test.exe",
-            b"Invalid content",
-            content_type="application/x-executable"
+            "test.exe", b"Invalid content", content_type="application/x-executable"
         )
 
         response = staff_client.post(
             f"/api/v1/studies/{study.id}/upload_result/",
             {"results_file": invalid_file},
-            format="multipart"
+            format="multipart",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         print("✓ Invalid file type correctly rejected")

@@ -83,7 +83,9 @@ def send_result_notification_email(self, user_id, study_id, study_type_name):
         # Send email
         email.send(fail_silently=False)
 
-        logger.info(f"Result notification email sent to {user.email} for study {study_id}")
+        logger.info(
+            f"Result notification email sent to {user.email} for study {study_id}"
+        )
         return f"Email sent to {user.email}"
 
     except User.DoesNotExist:
@@ -94,7 +96,7 @@ def send_result_notification_email(self, user_id, study_id, study_type_name):
         logger.error(f"Error sending result notification email: {str(e)}")
         # Retry the task with exponential backoff
         try:
-            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+            raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
         except self.MaxRetriesExceededError:
             logger.error(f"Max retries exceeded for user {user_id}, study {study_id}")
             return f"Failed after retries: {str(e)}"
