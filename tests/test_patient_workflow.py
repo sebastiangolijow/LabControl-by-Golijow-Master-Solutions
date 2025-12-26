@@ -75,7 +75,7 @@ class TestPatientWorkflow(BaseTestCase):
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["patient"] == patient_id
         assert response.data["status"] == "scheduled"
-        appointment_id = response.data["id"]
+        _appointment_id = response.data["id"]  # noqa: F841
 
         # Verify appointment confirmation notification was created
         notifications = Notification.objects.filter(
@@ -232,12 +232,12 @@ class TestPatientWorkflow(BaseTestCase):
             scheduled_date=future_date,
             status="scheduled",
         )
-        past_apt = self.create_appointment(
+        _past_apt = self.create_appointment(  # noqa: F841
             patient=patient,
             scheduled_date=past_date,
             status="scheduled",
         )
-        completed_apt = self.create_appointment(
+        _completed_apt = self.create_appointment(  # noqa: F841
             patient=patient,
             scheduled_date=future_date,
             status="completed",

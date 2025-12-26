@@ -412,7 +412,7 @@ class MVPFullScenarioTest(BaseTestCase):
         print("MVP FULL SCENARIO TEST COMPLETE - ALL USER STORIES VALIDATED ✓")
         print("=" * 70)
         print(
-            f"""
+            """
 Summary:
 - US1  ✓ Patient registration and login
 - US2  ✓ View list of results

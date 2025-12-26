@@ -224,7 +224,7 @@ class RateLimitingSecurityTests(BaseTestCase):
         by making many login attempts.
         """
         client = self.client
-        user = self.create_patient(
+        _user = self.create_patient(  # noqa: F841
             email="victim@example.com", password="CorrectPassword123!", is_verified=True
         )
 

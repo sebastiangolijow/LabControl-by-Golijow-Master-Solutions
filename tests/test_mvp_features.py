@@ -334,8 +334,8 @@ class AdminResultsManagementTests(BaseTestCase):
             format="multipart",
         )
 
-        # Create another study without results
-        study_without_results = self.create_study(
+        # Create another study without results (for testing filtering)
+        _study_without_results = self.create_study(  # noqa: F841
             patient=self.patient,
             study_type=self.study_type,
             lab_client_id=1,
@@ -428,7 +428,7 @@ class NotificationManagementTests(BaseTestCase):
     def test_patient_cannot_see_other_patients_notifications(self):
         """Test that patients cannot see other patients' notifications."""
         other_patient = self.create_patient(email="other@example.com")
-        other_notification = self.create_notification(
+        _other_notification = self.create_notification(  # noqa: F841
             user=other_patient, title="Other", message="Other message"
         )
 
