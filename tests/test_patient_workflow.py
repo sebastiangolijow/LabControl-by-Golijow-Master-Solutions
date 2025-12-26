@@ -1,7 +1,6 @@
 """Tests for complete patient workflow: Registration -> Appointment -> Results."""
 
-from datetime import date
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
