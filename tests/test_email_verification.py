@@ -31,8 +31,8 @@ class EmailVerificationTests(BaseTestCase):
             "apps.notifications.tasks.send_verification_email.delay"
         ) as mock_task:
             # Make task execute immediately instead of async
-            mock_task.side_effect = (
-                lambda user_id: self._send_verification_email_sync(user_id)
+            mock_task.side_effect = lambda user_id: self._send_verification_email_sync(
+                user_id
             )
 
             response = self.client.post(
@@ -176,8 +176,8 @@ class EmailVerificationTests(BaseTestCase):
         with patch(
             "apps.notifications.tasks.send_verification_email.delay"
         ) as mock_task:
-            mock_task.side_effect = (
-                lambda user_id: self._send_verification_email_sync(user_id)
+            mock_task.side_effect = lambda user_id: self._send_verification_email_sync(
+                user_id
             )
 
             response = self.client.post(
