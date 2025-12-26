@@ -8,12 +8,14 @@ These views extend dj-rest-auth views with:
 """
 
 from dj_rest_auth.registration.views import RegisterView
-from dj_rest_auth.views import (
-    LoginView as DjRestAuthLoginView,
-    PasswordResetView as DjRestAuthPasswordResetView,
-)
+from dj_rest_auth.views import LoginView as DjRestAuthLoginView
+from dj_rest_auth.views import PasswordResetView as DjRestAuthPasswordResetView
 
-from .throttles import LoginRateThrottle, PasswordResetRateThrottle, RegistrationRateThrottle
+from .throttles import (
+    LoginRateThrottle,
+    PasswordResetRateThrottle,
+    RegistrationRateThrottle,
+)
 
 
 class LoginView(DjRestAuthLoginView):

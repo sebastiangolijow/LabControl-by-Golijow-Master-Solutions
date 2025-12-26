@@ -17,9 +17,7 @@ class LoginRateLimitingTests(BaseTestCase):
 
         # Create a test user for login attempts (verified to allow login)
         self.user = self.create_patient(
-            email="test@example.com",
-            password="TestPassword123!",
-            is_verified=True
+            email="test@example.com", password="TestPassword123!", is_verified=True
         )
 
     def tearDown(self):
@@ -42,7 +40,7 @@ class LoginRateLimitingTests(BaseTestCase):
             self.assertEqual(
                 response.status_code,
                 status.HTTP_400_BAD_REQUEST,
-                f"Attempt {i+1} should not be throttled"
+                f"Attempt {i+1} should not be throttled",
             )
 
     def test_login_blocks_6th_attempt(self):
@@ -97,7 +95,7 @@ class LoginRateLimitingTests(BaseTestCase):
         self.assertEqual(
             response.status_code,
             status.HTTP_429_TOO_MANY_REQUESTS,
-            "6th login attempt should be throttled regardless of correct password"
+            "6th login attempt should be throttled regardless of correct password",
         )
 
     def test_rate_limit_is_per_ip(self):
@@ -169,7 +167,7 @@ class RegistrationRateLimitingTests(BaseTestCase):
             self.assertIn(
                 response.status_code,
                 [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST],
-                f"Registration attempt {i+1} should not be throttled"
+                f"Registration attempt {i+1} should not be throttled",
             )
 
     def test_registration_blocks_6th_attempt(self):
@@ -226,7 +224,9 @@ class RateLimitingSecurityTests(BaseTestCase):
         by making many login attempts.
         """
         client = self.client
-        user = self.create_patient(email="victim@example.com", password="CorrectPassword123!", is_verified=True)
+        user = self.create_patient(
+            email="victim@example.com", password="CorrectPassword123!", is_verified=True
+        )
 
         # Attacker makes 5 failed attempts
         passwords = ["wrong1", "wrong2", "wrong3", "wrong4", "wrong5"]
@@ -247,5 +247,5 @@ class RateLimitingSecurityTests(BaseTestCase):
         self.assertEqual(
             response.status_code,
             status.HTTP_429_TOO_MANY_REQUESTS,
-            "Attacker should be blocked after 5 attempts, even with correct password"
+            "Attacker should be blocked after 5 attempts, even with correct password",
         )

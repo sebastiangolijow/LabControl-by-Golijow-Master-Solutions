@@ -1,6 +1,10 @@
 """Custom throttle classes for user authentication."""
 
-from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle, UserRateThrottle
+from rest_framework.throttling import (
+    AnonRateThrottle,
+    SimpleRateThrottle,
+    UserRateThrottle,
+)
 
 
 class LoginRateThrottle(SimpleRateThrottle):
@@ -13,8 +17,8 @@ class LoginRateThrottle(SimpleRateThrottle):
     to prevent account enumeration and brute-force attacks.
     """
 
-    scope = 'login'
-    rate = '5/15m'
+    scope = "login"
+    rate = "5/15m"
 
     def parse_rate(self, rate):
         """
@@ -26,17 +30,17 @@ class LoginRateThrottle(SimpleRateThrottle):
         if rate is None:
             return (None, None)
 
-        num, period = rate.split('/')
+        num, period = rate.split("/")
         num_requests = int(num)
 
         # Handle multi-digit periods (e.g., '15m', '30s', '24h')
-        if period.endswith('s'):
+        if period.endswith("s"):
             duration = int(period[:-1])
-        elif period.endswith('m'):
+        elif period.endswith("m"):
             duration = int(period[:-1]) * 60
-        elif period.endswith('h'):
+        elif period.endswith("h"):
             duration = int(period[:-1]) * 3600
-        elif period.endswith('d'):
+        elif period.endswith("d"):
             duration = int(period[:-1]) * 86400
         else:
             raise ValueError(f"Invalid period format: {period}")
@@ -52,17 +56,14 @@ class LoginRateThrottle(SimpleRateThrottle):
         2. We want to prevent brute-force against any account
         3. IP-based throttling is more effective for login security
         """
-        if request.method != 'POST':
+        if request.method != "POST":
             # Only throttle POST requests (login attempts)
             return None
 
         # Get client IP address
         ident = self.get_ident(request)
 
-        return self.cache_format % {
-            'scope': self.scope,
-            'ident': ident
-        }
+        return self.cache_format % {"scope": self.scope, "ident": ident}
 
 
 class PasswordResetRateThrottle(AnonRateThrottle):
@@ -77,7 +78,7 @@ class PasswordResetRateThrottle(AnonRateThrottle):
     - Account takeover attempts
     """
 
-    scope = 'password_reset'
+    scope = "password_reset"
 
 
 class RegistrationRateThrottle(AnonRateThrottle):
@@ -92,4 +93,4 @@ class RegistrationRateThrottle(AnonRateThrottle):
     - Resource exhaustion attacks
     """
 
-    scope = 'registration'
+    scope = "registration"
