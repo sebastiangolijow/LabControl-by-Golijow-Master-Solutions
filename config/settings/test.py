@@ -58,7 +58,9 @@ CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 
 # Disable debug toolbar and extensions in tests
-INSTALLED_APPS = [app for app in INSTALLED_APPS if app not in ["debug_toolbar", "django_extensions"]]  # noqa
+INSTALLED_APPS = [
+    app for app in INSTALLED_APPS if app not in ["debug_toolbar", "django_extensions"]
+]  # noqa
 MIDDLEWARE = [m for m in MIDDLEWARE if "debug_toolbar" not in m]  # noqa
 DEBUG = False
 
