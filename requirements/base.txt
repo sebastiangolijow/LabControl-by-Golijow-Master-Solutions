@@ -1,16 +1,16 @@
 # Core Django and Python dependencies
-Django==4.2.11
+Django==4.2.27  # Updated from 4.2.11 to fix 23 security vulnerabilities
 python-dotenv==1.0.1
 
 # Django REST Framework
-djangorestframework==3.15.1
+djangorestframework==3.15.2  # Updated from 3.15.1 to fix CVE-2024-21520
 django-filter==24.2
 drf-spectacular==0.27.2
 
 # Authentication & Authorization
-django-allauth==0.63.2
+django-allauth==65.13.0  # Updated from 0.63.2 to fix CVE-2025-65431, CVE-2025-65430
 dj-rest-auth==6.0.0
-djangorestframework-simplejwt==5.3.1
+djangorestframework-simplejwt==5.5.1  # Updated from 5.3.1 to fix CVE-2024-22513
 
 # Database
 psycopg2-binary==2.9.9
@@ -37,4 +37,5 @@ django-simple-history==3.5.0
 # Utilities
 python-dateutil==2.9.0
 pytz==2024.1
-requests==2.31.0
+requests==2.32.4  # Updated from 2.31.0 to fix CVE-2024-35195, CVE-2024-47081
+urllib3==2.6.0  # Updated from 2.5.0 to fix CVE-2025-66418, CVE-2025-66471
