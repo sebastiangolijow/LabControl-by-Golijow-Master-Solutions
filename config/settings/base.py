@@ -182,6 +182,10 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/hour",
         "user": "1000/hour",
+        # Security: Strict rate limiting for authentication endpoints
+        # Note: 'login' throttle defines its own rate in LoginRateThrottle class (5/15m)
+        "password_reset": "3/hour",  # 3 password reset requests per hour per IP
+        "registration": "5/hour",  # 5 registrations per hour per IP
     },
 }
 

@@ -31,9 +31,8 @@ urlpatterns = [
             [
                 # API root
                 path("", include(router.urls)),
-                # Authentication endpoints (django-allauth + dj-rest-auth)
-                path("auth/", include("dj_rest_auth.urls")),
-                path("auth/registration/", include("dj_rest_auth.registration.urls")),
+                # Authentication endpoints (custom throttled views)
+                path("auth/", include("apps.users.auth_urls")),
                 # App-specific endpoints
                 path("users/", include("apps.users.urls")),
                 path("studies/", include("apps.studies.urls")),
