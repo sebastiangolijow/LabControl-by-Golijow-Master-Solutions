@@ -93,3 +93,7 @@ CACHES = {
 
 # Enable admin panel security
 ADMIN_URL = env("ADMIN_URL", default="admin/")
+
+# Content Security Policy - Production Settings
+CSP_UPGRADE_INSECURE_REQUESTS = True  # Upgrade HTTP to HTTPS
+CSP_REPORT_URI = env("CSP_REPORT_URI", default=None)  # Optional: CSP violation reporting endpoint

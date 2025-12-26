@@ -5,6 +5,8 @@ The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/4.2/topics/http/urls/
 """
 
+import os
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -21,9 +23,13 @@ router = routers.DefaultRouter()
 # Register your viewsets here
 # Example: router.register(r'users', UserViewSet)
 
+# Security: Custom admin URL from environment variable
+# Default to 'admin/' in development, but should be changed in production
+ADMIN_URL = os.getenv("ADMIN_URL", "admin/")
+
 urlpatterns = [
-    # Admin panel
-    path("admin/", admin.site.urls),
+    # Admin panel (customizable URL for security)
+    path(ADMIN_URL, admin.site.urls),
     # API endpoints
     path(
         "api/v1/",
