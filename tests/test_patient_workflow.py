@@ -1,15 +1,12 @@
 """Tests for complete patient workflow: Registration -> Appointment -> Results."""
 
-from datetime import date, time, timedelta
-from io import BytesIO
+from datetime import date
+from datetime import timedelta
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.utils import timezone
 from rest_framework import status
 
-from apps.appointments.models import Appointment
 from apps.notifications.models import Notification
-from apps.studies.models import Study
 from tests.base import BaseTestCase
 
 
