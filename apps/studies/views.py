@@ -246,8 +246,8 @@ class StudyViewSet(viewsets.ModelViewSet):
         """
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Filter only studies with results
-        queryset = queryset.filter(results_file__isnull=False)
+        # Filter only studies with results (must have actual file, not empty string)
+        queryset = queryset.exclude(results_file="")
 
         # Paginate results
         page = self.paginate_queryset(queryset)

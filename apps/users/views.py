@@ -158,10 +158,15 @@ class PatientRegistrationView(generics.CreateAPIView):
     serializer_class = PatientRegistrationSerializer
 
     def create(self, request, *args, **kwargs):
-        """Create a new patient account."""
+        """Create a new patient account and send verification email."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        # Send verification email asynchronously
+        from apps.notifications.tasks import send_verification_email
+
+        send_verification_email.delay(user.id)
 
         return Response(
             {
@@ -170,3 +175,117 @@ class PatientRegistrationView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class VerifyEmailView(generics.GenericAPIView):
+    """
+    Public endpoint for email verification.
+
+    Verifies a user's email address using the token sent via email.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Verify email address with token."""
+        email = request.data.get("email")
+        token = request.data.get("token")
+
+        if not email or not token:
+            return Response(
+                {"error": "Email and token are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(email=email)
+
+            # Check if already verified
+            if user.is_verified:
+                return Response(
+                    {"message": "Email is already verified."},
+                    status=status.HTTP_200_OK,
+                )
+
+            # Verify token matches and is not expired
+            if user.verification_token != token:
+                return Response(
+                    {"error": "Invalid verification token."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not user.is_verification_token_valid():
+                return Response(
+                    {
+                        "error": "Verification token has expired. Please request a new one."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Verify the email
+            user.verify_email()
+
+            return Response(
+                {
+                    "message": "Email verified successfully! You can now log in.",
+                    "user": UserDetailSerializer(user).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class ResendVerificationEmailView(generics.GenericAPIView):
+    """
+    Public endpoint to resend verification email.
+
+    Allows users to request a new verification email if the previous one expired.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Resend verification email."""
+        email = request.data.get("email")
+
+        if not email:
+            return Response(
+                {"error": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(email=email)
+
+            # Check if already verified
+            if user.is_verified:
+                return Response(
+                    {"message": "Email is already verified."},
+                    status=status.HTTP_200_OK,
+                )
+
+            # Send new verification email
+            from apps.notifications.tasks import send_verification_email
+
+            send_verification_email.delay(user.id)
+
+            return Response(
+                {
+                    "message": "Verification email has been resent. Please check your inbox."
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except User.DoesNotExist:
+            # Don't reveal if email exists or not (security)
+            return Response(
+                {
+                    "message": "If an account with this email exists, a verification email has been sent."
+                },
+                status=status.HTTP_200_OK,
+            )

@@ -125,7 +125,7 @@ class PatientRegistrationSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
 
-        # TODO: Send verification email
-        # send_verification_email.delay(user.id)
+        # Note: Email verification is now triggered in PatientRegistrationView
+        # to ensure it happens after successful response to user
 
         return user

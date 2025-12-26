@@ -150,3 +150,71 @@ def send_bulk_notification(user_ids, title, message, notification_type="info"):
 
     Notification.objects.bulk_create(notifications)
     return f"Created {len(notifications)} notifications"
+
+
+@shared_task(bind=True, max_retries=3)
+def send_verification_email(self, user_id):
+    """
+    Send email verification link to a newly registered user.
+
+    Args:
+        user_id: ID of the user who needs to verify their email
+
+    This task will retry up to 3 times if email sending fails.
+    """
+    from apps.users.models import User
+
+    try:
+        user = User.objects.get(id=user_id)
+
+        # Check if user is already verified
+        if user.is_verified:
+            logger.info(f"User {user.email} is already verified, skipping email")
+            return f"User {user.email} already verified"
+
+        # Generate verification token
+        token = user.generate_verification_token()
+
+        # Prepare context for email template
+        verification_url = (
+            f"{settings.FRONTEND_URL or 'http://localhost:8000'}"
+            f"/verify-email?token={token}&email={user.email}"
+        )
+
+        context = {
+            "user_name": user.get_full_name() or user.email,
+            "verification_url": verification_url,
+        }
+
+        # Render HTML email
+        html_content = render_to_string("emails/email_verification.html", context)
+        text_content = strip_tags(html_content)  # Fallback plain text
+
+        # Create email
+        subject = "Verify Your Email Address - LabControl"
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.email],
+        )
+        email.attach_alternative(html_content, "text/html")
+
+        # Send email
+        email.send(fail_silently=False)
+
+        logger.info(f"Verification email sent to {user.email}")
+        return f"Verification email sent to {user.email}"
+
+    except User.DoesNotExist:
+        logger.error(f"User {user_id} not found")
+        return f"User {user_id} not found"
+
+    except Exception as e:
+        logger.error(f"Error sending verification email: {str(e)}")
+        # Retry the task with exponential backoff
+        try:
+            raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+        except self.MaxRetriesExceededError:
+            logger.error(f"Max retries exceeded for user {user_id}")
+            return f"Failed after retries: {str(e)}"

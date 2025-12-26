@@ -21,13 +21,13 @@ class EmailNotificationTests(BaseTestCase):
     def setUp(self):
         """Set up test data."""
         super().setUp()
-        self.patient = self.create_patient()
-        self.lab_staff = self.create_lab_staff()
+        self.patient = self.create_patient(lab_client_id=1)
+        self.lab_staff = self.create_lab_staff(lab_client_id=1)
         self.study_type = self.create_study_type(name="Blood Test")
         self.study = self.create_study(
             patient=self.patient,
             study_type=self.study_type,
-            lab_client_id=self.patient.lab_client_id,
+            lab_client_id=1,
         )
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
@@ -212,7 +212,7 @@ class AdminResultsManagementTests(BaseTestCase):
     def setUp(self):
         """Set up test data."""
         super().setUp()
-        self.admin = self.create_admin()
+        self.admin = self.create_admin(lab_client_id=1)
         self.lab_manager = self.create_lab_manager(lab_client_id=1)
         self.lab_staff = self.create_lab_staff(lab_client_id=1)
         self.patient = self.create_patient(lab_client_id=1)
@@ -323,9 +323,16 @@ class AdminResultsManagementTests(BaseTestCase):
         """Test that admins can list all studies with uploaded results."""
         # Upload result for study
         client = self.authenticate(self.admin)
+
+        # Create a fresh PDF file for this test (SimpleUploadedFile can only be used once)
+        pdf_content = b"%PDF-1.4 test content"
+        pdf_file = SimpleUploadedFile(
+            "results.pdf", pdf_content, content_type="application/pdf"
+        )
+
         client.post(
             f"/api/v1/studies/{self.study.id}/upload_result/",
-            {"results_file": self.pdf_file, "results": "Test upload"},
+            {"results_file": pdf_file, "results": "Test upload"},
             format="multipart",
         )
 

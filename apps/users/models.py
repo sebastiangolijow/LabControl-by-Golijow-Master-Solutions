@@ -86,6 +86,18 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text=_("Designates whether the user has verified their email address."),
     )
+    verification_token = models.CharField(
+        _("verification token"),
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text=_("Token for email verification"),
+    )
+    verification_token_created_at = models.DateTimeField(
+        _("verification token created at"),
+        null=True,
+        blank=True,
+    )
 
     # Timestamps
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
@@ -156,3 +168,33 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_patient(self):
         """Check if user is a patient."""
         return self.role == "patient"
+
+    def generate_verification_token(self):
+        """Generate and set a new verification token."""
+        from .tokens import generate_verification_token
+
+        self.verification_token = generate_verification_token()
+        self.verification_token_created_at = timezone.now()
+        self.save(update_fields=["verification_token", "verification_token_created_at"])
+        return self.verification_token
+
+    def verify_email(self):
+        """Mark the user's email as verified."""
+        self.is_verified = True
+        self.verification_token = None
+        self.verification_token_created_at = None
+        self.save(
+            update_fields=[
+                "is_verified",
+                "verification_token",
+                "verification_token_created_at",
+            ]
+        )
+
+    def is_verification_token_valid(self):
+        """Check if the verification token is still valid (not expired)."""
+        from .tokens import is_token_expired
+
+        if not self.verification_token or not self.verification_token_created_at:
+            return False
+        return not is_token_expired(self.verification_token_created_at)
