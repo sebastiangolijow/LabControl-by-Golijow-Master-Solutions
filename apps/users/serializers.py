@@ -20,6 +20,8 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "full_name",
             "phone_number",
+            "dni",
+            "birthday",
             "role",
             "lab_client_id",
             "is_verified",
@@ -84,6 +86,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
+            "dni",
+            "birthday",
         ]
 
 
@@ -102,6 +106,8 @@ class PatientRegistrationSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
+            "dni",
+            "birthday",
             "lab_client_id",
         ]
 

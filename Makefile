@@ -35,6 +35,9 @@ logs-web: ## View logs from web service
 logs-db: ## View logs from database service
 	$(DOCKER_COMPOSE) logs -f $(SERVICE_DB)
 
+logs-backend: ## View logs from backend services (web + celery)
+	$(DOCKER_COMPOSE) logs -f web celery_worker celery_beat
+
 ps: ## Show running services
 	$(DOCKER_COMPOSE) ps
 
@@ -54,8 +57,25 @@ makemigrations: ## Create new migrations
 showmigrations: ## Show migration status
 	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py showmigrations
 
-superuser: ## Create superuser
+superuser: ## Create superuser (interactive)
 	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py createsuperuser
+
+create-superuser: ## Create superuser with email and password (Usage: make create-superuser EMAIL=test@test.com PASSWORD=123)
+	@if [ -z "$(EMAIL)" ] || [ -z "$(PASSWORD)" ]; then \
+		echo "Error: EMAIL and PASSWORD are required."; \
+		echo "Usage: make create-superuser EMAIL=test@test.com PASSWORD=123"; \
+		exit 1; \
+	fi
+	@echo "Creating superuser with email: $(EMAIL)"
+	@$(DOCKER_COMPOSE) exec -T $(SERVICE_WEB) python manage.py shell <<< "from apps.users.models import User; User.objects.create_superuser(email='$(EMAIL)', password='$(PASSWORD)', first_name='Admin', last_name='User') if not User.objects.filter(email='$(EMAIL)').exists() else print('User already exists'); print('Superuser created successfully!' if not User.objects.filter(email='$(EMAIL)').exists() else 'User already exists')"
+
+verify-email: ## Verify email for a user (Usage: make verify-email EMAIL=user@example.com)
+	@if [ -z "$(EMAIL)" ]; then \
+		echo "Error: EMAIL is required."; \
+		echo "Usage: make verify-email EMAIL=user@example.com"; \
+		exit 1; \
+	fi
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py verify_email $(EMAIL)
 
 collectstatic: ## Collect static files
 	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py collectstatic --noinput

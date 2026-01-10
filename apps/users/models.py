@@ -41,6 +41,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(_("first name"), max_length=150, blank=True)
     last_name = models.CharField(_("last name"), max_length=150, blank=True)
     phone_number = models.CharField(_("phone number"), max_length=20, blank=True)
+    dni = models.CharField(
+        _("DNI"),
+        max_length=20,
+        blank=True,
+        help_text=_("Documento Nacional de Identidad"),
+    )
+    birthday = models.DateField(
+        _("birthday"),
+        null=True,
+        blank=True,
+        help_text=_("Date of birth"),
+    )
 
     # User role and permissions
     ROLE_CHOICES = [
