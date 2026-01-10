@@ -1,5 +1,6 @@
-from django.core.management.base import BaseCommand
 from allauth.account.models import EmailAddress
+from django.core.management.base import BaseCommand
+
 from apps.users.models import User
 
 
@@ -34,6 +35,4 @@ class Command(BaseCommand):
                     )
                 )
         except User.DoesNotExist:
-            self.stdout.write(
-                self.style.ERROR(f"User with email {email} not found")
-            )
+            self.stdout.write(self.style.ERROR(f"User with email {email} not found"))
