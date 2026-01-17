@@ -1,13 +1,13 @@
 """Admin configuration for users app."""
 
-from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
+
+from config.admin import admin_site
 
 from .models import User
 
 
-@admin.register(User)
 class UserAdmin(BaseUserAdmin):
     """Custom admin interface for User model."""
 
@@ -79,3 +79,7 @@ class UserAdmin(BaseUserAdmin):
     )
 
     readonly_fields = ["date_joined", "last_login", "updated_at"]
+
+
+# Register with custom admin site (superuser-only access)
+admin_site.register(User, UserAdmin)

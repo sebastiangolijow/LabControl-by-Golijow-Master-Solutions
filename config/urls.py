@@ -9,7 +9,6 @@ import os
 
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -17,6 +16,9 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 from rest_framework import routers
+
+# Import custom admin site (restricted to superusers only)
+from config.admin import admin_site
 
 # API Router
 router = routers.DefaultRouter()
@@ -28,8 +30,8 @@ router = routers.DefaultRouter()
 ADMIN_URL = os.getenv("ADMIN_URL", "admin/")
 
 urlpatterns = [
-    # Admin panel (customizable URL for security)
-    path(ADMIN_URL, admin.site.urls),
+    # Admin panel (customizable URL for security, restricted to superusers)
+    path(ADMIN_URL, admin_site.urls),
     # API endpoints
     path(
         "api/v1/",
@@ -73,7 +75,4 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-# Customize admin site
-admin.site.site_header = "LabControl Administration"
-admin.site.site_title = "LabControl Admin"
-admin.site.index_title = "Welcome to LabControl Admin Panel"
+# Note: Admin site customization is now done in config/admin.py
