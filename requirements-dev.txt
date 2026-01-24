@@ -1,0 +1,39 @@
+# Django Core
+Django>=4.2,<5.0
+django-environ>=0.11.0
+
+# Django REST Framework
+djangorestframework>=3.14.0
+djangorestframework-simplejwt>=5.3.0
+drf-spectacular>=0.27.0
+django-filter>=23.0
+dj-rest-auth>=5.0.0
+
+# Django AllAuth
+django-allauth>=0.57.0
+
+# CORS
+django-cors-headers>=4.3.0
+
+# Database
+psycopg2-binary>=2.9.0
+
+# Security
+django-csp>=3.7
+
+# Static Files
+whitenoise>=6.6.0
+
+# Celery
+celery>=5.3.0
+django-celery-beat>=2.5.0
+django-celery-results>=2.5.0
+redis>=5.0.0
+
+# Audit Trail
+django-simple-history>=3.4.0
+
+# Development
+pytest>=7.4.0
+pytest-django>=4.5.0
+factory-boy>=3.3.0

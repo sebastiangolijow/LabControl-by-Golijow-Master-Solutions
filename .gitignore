@@ -45,7 +45,9 @@ ENV/
 env/
 
 # IDEs
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
 .idea/
 *.swp
 *.swo

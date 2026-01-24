@@ -11,9 +11,12 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 from rest_framework import status
 
-from apps.users.permissions import IsAdmin, IsAdminOrLabManager
-from config.admin import SuperUserAdminSite, admin_site
+from apps.users.permissions import IsAdmin
+from apps.users.permissions import IsAdminOrLabManager
+from config.admin import SuperUserAdminSite
+from config.admin import admin_site
 from tests.base import BaseTestCase
+
 
 User = get_user_model()
 
@@ -287,7 +290,7 @@ class TestUserDeleteEndpoint(BaseTestCase):
 
         response = client.delete(f"/api/v1/users/{patient.id}/")
 
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_delete_nonexistent_user_returns_404(self):
         """Test that deleting a non-existent user returns 404."""

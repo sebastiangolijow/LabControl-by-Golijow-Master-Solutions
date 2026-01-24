@@ -6,6 +6,7 @@ Environment-specific settings should be in dev.py, prod.py, etc.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     # Third-party apps
     "rest_framework",
     "rest_framework.authtoken",
+    "rest_framework_simplejwt",
     "drf_spectacular",
     "django_filters",
     "corsheaders",
@@ -207,6 +209,37 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 
+# dj-rest-auth Configuration
+# Configure dj-rest-auth to use JWT instead of tokens
+REST_AUTH = {
+    "USE_JWT": True,
+    "JWT_AUTH_COOKIE": "access-token",
+    "JWT_AUTH_REFRESH_COOKIE": "refresh-token",
+    "JWT_AUTH_HTTPONLY": False,  # Allow JavaScript to read tokens
+    "JWT_AUTH_SAMESITE": "Lax",
+}
+
+# Simple JWT Configuration
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "VERIFYING_KEY": None,
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+}
+
 # Email Configuration
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
@@ -274,38 +307,84 @@ CSP_UPGRADE_INSECURE_REQUESTS = False  # Will be True in production
 CSP_INCLUDE_NONCE_IN = ["script-src"]  # Nonce for inline scripts
 
 # Logging Configuration
+# Clean, Docker-friendly logging that shows only essential information
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+        "django_server": {
+            "()": "django.utils.log.ServerFormatter",
+            "format": "[{server_time}] {message}",
             "style": "{",
         },
         "simple": {
-            "format": "{levelname} {message}",
+            "format": "{levelname} {asctime} {name} {message}",
             "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "filters": {
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
         },
     },
     "handlers": {
         "console": {
+            "level": "INFO",
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
+            "formatter": "simple",
+        },
+        "django_server": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "django_server",
         },
     },
     "root": {
         "handlers": ["console"],
-        "level": "INFO",
+        "level": "WARNING",  # Only show warnings and errors by default
     },
     "loggers": {
+        # Django's own logs - only show errors
         "django": {
             "handlers": ["console"],
-            "level": env("DJANGO_LOG_LEVEL", default="INFO"),
+            "level": "ERROR",
             "propagate": False,
         },
+        # Django server logs (requests) - show all
+        "django.server": {
+            "handlers": ["django_server"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Django database queries - silence unless debugging
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Django security logs - show warnings
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Our application logs - show info and above
+        "apps": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Celery logs
         "celery": {
             "handlers": ["console"],
             "level": "INFO",
+            "propagate": False,
+        },
+        # Silence noisy third-party libraries
+        "PIL": {
+            "handlers": ["console"],
+            "level": "WARNING",
             "propagate": False,
         },
     },
