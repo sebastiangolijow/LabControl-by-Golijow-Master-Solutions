@@ -1,11 +1,12 @@
 """Admin configuration for studies app."""
 
-from django.contrib import admin
+from config.admin import admin
+from config.admin import admin_site
 
-from .models import Study, StudyType
+from .models import Study
+from .models import StudyType
 
 
-@admin.register(StudyType)
 class StudyTypeAdmin(admin.ModelAdmin):
     """Admin interface for StudyType model."""
 
@@ -22,7 +23,6 @@ class StudyTypeAdmin(admin.ModelAdmin):
     ordering = ["name"]
 
 
-@admin.register(Study)
 class StudyAdmin(admin.ModelAdmin):
     """Admin interface for Study model."""
 
@@ -38,3 +38,8 @@ class StudyAdmin(admin.ModelAdmin):
     search_fields = ["order_number", "patient__email", "sample_id"]
     ordering = ["-created_at"]
     readonly_fields = ["created_at", "updated_at"]
+
+
+# Register with custom admin site
+admin_site.register(StudyType, StudyTypeAdmin)
+admin_site.register(Study, StudyAdmin)

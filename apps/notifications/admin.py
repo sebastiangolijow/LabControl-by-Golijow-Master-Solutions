@@ -1,11 +1,11 @@
 """Admin configuration for notifications app."""
 
-from django.contrib import admin
+from config.admin import admin
+from config.admin import admin_site
 
 from .models import Notification
 
 
-@admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     """Admin interface for Notification model."""
 
@@ -27,3 +27,7 @@ class NotificationAdmin(admin.ModelAdmin):
     search_fields = ["title", "message", "user__email"]
     ordering = ["-created_at"]
     readonly_fields = ["created_at", "sent_at", "delivered_at", "read_at"]
+
+
+# Register with custom admin site
+admin_site.register(Notification, NotificationAdmin)

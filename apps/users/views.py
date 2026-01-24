@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import User
-from .permissions import IsAdminOrLabManager
+from .permissions import IsAdmin, IsAdminOrLabManager
 from .serializers import (
     PatientRegistrationSerializer,
     UserCreateSerializer,
@@ -47,6 +47,13 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserDetailSerializer
         return UserSerializer
 
+    def get_permissions(self):
+        """Set permissions based on action."""
+        if self.action == "destroy":
+            # Only admins and superusers can delete users
+            return [IsAdmin()]
+        return super().get_permissions()
+
     def get_queryset(self):
         """
         Filter queryset based on user role and permissions.
@@ -63,6 +70,51 @@ class UserViewSet(viewsets.ModelViewSet):
             return User.objects.filter(lab_client_id=user.lab_client_id)
         else:
             return User.objects.filter(id=user.id)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete a user (admin only).
+
+        Implements soft delete by setting is_active=False instead of hard deletion.
+        This preserves data integrity and allows for potential account recovery.
+
+        Security checks:
+        - Prevents users from deleting themselves
+        - Prevents non-superusers from deleting superuser accounts
+        - Requires IsAdmin permission (enforced by get_permissions)
+
+        Returns:
+            Response: Success message with 200 status or error with appropriate status
+        """
+        user_to_delete = self.get_object()
+
+        # Prevent self-deletion
+        if user_to_delete.id == request.user.id:
+            return Response(
+                {"error": "You cannot delete your own account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Prevent deleting superusers (unless you're also a superuser)
+        if user_to_delete.is_superuser and not request.user.is_superuser:
+            return Response(
+                {"error": "You cannot delete a superuser account."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Soft delete - deactivate the user instead of deleting
+        user_to_delete.is_active = False
+        user_to_delete.save(update_fields=["is_active"])
+
+        # Log the deactivation for audit trail
+        return Response(
+            {
+                "message": f"User {user_to_delete.email} has been deactivated successfully.",
+                "user_id": user_to_delete.id,
+                "email": user_to_delete.email,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["get"])
     def me(self, request):

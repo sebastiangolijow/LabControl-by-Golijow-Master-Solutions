@@ -1,11 +1,12 @@
 """Admin configuration for payments app."""
 
-from django.contrib import admin
+from config.admin import admin
+from config.admin import admin_site
 
-from .models import Invoice, Payment
+from .models import Invoice
+from .models import Payment
 
 
-@admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):
     """Admin interface for Invoice model."""
 
@@ -24,7 +25,6 @@ class InvoiceAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at", "updated_at"]
 
 
-@admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     """Admin interface for Payment model."""
 
@@ -40,3 +40,8 @@ class PaymentAdmin(admin.ModelAdmin):
     search_fields = ["transaction_id", "invoice__invoice_number"]
     ordering = ["-created_at"]
     readonly_fields = ["created_at", "completed_at"]
+
+
+# Register with custom admin site
+admin_site.register(Invoice, InvoiceAdmin)
+admin_site.register(Payment, PaymentAdmin)
