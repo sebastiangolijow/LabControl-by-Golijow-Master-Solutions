@@ -1,7 +1,6 @@
 """Admin configuration for notifications app."""
 
-from config.admin import admin
-from config.admin import admin_site
+from config.admin import admin, admin_site
 
 from .models import Notification
 
