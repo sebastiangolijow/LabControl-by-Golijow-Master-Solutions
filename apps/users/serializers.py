@@ -9,6 +9,9 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model."""
 
     full_name = serializers.CharField(source="get_full_name", read_only=True)
+    # Since uuid is the primary key, Django REST Framework will automatically
+    # expose it as both 'id' and 'uuid' in the JSON response
+    id = serializers.UUIDField(source="pk", read_only=True)
 
     class Meta:
         model = User

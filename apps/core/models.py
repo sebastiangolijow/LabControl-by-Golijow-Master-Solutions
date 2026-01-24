@@ -159,6 +159,15 @@ class LabClientModel(models.Model):
     Models that need to be isolated per laboratory client should inherit this.
     """
 
+    uuid = models.UUIDField(
+        _("UUID"),
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+        primary_key=True,
+    )
+
     lab_client_id = models.IntegerField(
         _("laboratory client ID"),
         null=True,

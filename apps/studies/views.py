@@ -2,10 +2,14 @@
 
 import os
 
-from django.http import FileResponse, Http404
+from django.http import FileResponse
+from django.http import Http404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets
+from rest_framework import filters
+from rest_framework import permissions
+from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
@@ -14,12 +18,11 @@ from apps.notifications.models import Notification
 from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
-from .models import Study, StudyType
-from .serializers import (
-    StudyResultUploadSerializer,
-    StudySerializer,
-    StudyTypeSerializer,
-)
+from .models import Study
+from .models import StudyType
+from .serializers import StudyResultUploadSerializer
+from .serializers import StudySerializer
+from .serializers import StudyTypeSerializer
 
 
 class StudyTypeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -55,19 +58,56 @@ class StudyViewSet(viewsets.ModelViewSet):
         """Filter studies based on user role."""
         user = self.request.user
 
+        # Base queryset: exclude soft-deleted studies
+        base_queryset = Study.objects.filter(is_deleted=False)
+
         if user.is_superuser or user.role in ["admin", "lab_manager"]:
-            # Admins and lab managers see all studies in their lab
+            # Admins and lab managers see all non-deleted studies in their lab
             if user.lab_client_id:
-                return Study.objects.filter(lab_client_id=user.lab_client_id)
-            return Study.objects.all()
+                return base_queryset.filter(lab_client_id=user.lab_client_id)
+            return base_queryset
         elif user.is_patient:
-            # Patients only see their own studies
-            return Study.objects.filter(patient=user)
+            # Patients only see their own non-deleted studies
+            return base_queryset.filter(patient=user)
         else:
-            # Doctors and technicians see all studies in their lab
+            # Doctors and technicians see all non-deleted studies in their lab
             if user.lab_client_id:
-                return Study.objects.filter(lab_client_id=user.lab_client_id)
+                return base_queryset.filter(lab_client_id=user.lab_client_id)
             return Study.objects.none()
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Soft delete a study (set is_deleted=True).
+
+        Permissions:
+        - Admins can delete any study
+        - Patients can only delete their own studies
+        """
+        study = self.get_object()
+        user = request.user
+
+        # Check permissions
+        is_admin = user.is_superuser or user.role in ["admin", "lab_manager"]
+        is_owner = user.is_patient and study.patient == user
+
+        if not (is_admin or is_owner):
+            return Response(
+                {"error": "You do not have permission to delete this study."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Soft delete
+        study.is_deleted = True
+        study.save(update_fields=["is_deleted"])
+
+        return Response(
+            {
+                "message": f"Study {study.order_number} has been deleted successfully.",
+                "study_id": study.id,
+                "order_number": study.order_number,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(
         detail=True,

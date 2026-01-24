@@ -2,7 +2,8 @@
 
 import uuid
 
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import PermissionsMixin
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -32,6 +33,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         editable=False,
         unique=True,
         db_index=True,
+        primary_key=True,
     )
 
     # Email is the primary identifier
@@ -134,7 +136,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     # Audit trail - track all changes to user records
-    history = HistoricalRecords()
+    # Configure history to use UUID for history_user_id
+    history = HistoricalRecords(
+        history_user_id_field=models.UUIDField(null=True, blank=True)
+    )
 
     class Meta:
         verbose_name = _("user")

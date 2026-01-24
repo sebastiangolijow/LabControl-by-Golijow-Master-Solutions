@@ -130,11 +130,21 @@ class Study(BaseModel, LabClientModel):
         help_text=_("Internal notes not visible to patient"),
     )
 
+    # Soft delete
+    is_deleted = models.BooleanField(
+        _("is deleted"),
+        default=False,
+        help_text=_("Soft delete flag - deleted studies are hidden but preserved"),
+    )
+
     # Custom manager
     objects = StudyManager()
 
     # Audit trail
-    history = HistoricalRecords()
+    # Configure history to use UUID for history_user_id (matches User model UUID)
+    history = HistoricalRecords(
+        history_user_id_field=models.UUIDField(null=True, blank=True)
+    )
 
     class Meta:
         verbose_name = _("study")

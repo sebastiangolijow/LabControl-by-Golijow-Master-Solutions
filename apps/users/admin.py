@@ -1,5 +1,6 @@
 """Admin configuration for users app."""
 
+from allauth.account.models import EmailAddress
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
@@ -81,5 +82,30 @@ class UserAdmin(BaseUserAdmin):
     readonly_fields = ["date_joined", "last_login", "updated_at"]
 
 
+class EmailAddressAdmin(admin.ModelAdmin):
+    """Admin interface for EmailAddress model (django-allauth)."""
+
+    list_display = ["email", "user", "verified", "primary"]
+    list_filter = ["verified", "primary"]
+    search_fields = ["email", "user__email", "user__first_name", "user__last_name"]
+    raw_id_fields = ["user"]
+
+    fieldsets = (
+        (None, {
+            "fields": ("user", "email")
+        }),
+        ("Status", {
+            "fields": ("verified", "primary")
+        }),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        # Make email readonly when editing existing record
+        if obj:
+            return ["email"]
+        return []
+
+
 # Register with custom admin site (superuser-only access)
 admin_site.register(User, UserAdmin)
+admin_site.register(EmailAddress, EmailAddressAdmin)
