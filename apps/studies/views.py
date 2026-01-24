@@ -2,14 +2,10 @@
 
 import os
 
-from django.http import FileResponse
-from django.http import Http404
+from django.http import FileResponse, Http404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
-from rest_framework import permissions
-from rest_framework import status
-from rest_framework import viewsets
+from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
@@ -18,11 +14,12 @@ from apps.notifications.models import Notification
 from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
-from .models import Study
-from .models import StudyType
-from .serializers import StudyResultUploadSerializer
-from .serializers import StudySerializer
-from .serializers import StudyTypeSerializer
+from .models import Study, StudyType
+from .serializers import (
+    StudyResultUploadSerializer,
+    StudySerializer,
+    StudyTypeSerializer,
+)
 
 
 class StudyTypeViewSet(viewsets.ReadOnlyModelViewSet):
