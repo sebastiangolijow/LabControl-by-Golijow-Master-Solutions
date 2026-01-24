@@ -1,10 +1,8 @@
 """Admin configuration for payments app."""
 
-from config.admin import admin
-from config.admin import admin_site
+from config.admin import admin, admin_site
 
-from .models import Invoice
-from .models import Payment
+from .models import Invoice, Payment
 
 
 class InvoiceAdmin(admin.ModelAdmin):

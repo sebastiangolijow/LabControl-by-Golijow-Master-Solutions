@@ -1,10 +1,8 @@
 """Admin configuration for studies app."""
 
-from config.admin import admin
-from config.admin import admin_site
+from config.admin import admin, admin_site
 
-from .models import Study
-from .models import StudyType
+from .models import Study, StudyType
 
 
 class StudyTypeAdmin(admin.ModelAdmin):
