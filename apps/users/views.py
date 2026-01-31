@@ -2,24 +2,21 @@
 
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
-from rest_framework import generics
-from rest_framework import permissions
-from rest_framework import status
-from rest_framework import viewsets
+from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import User
-from .permissions import IsAdmin
-from .permissions import IsAdminOrLabManager
-from .serializers import AdminUserCreateSerializer
-from .serializers import PatientRegistrationSerializer
-from .serializers import UserCreateSerializer
-from .serializers import UserDetailSerializer
-from .serializers import UserSerializer
-from .serializers import UserUpdateSerializer
+from .permissions import IsAdmin, IsAdminOrLabManager
+from .serializers import (
+    AdminUserCreateSerializer,
+    PatientRegistrationSerializer,
+    UserCreateSerializer,
+    UserDetailSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+)
 
 
 class UserViewSet(viewsets.ModelViewSet):

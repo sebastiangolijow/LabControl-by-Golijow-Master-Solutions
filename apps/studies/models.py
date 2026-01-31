@@ -166,9 +166,13 @@ class Study(BaseModel, LabClientModel):
         """Validate that ordered_by is a doctor."""
         super().clean()
         if self.ordered_by and self.ordered_by.role != "doctor":
-            raise ValidationError({
-                "ordered_by": _("Only users with 'doctor' role can be assigned to ordered_by field.")
-            })
+            raise ValidationError(
+                {
+                    "ordered_by": _(
+                        "Only users with 'doctor' role can be assigned to ordered_by field."
+                    )
+                }
+            )
 
     @property
     def is_completed(self):
