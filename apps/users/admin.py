@@ -91,12 +91,8 @@ class EmailAddressAdmin(admin.ModelAdmin):
     raw_id_fields = ["user"]
 
     fieldsets = (
-        (None, {
-            "fields": ("user", "email")
-        }),
-        ("Status", {
-            "fields": ("verified", "primary")
-        }),
+        (None, {"fields": ("user", "email")}),
+        ("Status", {"fields": ("verified", "primary")}),
     )
 
     def get_readonly_fields(self, request, obj=None):
