@@ -1,6 +1,7 @@
 """Tests for complete patient workflow: Registration -> Appointment -> Results."""
 
-from datetime import date, timedelta
+from datetime import date
+from datetime import timedelta
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
@@ -73,7 +74,7 @@ class TestPatientWorkflow(BaseTestCase):
         response = client.post("/api/v1/appointments/", appointment_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["patient"] == patient_id
+        assert str(response.data["patient"]) == str(patient_id)
         assert response.data["status"] == "scheduled"
         _appointment_id = response.data["id"]  # noqa: F841
 
@@ -116,7 +117,7 @@ class TestPatientWorkflow(BaseTestCase):
         }
 
         response = staff_client.post(
-            f"/api/v1/studies/{study.id}/upload_result/",
+            f"/api/v1/studies/{study.pk}/upload_result/",
             upload_data,
             format="multipart",
         )
@@ -150,7 +151,7 @@ class TestPatientWorkflow(BaseTestCase):
         assert response.data["results"][0]["results_file"] is not None
 
         # Patient downloads results
-        response = client.get(f"/api/v1/studies/{study.id}/download_result/")
+        response = client.get(f"/api/v1/studies/{study.pk}/download_result/")
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
         assert "attachment" in response["Content-Disposition"]
@@ -167,7 +168,7 @@ class TestPatientWorkflow(BaseTestCase):
         )
 
         # Original patient tries to download other patient's results
-        response = client.get(f"/api/v1/studies/{other_study.id}/download_result/")
+        response = client.get(f"/api/v1/studies/{other_study.pk}/download_result/")
         # Should get 404 because the queryset filters out studies not belonging to the patient
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -189,7 +190,7 @@ class TestPatientWorkflow(BaseTestCase):
         }
 
         response = client.post(
-            f"/api/v1/studies/{study.id}/upload_result/",
+            f"/api/v1/studies/{study.pk}/upload_result/",
             upload_data,
             format="multipart",
         )
@@ -205,7 +206,7 @@ class TestPatientWorkflow(BaseTestCase):
         appointment = self.create_appointment(patient=patient, status="scheduled")
 
         # Patient cancels appointment
-        response = client.post(f"/api/v1/appointments/{appointment.id}/cancel/")
+        response = client.post(f"/api/v1/appointments/{appointment.pk}/cancel/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["appointment"]["status"] == "cancelled"
@@ -248,7 +249,7 @@ class TestPatientWorkflow(BaseTestCase):
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1  # Only the future scheduled appointment
-        assert response.data[0]["id"] == upcoming_apt.id
+        assert str(response.data[0]["id"]) == str(upcoming_apt.pk)
 
     def test_patient_registration_validation(self):
         """Test patient registration validation."""
@@ -310,7 +311,7 @@ class TestPatientWorkflow(BaseTestCase):
         }
 
         response = client.post(
-            f"/api/v1/studies/{study.id}/upload_result/",
+            f"/api/v1/studies/{study.pk}/upload_result/",
             upload_data,
             format="multipart",
         )

@@ -18,6 +18,7 @@ class StudySerializer(serializers.ModelSerializer):
 
     study_type_detail = StudyTypeSerializer(source="study_type", read_only=True)
     patient_email = serializers.EmailField(source="patient.email", read_only=True)
+    ordered_by_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Study
@@ -30,6 +31,7 @@ class StudySerializer(serializers.ModelSerializer):
             "study_type",
             "study_type_detail",
             "ordered_by",
+            "ordered_by_name",
             "status",
             "sample_id",
             "sample_collected_at",
@@ -41,6 +43,12 @@ class StudySerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["uuid", "order_number", "created_at", "updated_at"]
+
+    def get_ordered_by_name(self, obj):
+        """Get the full name of the doctor who ordered the study."""
+        if obj.ordered_by:
+            return obj.ordered_by.get_full_name()
+        return None
 
 
 class StudyResultUploadSerializer(serializers.ModelSerializer):

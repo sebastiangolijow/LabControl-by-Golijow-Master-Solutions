@@ -52,7 +52,7 @@ class EmailVerificationTests(BaseTestCase):
             assert user.verification_token_created_at is not None
 
             # Verify Celery task was called
-            mock_task.assert_called_once_with(user.id)
+            mock_task.assert_called_once_with(user.pk)
 
     def test_verify_email_with_valid_token(self):
         """Test successful email verification with valid token."""
@@ -188,7 +188,7 @@ class EmailVerificationTests(BaseTestCase):
 
             assert response.status_code == status.HTTP_200_OK
             assert "resent" in response.data["message"].lower()
-            mock_task.assert_called_once_with(user.id)
+            mock_task.assert_called_once_with(user.pk)
 
     def test_resend_verification_already_verified(self):
         """Test resending verification to already verified user."""
@@ -259,7 +259,7 @@ class EmailVerificationTests(BaseTestCase):
         from apps.notifications.tasks import send_verification_email
 
         # Execute the task synchronously
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(pk=user_id)
         token = user.generate_verification_token()
 
         # Instead of actually sending email, just verify the logic works
@@ -287,7 +287,7 @@ class EmailVerificationIntegrationTests(BaseTestCase):
         ) as mock_task:
             # Make task execute synchronously for testing
             def sync_send(user_id):
-                user = User.objects.get(id=user_id)
+                user = User.objects.get(pk=user_id)
                 user.generate_verification_token()
                 return f"Email sent to {user.email}"
 

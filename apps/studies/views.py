@@ -69,8 +69,11 @@ class StudyViewSet(viewsets.ModelViewSet):
         elif user.is_patient:
             # Patients only see their own non-deleted studies
             return base_queryset.filter(patient=user)
+        elif user.is_doctor:
+            # Doctors only see studies they ordered
+            return base_queryset.filter(ordered_by=user)
         else:
-            # Doctors and technicians see all non-deleted studies in their lab
+            # Technicians and other staff see all non-deleted studies in their lab
             if user.lab_client_id:
                 return base_queryset.filter(lab_client_id=user.lab_client_id)
             return Study.objects.none()
@@ -103,7 +106,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 "message": f"Study {study.order_number} has been deleted successfully.",
-                "study_id": study.id,
+                "study_id": str(study.pk),
                 "order_number": study.order_number,
             },
             status=status.HTTP_200_OK,
@@ -162,7 +165,7 @@ class StudyViewSet(viewsets.ModelViewSet):
             title="Test Results Ready",
             message=f"Your {study.study_type.name} results are now available.",
             notification_type="result_ready",
-            related_study_id=study.id,
+            related_study_id=study.pk,
             channel="in_app",
             status="sent",
             sent_at=timezone.now(),
@@ -171,8 +174,8 @@ class StudyViewSet(viewsets.ModelViewSet):
 
         # Send email notification asynchronously via Celery
         send_result_notification_email.delay(
-            user_id=study.patient.id,
-            study_id=study.id,
+            user_id=study.patient.pk,
+            study_id=study.pk,
             study_type_name=study.study_type.name,
         )
 
@@ -206,8 +209,15 @@ class StudyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Permission check - patients can only download their own results
+        # Permission check
+        # Patients can only download their own results
+        # Doctors can only download results for studies they ordered
         if user.is_patient and study.patient != user:
+            return Response(
+                {"error": "You do not have permission to access these results."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        elif user.is_doctor and study.ordered_by != user:
             return Response(
                 {"error": "You do not have permission to access these results."},
                 status=status.HTTP_403_FORBIDDEN,

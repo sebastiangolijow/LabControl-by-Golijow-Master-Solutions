@@ -55,6 +55,64 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         help_text=_("Date of birth"),
     )
+    profile_picture = models.ImageField(
+        _("profile picture"),
+        upload_to="profile_pictures/",
+        null=True,
+        blank=True,
+        help_text=_("User profile picture"),
+    )
+    language = models.CharField(
+        _("preferred language"),
+        max_length=2,
+        choices=[("ES", _("Spanish")), ("EN", _("English"))],
+        default="ES",
+        help_text=_("Preferred language for the user interface"),
+    )
+
+    # Additional user information
+    GENDER_CHOICES = [
+        ("M", _("Male")),
+        ("F", _("Female")),
+        ("O", _("Other")),
+    ]
+    gender = models.CharField(
+        _("gender"),
+        max_length=1,
+        choices=GENDER_CHOICES,
+        blank=True,
+        help_text=_("User's gender"),
+    )
+    location = models.CharField(
+        _("location"),
+        max_length=200,
+        blank=True,
+        help_text=_("User's city or location"),
+    )
+    direction = models.CharField(
+        _("direction"),
+        max_length=255,
+        blank=True,
+        help_text=_("User's street address"),
+    )
+    mutual_code = models.IntegerField(
+        _("mutual code"),
+        null=True,
+        blank=True,
+        help_text=_("Health insurance mutual code"),
+    )
+    mutual_name = models.CharField(
+        _("mutual name"),
+        max_length=200,
+        blank=True,
+        help_text=_("Health insurance mutual name"),
+    )
+    carnet = models.CharField(
+        _("carnet"),
+        max_length=50,
+        blank=True,
+        help_text=_("Health insurance card number"),
+    )
 
     # User role and permissions
     ROLE_CHOICES = [

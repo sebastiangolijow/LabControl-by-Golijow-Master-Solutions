@@ -163,7 +163,7 @@ class MVPFullScenarioTest(BaseTestCase):
 
         # Admin uploads results
         response = admin_client.post(
-            f"/api/v1/studies/{study.id}/upload_result/",
+            f"/api/v1/studies/{study.pk}/upload_result/",
             upload_data,
             format="multipart",
         )
@@ -213,8 +213,12 @@ class MVPFullScenarioTest(BaseTestCase):
         assert len(results) == initial_count + 1
 
         # Find the newly added study
-        new_result = next((r for r in results if r["id"] == study.id), None)
-        assert new_result is not None
+        # Debug: print all IDs in results
+        result_ids = [r["id"] for r in results]
+        new_result = next((r for r in results if str(r["id"]) == str(study.pk)), None)
+        assert (
+            new_result is not None
+        ), f"Study {str(study.pk)} not found in results list. Available IDs: {result_ids}"
         assert new_result["status"] == "completed"
         assert new_result["results_file"] is not None
         assert new_result["study_type_detail"]["name"] == "Complete Blood Count"
@@ -227,7 +231,7 @@ class MVPFullScenarioTest(BaseTestCase):
         # US3: Patient Downloads Result PDF
         # ===================================================================
         print("\n[US3] Patient downloads result PDF...")
-        response = patient_client.get(f"/api/v1/studies/{study.id}/download_result/")
+        response = patient_client.get(f"/api/v1/studies/{study.pk}/download_result/")
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
         assert "attachment" in response["Content-Disposition"]
@@ -287,7 +291,7 @@ class MVPFullScenarioTest(BaseTestCase):
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
         assert len(results) >= 1
-        has_our_study = any(r["id"] == study.id for r in results)
+        has_our_study = any(str(r["id"]) == str(study.pk) for r in results)
         assert has_our_study
         print(f"✓ Admin sees {len(results)} studies with results")
 
@@ -300,7 +304,7 @@ class MVPFullScenarioTest(BaseTestCase):
         )
 
         response = admin_client.post(
-            f"/api/v1/studies/{study.id}/upload_result/",
+            f"/api/v1/studies/{study.pk}/upload_result/",
             {"results_file": new_pdf_file, "results": "Updated results"},
             format="multipart",
         )
@@ -309,7 +313,7 @@ class MVPFullScenarioTest(BaseTestCase):
 
         # Verify lab staff CANNOT replace results
         response = staff_client.post(
-            f"/api/v1/studies/{study.id}/upload_result/",
+            f"/api/v1/studies/{study.pk}/upload_result/",
             {"results_file": new_pdf_file, "results": "Unauthorized update"},
             format="multipart",
         )
@@ -317,7 +321,7 @@ class MVPFullScenarioTest(BaseTestCase):
         print("✓ Lab staff correctly denied result replacement")
 
         # Admin deletes result
-        response = admin_client.delete(f"/api/v1/studies/{study.id}/delete-result/")
+        response = admin_client.delete(f"/api/v1/studies/{study.pk}/delete-result/")
         assert response.status_code == status.HTTP_200_OK
         print("✓ Admin deleted result successfully")
 
@@ -335,13 +339,13 @@ class MVPFullScenarioTest(BaseTestCase):
             content_type="application/pdf",
         )
         response = admin_client.post(
-            f"/api/v1/studies/{study.id}/upload_result/",
+            f"/api/v1/studies/{study.pk}/upload_result/",
             {"results_file": reupload_pdf_file, "results": "Test"},
             format="multipart",
         )
         assert response.status_code == status.HTTP_200_OK
 
-        response = staff_client.delete(f"/api/v1/studies/{study.id}/delete-result/")
+        response = staff_client.delete(f"/api/v1/studies/{study.pk}/delete-result/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
         print("✓ Lab staff correctly denied result deletion")
 
@@ -367,13 +371,13 @@ class MVPFullScenarioTest(BaseTestCase):
         results = response.data.get("results", response.data)
 
         # Should not see other patient's study
-        has_other_study = any(r["id"] == other_study.id for r in results)
+        has_other_study = any(r["id"] == str(other_study.pk) for r in results)
         assert not has_other_study
         print("✓ Patient CANNOT see other patients' results in list")
 
         # Original patient tries to download other patient's result
         response = patient_client.get(
-            f"/api/v1/studies/{other_study.id}/download_result/"
+            f"/api/v1/studies/{other_study.pk}/download_result/"
         )
         # Should get 404 because queryset filters it out
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -389,7 +393,7 @@ class MVPFullScenarioTest(BaseTestCase):
         print("✓ Patient CANNOT access admin results list")
 
         # Patient tries to delete results
-        response = patient_client.delete(f"/api/v1/studies/{study.id}/delete-result/")
+        response = patient_client.delete(f"/api/v1/studies/{study.pk}/delete-result/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
         print("✓ Patient CANNOT delete results")
 
@@ -476,7 +480,7 @@ Email Notifications: ✓ Verified
         patient_client, patient = self.authenticate_as_patient()
         study = self.create_study(patient=patient, status="in_progress")
 
-        response = patient_client.get(f"/api/v1/studies/{study.id}/download_result/")
+        response = patient_client.get(f"/api/v1/studies/{study.pk}/download_result/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
         print("✓ Downloading non-existent result correctly returns 404")
 
@@ -489,7 +493,7 @@ Email Notifications: ✓ Verified
         )
 
         response = staff_client.post(
-            f"/api/v1/studies/{study.id}/upload_result/",
+            f"/api/v1/studies/{study.pk}/upload_result/",
             {"results_file": invalid_file},
             format="multipart",
         )

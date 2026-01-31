@@ -24,7 +24,7 @@ def send_email_notification(user_id, subject, message):
     from apps.users.models import User
 
     try:
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(pk=user_id)
         send_mail(
             subject=subject,
             message=message,
@@ -57,7 +57,7 @@ def send_result_notification_email(self, user_id, study_id, study_type_name):
     from apps.users.models import User
 
     try:
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(pk=user_id)
 
         # Prepare context for email template
         context = {
@@ -165,7 +165,7 @@ def send_verification_email(self, user_id):
     from apps.users.models import User
 
     try:
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(pk=user_id)
 
         # Check if user is already verified
         if user.is_verified:
@@ -212,6 +212,70 @@ def send_verification_email(self, user_id):
 
     except Exception as e:
         logger.error(f"Error sending verification email: {str(e)}")
+        # Retry the task with exponential backoff
+        try:
+            raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+        except self.MaxRetriesExceededError:
+            logger.error(f"Max retries exceeded for user {user_id}")
+            return f"Failed after retries: {str(e)}"
+
+
+@shared_task(bind=True, max_retries=3)
+def send_password_setup_email(self, user_id):
+    """
+    Send password setup link to a user created by an admin.
+
+    Args:
+        user_id: ID of the user who needs to set their password
+
+    This task will retry up to 3 times if email sending fails.
+    """
+    from apps.users.models import User
+
+    try:
+        user = User.objects.get(pk=user_id)
+
+        # Generate verification token for password setup
+        token = user.generate_verification_token()
+
+        # Prepare context for email template
+        password_setup_url = (
+            f"{settings.FRONTEND_URL or 'http://localhost:8000'}"
+            f"/set-password?token={token}&email={user.email}"
+        )
+
+        context = {
+            "user_name": user.get_full_name() or user.email,
+            "user_role": user.get_role_display(),
+            "password_setup_url": password_setup_url,
+        }
+
+        # Render HTML email
+        html_content = render_to_string("emails/password_setup.html", context)
+        text_content = strip_tags(html_content)  # Fallback plain text
+
+        # Create email
+        subject = "Set Your Password - LabControl"
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.email],
+        )
+        email.attach_alternative(html_content, "text/html")
+
+        # Send email
+        email.send(fail_silently=False)
+
+        logger.info(f"Password setup email sent to {user.email}")
+        return f"Password setup email sent to {user.email}"
+
+    except User.DoesNotExist:
+        logger.error(f"User {user_id} not found")
+        return f"User {user_id} not found"
+
+    except Exception as e:
+        logger.error(f"Error sending password setup email: {str(e)}")
         # Retry the task with exponential backoff
         try:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))

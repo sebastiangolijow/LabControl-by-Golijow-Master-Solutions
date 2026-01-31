@@ -25,6 +25,14 @@ class UserSerializer(serializers.ModelSerializer):
             "phone_number",
             "dni",
             "birthday",
+            "profile_picture",
+            "language",
+            "gender",
+            "location",
+            "direction",
+            "mutual_code",
+            "mutual_name",
+            "carnet",
             "role",
             "lab_client_id",
             "is_verified",
@@ -59,6 +67,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
+            "dni",
+            "birthday",
+            "gender",
+            "location",
+            "direction",
+            "mutual_code",
+            "mutual_name",
+            "carnet",
             "role",
         ]
 
@@ -91,6 +107,14 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "phone_number",
             "dni",
             "birthday",
+            "profile_picture",
+            "language",
+            "gender",
+            "location",
+            "direction",
+            "mutual_code",
+            "mutual_name",
+            "carnet",
         ]
 
 
@@ -111,6 +135,12 @@ class PatientRegistrationSerializer(serializers.ModelSerializer):
             "phone_number",
             "dni",
             "birthday",
+            "gender",
+            "location",
+            "direction",
+            "mutual_code",
+            "mutual_name",
+            "carnet",
             "lab_client_id",
         ]
 
@@ -136,5 +166,69 @@ class PatientRegistrationSerializer(serializers.ModelSerializer):
 
         # Note: Email verification is now triggered in PatientRegistrationView
         # to ensure it happens after successful response to user
+
+        return user
+
+
+class AdminUserCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for admin-created users (admin, doctor, patient).
+
+    Users created by admins will receive an email to set their password.
+    No password field is required here.
+    """
+
+    class Meta:
+        model = User
+        fields = [
+            "email",
+            "role",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "dni",
+            "birthday",
+            "gender",
+            "location",
+            "direction",
+            "mutual_code",
+            "mutual_name",
+            "carnet",
+            "lab_client_id",
+        ]
+
+    def validate_role(self, value):
+        """Validate that only allowed roles can be created."""
+        allowed_roles = ["admin", "doctor", "patient"]
+        if value not in allowed_roles:
+            raise serializers.ValidationError(
+                f"Invalid role. Allowed roles: {', '.join(allowed_roles)}"
+            )
+        return value
+
+    def create(self, validated_data):
+        """
+        Create user without password.
+
+        User will receive an email with a link to set their password.
+        """
+        import secrets
+
+        # Generate a temporary password (will be replaced when user sets their own)
+        temp_password = secrets.token_urlsafe(32)
+
+        # Create user
+        user = User.objects.create_user(**validated_data)
+        user.set_password(temp_password)
+        user.is_active = True  # User can login after setting password
+        user.save()
+
+        # Generate verification token for password setup
+        user.generate_verification_token()
+
+        # Track who created this user (set in view)
+        if "created_by" in self.context:
+            user.created_by = self.context["created_by"]
+            user.save(update_fields=["created_by"])
 
         return user

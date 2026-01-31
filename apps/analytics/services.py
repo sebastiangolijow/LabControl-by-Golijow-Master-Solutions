@@ -53,18 +53,18 @@ class StatisticsService:
 
         # Count by status
         status_counts = queryset.aggregate(
-            total=Count("id"),
-            pending=Count("id", filter=Q(status="pending")),
-            sample_collected=Count("id", filter=Q(status="sample_collected")),
-            in_progress=Count("id", filter=Q(status="in_progress")),
-            completed=Count("id", filter=Q(status="completed")),
-            cancelled=Count("id", filter=Q(status="cancelled")),
+            total=Count("pk"),
+            pending=Count("pk", filter=Q(status="pending")),
+            sample_collected=Count("pk", filter=Q(status="sample_collected")),
+            in_progress=Count("pk", filter=Q(status="in_progress")),
+            completed=Count("pk", filter=Q(status="completed")),
+            cancelled=Count("pk", filter=Q(status="cancelled")),
         )
 
         # Count by study type
         by_type = list(
             queryset.values("study_type__name", "study_type__category")
-            .annotate(count=Count("id"))
+            .annotate(count=Count("pk"))
             .order_by("-count")
         )
 
@@ -128,10 +128,10 @@ class StatisticsService:
             queryset.annotate(period=trunc_func("created_at"))
             .values("period")
             .annotate(
-                total=Count("id"),
-                pending=Count("id", filter=Q(status="pending")),
-                in_progress=Count("id", filter=Q(status="in_progress")),
-                completed=Count("id", filter=Q(status="completed")),
+                total=Count("pk"),
+                pending=Count("pk", filter=Q(status="pending")),
+                in_progress=Count("pk", filter=Q(status="in_progress")),
+                completed=Count("pk", filter=Q(status="completed")),
             )
             .order_by("period")
         )
@@ -172,24 +172,24 @@ class StatisticsService:
 
         # Invoice statistics
         invoice_stats = invoice_queryset.aggregate(
-            total_invoices=Count("id"),
+            total_invoices=Count("pk"),
             total_amount=Coalesce(Sum("total_amount"), Value(Decimal("0.00"))),
             total_paid=Coalesce(Sum("paid_amount"), Value(Decimal("0.00"))),
-            pending_count=Count("id", filter=Q(status="pending")),
-            paid_count=Count("id", filter=Q(status="paid")),
+            pending_count=Count("pk", filter=Q(status="pending")),
+            paid_count=Count("pk", filter=Q(status="paid")),
         )
 
         # Payment statistics
         payment_stats = payment_queryset.aggregate(
-            total_payments=Count("id"),
+            total_payments=Count("pk"),
             total_collected=Coalesce(
                 Sum("amount", filter=Q(status="completed")), Value(Decimal("0.00"))
             ),
-            cash_payments=Count("id", filter=Q(payment_method="cash")),
+            cash_payments=Count("pk", filter=Q(payment_method="cash")),
             card_payments=Count(
-                "id", filter=Q(payment_method__in=["credit_card", "debit_card"])
+                "pk", filter=Q(payment_method__in=["credit_card", "debit_card"])
             ),
-            online_payments=Count("id", filter=Q(payment_method="online")),
+            online_payments=Count("pk", filter=Q(payment_method="online")),
         )
 
         # Calculate outstanding balance
@@ -244,7 +244,7 @@ class StatisticsService:
             .values("period")
             .annotate(
                 revenue=Coalesce(Sum("amount"), Value(Decimal("0.00"))),
-                payment_count=Count("id"),
+                payment_count=Count("pk"),
             )
             .order_by("period")
         )
@@ -277,14 +277,14 @@ class StatisticsService:
             queryset = queryset.filter(created_at__lte=end_date)
 
         stats = queryset.aggregate(
-            total=Count("id"),
-            scheduled=Count("id", filter=Q(status="scheduled")),
-            confirmed=Count("id", filter=Q(status="confirmed")),
-            in_progress=Count("id", filter=Q(status="in_progress")),
-            completed=Count("id", filter=Q(status="completed")),
-            cancelled=Count("id", filter=Q(status="cancelled")),
-            no_show=Count("id", filter=Q(status="no_show")),
-            checked_in=Count("id", filter=Q(checked_in_at__isnull=False)),
+            total=Count("pk"),
+            scheduled=Count("pk", filter=Q(status="scheduled")),
+            confirmed=Count("pk", filter=Q(status="confirmed")),
+            in_progress=Count("pk", filter=Q(status="in_progress")),
+            completed=Count("pk", filter=Q(status="completed")),
+            cancelled=Count("pk", filter=Q(status="cancelled")),
+            no_show=Count("pk", filter=Q(status="no_show")),
+            checked_in=Count("pk", filter=Q(checked_in_at__isnull=False)),
         )
 
         # Calculate show rate (completed / (completed + no_show))
@@ -315,11 +315,11 @@ class StatisticsService:
             queryset = queryset.filter(lab_client_id=lab_client_id)
 
         stats = queryset.aggregate(
-            total_users=Count("id"),
-            patients=Count("id", filter=Q(role="patient")),
-            doctors=Count("id", filter=Q(role="doctor")),
-            lab_staff=Count("id", filter=Q(role="lab_staff")),
-            lab_managers=Count("id", filter=Q(role="lab_manager")),
+            total_users=Count("pk"),
+            patients=Count("pk", filter=Q(role="patient")),
+            doctors=Count("pk", filter=Q(role="doctor")),
+            lab_staff=Count("pk", filter=Q(role="lab_staff")),
+            lab_managers=Count("pk", filter=Q(role="lab_manager")),
         )
 
         # Get new users this month
@@ -390,8 +390,8 @@ class StatisticsService:
                 "study_type__code",
             )
             .annotate(
-                order_count=Count("id"),
-                completed_count=Count("id", filter=Q(status="completed")),
+                order_count=Count("pk"),
+                completed_count=Count("pk", filter=Q(status="completed")),
             )
             .order_by("-order_count")[:limit]
         )
@@ -425,7 +425,7 @@ class StatisticsService:
             )
             .annotate(
                 total_revenue=Coalesce(Sum("paid_amount"), Value(Decimal("0.00"))),
-                order_count=Count("id"),
+                order_count=Count("pk"),
             )
             .order_by("-total_revenue")[:limit]
         )

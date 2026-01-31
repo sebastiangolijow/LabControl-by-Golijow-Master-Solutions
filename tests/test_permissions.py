@@ -11,9 +11,12 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 from rest_framework import status
 
-from apps.users.permissions import IsAdmin, IsAdminOrLabManager
-from config.admin import SuperUserAdminSite, admin_site
+from apps.users.permissions import IsAdmin
+from apps.users.permissions import IsAdminOrLabManager
+from config.admin import SuperUserAdminSite
+from config.admin import admin_site
 from tests.base import BaseTestCase
+
 
 User = get_user_model()
 
@@ -184,7 +187,7 @@ class TestUserDeleteEndpoint(BaseTestCase):
         client, admin = self.authenticate_as_admin()
         patient = self.create_patient()
 
-        response = client.delete(f"/api/v1/users/{patient.id}/")
+        response = client.delete(f"/api/v1/users/{patient.pk}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "deactivated successfully" in response.data["message"]
@@ -199,7 +202,7 @@ class TestUserDeleteEndpoint(BaseTestCase):
         client, patient1 = self.authenticate_as_patient()
         patient2 = self.create_patient(email="patient2@test.com")
 
-        response = client.delete(f"/api/v1/users/{patient2.id}/")
+        response = client.delete(f"/api/v1/users/{patient2.pk}/")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -208,7 +211,7 @@ class TestUserDeleteEndpoint(BaseTestCase):
         client, lab_manager = self.authenticate_as_lab_manager()
         patient = self.create_patient()
 
-        response = client.delete(f"/api/v1/users/{patient.id}/")
+        response = client.delete(f"/api/v1/users/{patient.pk}/")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -216,7 +219,7 @@ class TestUserDeleteEndpoint(BaseTestCase):
         """Test that users cannot delete their own account."""
         client, admin = self.authenticate_as_admin()
 
-        response = client.delete(f"/api/v1/users/{admin.id}/")
+        response = client.delete(f"/api/v1/users/{admin.pk}/")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "cannot delete your own account" in response.data["error"]
@@ -238,7 +241,7 @@ class TestUserDeleteEndpoint(BaseTestCase):
             email="super@test.com", is_superuser=True, is_staff=True
         )
 
-        response = client.delete(f"/api/v1/users/{superuser.id}/")
+        response = client.delete(f"/api/v1/users/{superuser.pk}/")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert "cannot delete a superuser account" in response.data["error"]
@@ -254,7 +257,7 @@ class TestUserDeleteEndpoint(BaseTestCase):
             email="super2@test.com", is_superuser=True, is_staff=True
         )
 
-        response = client.delete(f"/api/v1/users/{superuser2.id}/")
+        response = client.delete(f"/api/v1/users/{superuser2.pk}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "deactivated successfully" in response.data["message"]
@@ -267,14 +270,14 @@ class TestUserDeleteEndpoint(BaseTestCase):
         """Test that delete operation is a soft delete (is_active=False)."""
         client, admin = self.authenticate_as_admin()
         patient = self.create_patient()
-        patient_id = patient.id
+        patient_id = patient.pk
 
-        response = client.delete(f"/api/v1/users/{patient.id}/")
+        response = client.delete(f"/api/v1/users/{patient.pk}/")
 
         assert response.status_code == status.HTTP_200_OK
 
         # User should still exist in database
-        assert User.objects.filter(id=patient_id).exists()
+        assert User.objects.filter(pk=patient_id).exists()
 
         # But should be inactive
         patient.refresh_from_db()
@@ -285,7 +288,7 @@ class TestUserDeleteEndpoint(BaseTestCase):
         patient = self.create_patient()
         client = self.client  # Non-authenticated client
 
-        response = client.delete(f"/api/v1/users/{patient.id}/")
+        response = client.delete(f"/api/v1/users/{patient.pk}/")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -322,7 +325,7 @@ class TestPermissionMatrix(BaseTestCase):
 
         # Cannot delete users
         other_patient = self.create_patient(email="other@test.com")
-        response = client.delete(f"/api/v1/users/{other_patient.id}/")
+        response = client.delete(f"/api/v1/users/{other_patient.pk}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_admin_permissions(self):
@@ -339,13 +342,13 @@ class TestPermissionMatrix(BaseTestCase):
         # Can edit any user
         patient = self.create_patient(email="editable@test.com")
         response = client.patch(
-            f"/api/v1/users/{patient.id}/", {"first_name": "AdminUpdated"}
+            f"/api/v1/users/{patient.pk}/", {"first_name": "AdminUpdated"}
         )
         assert response.status_code == status.HTTP_200_OK
 
         # Can delete users
         deletable_patient = self.create_patient(email="deletable@test.com")
-        response = client.delete(f"/api/v1/users/{deletable_patient.id}/")
+        response = client.delete(f"/api/v1/users/{deletable_patient.pk}/")
         assert response.status_code == status.HTTP_200_OK
 
     def test_lab_manager_permissions(self):
@@ -361,9 +364,9 @@ class TestPermissionMatrix(BaseTestCase):
 
         # Should see users from their lab
         user_ids = [user["id"] for user in response.data["results"]]
-        assert same_lab_user.id in user_ids
-        assert other_lab_user.id not in user_ids
+        assert str(same_lab_user.pk) in user_ids
+        assert str(other_lab_user.pk) not in user_ids
 
         # Cannot delete users
-        response = client.delete(f"/api/v1/users/{same_lab_user.id}/")
+        response = client.delete(f"/api/v1/users/{same_lab_user.pk}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN

@@ -2,20 +2,24 @@
 
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, generics, permissions, status, viewsets
+from rest_framework import filters
+from rest_framework import generics
+from rest_framework import permissions
+from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import User
-from .permissions import IsAdmin, IsAdminOrLabManager
-from .serializers import (
-    PatientRegistrationSerializer,
-    UserCreateSerializer,
-    UserDetailSerializer,
-    UserSerializer,
-    UserUpdateSerializer,
-)
+from .permissions import IsAdmin
+from .permissions import IsAdminOrLabManager
+from .serializers import AdminUserCreateSerializer
+from .serializers import PatientRegistrationSerializer
+from .serializers import UserCreateSerializer
+from .serializers import UserDetailSerializer
+from .serializers import UserSerializer
+from .serializers import UserUpdateSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -69,7 +73,7 @@ class UserViewSet(viewsets.ModelViewSet):
         elif user.role == "lab_manager" and user.lab_client_id:
             return User.objects.filter(lab_client_id=user.lab_client_id)
         else:
-            return User.objects.filter(id=user.id)
+            return User.objects.filter(pk=user.pk)
 
     def destroy(self, request, *args, **kwargs):
         """
@@ -89,7 +93,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user_to_delete = self.get_object()
 
         # Prevent self-deletion
-        if user_to_delete.id == request.user.id:
+        if user_to_delete.pk == request.user.pk:
             return Response(
                 {"error": "You cannot delete your own account."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -110,7 +114,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 "message": f"User {user_to_delete.email} has been deactivated successfully.",
-                "user_id": user_to_delete.id,
+                "user_id": str(user_to_delete.pk),
                 "email": user_to_delete.email,
             },
             status=status.HTTP_200_OK,
@@ -198,6 +202,121 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = UserSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(
+        detail=False,
+        methods=["post"],
+        permission_classes=[IsAdmin],
+        url_path="create-user",
+    )
+    def create_user(self, request):
+        """
+        Create a new user (admin only).
+
+        Allows admins to create users with roles: admin, doctor, or patient.
+        Created users receive an email with a link to set their password.
+
+        Request Body:
+            - email: string (required)
+            - role: string (required) - One of: admin, doctor, patient
+            - first_name: string (optional)
+            - last_name: string (optional)
+            - phone_number: string (optional)
+            - dni: string (optional)
+            - birthday: date (optional)
+            - lab_client_id: int (optional)
+
+        Example: POST /api/v1/users/create-user/
+        {
+            "email": "doctor@example.com",
+            "role": "doctor",
+            "first_name": "John",
+            "last_name": "Smith",
+            "phone_number": "+1234567890"
+        }
+        """
+        serializer = AdminUserCreateSerializer(
+            data=request.data, context={"created_by": request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # Send password setup email asynchronously
+        from apps.notifications.tasks import send_password_setup_email
+
+        send_password_setup_email.delay(user.pk)
+
+        return Response(
+            {
+                "message": f"User created successfully. An email has been sent to {user.email} to set their password.",
+                "user": UserDetailSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAdminOrLabManager],
+        url_path="search-doctors",
+    )
+    def search_doctors(self, request):
+        """
+        Search for doctors (admin and lab manager only).
+
+        This endpoint allows admins and lab managers to search for doctors
+        when assigning studies or managing appointments.
+
+        Query Parameters:
+            - search: Search by email, first_name, last_name, phone_number
+            - email: Filter by exact email
+            - lab_client_id: Filter by lab (lab managers see only their lab)
+            - ordering: Sort results (e.g., -created_at, email)
+
+        Example: /api/v1/users/search-doctors/?search=john&ordering=last_name
+        """
+        user = request.user
+
+        # Start with doctors only
+        queryset = User.objects.filter(role="doctor")
+
+        # Lab managers can only see doctors in their lab
+        if user.role == "lab_manager" and user.lab_client_id:
+            queryset = queryset.filter(lab_client_id=user.lab_client_id)
+
+        # Apply search filter if provided
+        search_query = request.query_params.get("search", None)
+        if search_query:
+            queryset = queryset.filter(
+                Q(email__icontains=search_query)
+                | Q(first_name__icontains=search_query)
+                | Q(last_name__icontains=search_query)
+                | Q(phone_number__icontains=search_query)
+            )
+
+        # Apply email filter if provided
+        email = request.query_params.get("email", None)
+        if email:
+            queryset = queryset.filter(email__iexact=email)
+
+        # Apply lab_client_id filter if provided (admins only)
+        if user.is_superuser or user.role == "admin":
+            lab_client_id = request.query_params.get("lab_client_id", None)
+            if lab_client_id:
+                queryset = queryset.filter(lab_client_id=lab_client_id)
+
+        # Apply ordering
+        ordering = request.query_params.get("ordering", "-date_joined")
+        queryset = queryset.order_by(ordering)
+
+        # Paginate results
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = UserSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = UserSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class PatientRegistrationView(generics.CreateAPIView):
     """
@@ -218,7 +337,7 @@ class PatientRegistrationView(generics.CreateAPIView):
         # Send verification email asynchronously
         from apps.notifications.tasks import send_verification_email
 
-        send_verification_email.delay(user.id)
+        send_verification_email.delay(user.pk)
 
         return Response(
             {
@@ -324,7 +443,7 @@ class ResendVerificationEmailView(generics.GenericAPIView):
             # Send new verification email
             from apps.notifications.tasks import send_verification_email
 
-            send_verification_email.delay(user.id)
+            send_verification_email.delay(user.pk)
 
             return Response(
                 {

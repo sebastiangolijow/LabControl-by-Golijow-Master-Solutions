@@ -43,7 +43,7 @@ class EmailNotificationTests(BaseTestCase):
 
         # Upload result
         response = client.post(
-            f"/api/v1/studies/{self.study.id}/upload_result/",
+            f"/api/v1/studies/{self.study.pk}/upload_result/",
             {"results_file": pdf_file, "results": "All normal"},
             format="multipart",
         )
@@ -71,8 +71,8 @@ class EmailNotificationTests(BaseTestCase):
         """Test the Celery task for sending result notification emails."""
         # Call the task directly (synchronous in tests)
         result = send_result_notification_email(
-            user_id=self.patient.id,
-            study_id=self.study.id,
+            user_id=self.patient.pk,
+            study_id=self.study.pk,
             study_type_name=self.study_type.name,
         )
 
@@ -96,8 +96,8 @@ class EmailNotificationTests(BaseTestCase):
             # Call task and expect it to raise retry exception
             with self.assertRaises(Exception):
                 send_result_notification_email(
-                    user_id=self.patient.id,
-                    study_id=self.study.id,
+                    user_id=self.patient.pk,
+                    study_id=self.study.pk,
                     study_type_name=self.study_type.name,
                 )
 
@@ -232,7 +232,7 @@ class AdminResultsManagementTests(BaseTestCase):
         # First upload
         client = self.authenticate(self.admin)
         response = client.post(
-            f"/api/v1/studies/{self.study.id}/upload_result/",
+            f"/api/v1/studies/{self.study.pk}/upload_result/",
             {"results_file": self.pdf_file, "results": "First upload"},
             format="multipart",
         )
@@ -244,7 +244,7 @@ class AdminResultsManagementTests(BaseTestCase):
             "results_v2.pdf", pdf_content2, content_type="application/pdf"
         )
         response = client.post(
-            f"/api/v1/studies/{self.study.id}/upload_result/",
+            f"/api/v1/studies/{self.study.pk}/upload_result/",
             {"results_file": pdf_file2, "results": "Second upload"},
             format="multipart",
         )
@@ -259,7 +259,7 @@ class AdminResultsManagementTests(BaseTestCase):
         # First upload by admin
         admin_client = self.authenticate(self.admin)
         admin_client.post(
-            f"/api/v1/studies/{self.study.id}/upload_result/",
+            f"/api/v1/studies/{self.study.pk}/upload_result/",
             {"results_file": self.pdf_file, "results": "First upload"},
             format="multipart",
         )
@@ -271,7 +271,7 @@ class AdminResultsManagementTests(BaseTestCase):
             "results_v2.pdf", pdf_content2, content_type="application/pdf"
         )
         response = staff_client.post(
-            f"/api/v1/studies/{self.study.id}/upload_result/",
+            f"/api/v1/studies/{self.study.pk}/upload_result/",
             {"results_file": pdf_file2, "results": "Second upload"},
             format="multipart",
         )
@@ -282,7 +282,7 @@ class AdminResultsManagementTests(BaseTestCase):
         # Upload result
         client = self.authenticate(self.admin)
         client.post(
-            f"/api/v1/studies/{self.study.id}/upload_result/",
+            f"/api/v1/studies/{self.study.pk}/upload_result/",
             {"results_file": self.pdf_file, "results": "Test upload"},
             format="multipart",
         )
@@ -292,7 +292,7 @@ class AdminResultsManagementTests(BaseTestCase):
         self.assertIsNotNone(self.study.results_file)
 
         # Delete result
-        response = client.delete(f"/api/v1/studies/{self.study.id}/delete-result/")
+        response = client.delete(f"/api/v1/studies/{self.study.pk}/delete-result/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Verify result was deleted
@@ -305,7 +305,7 @@ class AdminResultsManagementTests(BaseTestCase):
         # Upload result as admin
         admin_client = self.authenticate(self.admin)
         admin_client.post(
-            f"/api/v1/studies/{self.study.id}/upload_result/",
+            f"/api/v1/studies/{self.study.pk}/upload_result/",
             {"results_file": self.pdf_file, "results": "Test upload"},
             format="multipart",
         )
@@ -313,7 +313,7 @@ class AdminResultsManagementTests(BaseTestCase):
         # Try to delete as lab staff
         staff_client = self.authenticate(self.lab_staff)
         response = staff_client.delete(
-            f"/api/v1/studies/{self.study.id}/delete-result/"
+            f"/api/v1/studies/{self.study.pk}/delete-result/"
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -329,7 +329,7 @@ class AdminResultsManagementTests(BaseTestCase):
         )
 
         client.post(
-            f"/api/v1/studies/{self.study.id}/upload_result/",
+            f"/api/v1/studies/{self.study.pk}/upload_result/",
             {"results_file": pdf_file, "results": "Test upload"},
             format="multipart",
         )
@@ -348,14 +348,14 @@ class AdminResultsManagementTests(BaseTestCase):
         # Should only see study with results
         results = response.data.get("results", response.data)
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["id"], self.study.id)
+        self.assertEqual(str(results[0]["id"]), str(self.study.pk))
 
     def test_patient_cannot_access_admin_endpoints(self):
         """Test that patients cannot access admin result management endpoints."""
         client = self.authenticate(self.patient)
 
         # Try to delete result
-        response = client.delete(f"/api/v1/studies/{self.study.id}/delete-result/")
+        response = client.delete(f"/api/v1/studies/{self.study.pk}/delete-result/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Try to list studies with results
@@ -392,7 +392,7 @@ class NotificationManagementTests(BaseTestCase):
         client = self.authenticate(self.patient)
 
         response = client.post(
-            f"/api/v1/notifications/{self.notification1.id}/mark_as_read/"
+            f"/api/v1/notifications/{self.notification1.pk}/mark_as_read/"
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
