@@ -90,7 +90,7 @@ class TestUserModel(BaseTestCase):
         """Test user role property methods."""
         doctor = self.create_doctor()
         patient = self.create_patient()
-        manager = self.create_lab_manager()
+        staff = self.create_lab_staff()
 
         assert doctor.is_doctor is True
         assert doctor.is_patient is False
@@ -98,8 +98,8 @@ class TestUserModel(BaseTestCase):
         assert patient.is_patient is True
         assert patient.is_doctor is False
 
-        assert manager.is_lab_manager is True
-        assert manager.is_patient is False
+        assert staff.is_lab_staff is True
+        assert staff.is_patient is False
 
 
 class TestUserManager(BaseTestCase):
@@ -141,14 +141,14 @@ class TestUserManager(BaseTestCase):
         assert admin in admins
         assert patient not in admins
 
-    def test_lab_managers(self):
-        """Test UserManager.lab_managers() method."""
-        manager = self.create_lab_manager()
+    def test_lab_staff(self):
+        """Test UserManager.lab_staff() method."""
+        staff = self.create_lab_staff()
         patient = self.create_patient()
 
-        managers = User.objects.lab_managers()
-        assert manager in managers
-        assert patient not in managers
+        lab_staff = User.objects.lab_staff()
+        assert staff in lab_staff
+        assert patient not in lab_staff
 
     def test_patients(self):
         """Test UserManager.patients() method."""

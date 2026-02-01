@@ -4,7 +4,8 @@ from decimal import Decimal
 
 from rest_framework import status
 
-from apps.studies.models import Study, StudyType
+from apps.studies.models import Study
+from apps.studies.models import StudyType
 from tests.base import BaseTestCase
 
 
@@ -36,7 +37,7 @@ class TestStudyTypeModel(BaseTestCase):
         study_type = self.create_study_type()
         assert str(study_type) == f"{study_type.name} ({study_type.code})"
 
-    def test_study_type_custom_manager_active(self):
+    def test_study_type_custom_staff_active(self):
         """Test StudyTypeManager.active() method."""
         active = self.create_study_type(is_active=True)
         inactive = self.create_study_type(code="INV001", is_active=False)
@@ -86,7 +87,7 @@ class TestStudyModel(BaseTestCase):
         expected = f"{study.order_number} - {study.study_type.name}"
         assert str(study) == expected
 
-    def test_study_custom_manager_pending(self):
+    def test_study_custom_staff_pending(self):
         """Test StudyManager.pending() method."""
         pending_study = self.create_study(status="pending")
         completed_study = self.create_study(
@@ -97,7 +98,7 @@ class TestStudyModel(BaseTestCase):
         assert pending_study in pending_studies
         assert completed_study not in pending_studies
 
-    def test_study_custom_manager_completed(self):
+    def test_study_custom_staff_completed(self):
         """Test StudyManager.completed() method."""
         pending_study = self.create_study(status="pending")
         completed_study = self.create_study(
@@ -108,7 +109,7 @@ class TestStudyModel(BaseTestCase):
         assert completed_study in completed_studies
         assert pending_study not in completed_studies
 
-    def test_study_custom_manager_for_patient(self):
+    def test_study_custom_staff_for_patient(self):
         """Test StudyManager.for_patient() method."""
         patient1 = self.create_patient()
         patient2 = self.create_patient()
@@ -169,10 +170,10 @@ class TestStudyAPI(BaseTestCase):
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 0
 
-    def test_lab_manager_can_see_lab_studies(self):
+    def test_lab_staff_can_see_lab_studies(self):
         """Test lab manager can see all studies in their lab."""
-        client, manager = self.authenticate_as_lab_manager()
-        patient = self.create_patient(lab_client_id=manager.lab_client_id)
+        client, staff = self.authenticate_as_lab_staff()
+        patient = self.create_patient(lab_client_id=staff.lab_client_id)
 
         _study = self.create_study(patient=patient)  # noqa: F841
 

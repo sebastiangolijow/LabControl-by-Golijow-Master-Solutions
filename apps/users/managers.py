@@ -34,13 +34,9 @@ class UserQuerySet(models.QuerySet):
         """Return all admin users."""
         return self.filter(role="admin")
 
-    def lab_managers(self):
-        """Return all lab manager users."""
-        return self.filter(role="lab_manager")
-
-    def technicians(self):
-        """Return all technician users."""
-        return self.filter(role="technician")
+    def lab_staff(self):
+        """Return all lab staff users."""
+        return self.filter(role="lab_staff")
 
     def doctors(self):
         """Return all doctor users."""
@@ -91,9 +87,9 @@ class UserManager(BaseUserManager):
         """Get all admin users."""
         return self.get_queryset().admins()
 
-    def lab_managers(self):
-        """Get all lab manager users."""
-        return self.get_queryset().lab_managers()
+    def lab_staff(self):
+        """Get all lab staff users."""
+        return self.get_queryset().lab_staff()
 
     def patients(self):
         """Get all patient users."""

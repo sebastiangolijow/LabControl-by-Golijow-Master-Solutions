@@ -300,9 +300,9 @@ class TestAppointmentAPI(BaseTestCase):
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["id"] == own_appointment.id
 
-    def test_lab_manager_can_see_lab_appointments(self):
+    def test_lab_staff_can_see_lab_appointments(self):
         """Test lab manager can see all appointments for their lab."""
-        client, manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, staff = self.authenticate_as_lab_staff(lab_client_id=1)
 
         # Create appointments for different labs
         lab1_apt = self.create_appointment(lab_client_id=1)

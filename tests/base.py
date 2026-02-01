@@ -43,7 +43,7 @@ class BaseTestMixin:
         Factory for creating users with any role.
 
         Args:
-            role: User role (admin, lab_manager, technician, doctor, patient, staff)
+            role: User role (admin, lab_staff, doctor, patient)
             **kwargs: Additional user fields to override
 
         Returns:
@@ -72,22 +72,9 @@ class BaseTestMixin:
         kwargs.setdefault("is_superuser", True)
         return self.create_user(**kwargs)
 
-    def create_lab_manager(self, lab_client_id=1, **kwargs):
-        """Create a lab manager user."""
-        kwargs.setdefault("role", "lab_manager")
-        kwargs.setdefault("lab_client_id", lab_client_id)
-        kwargs.setdefault("is_staff", True)
-        return self.create_user(**kwargs)
-
     def create_lab_staff(self, lab_client_id=1, **kwargs):
         """Create a lab staff user."""
         kwargs.setdefault("role", "lab_staff")
-        kwargs.setdefault("lab_client_id", lab_client_id)
-        return self.create_user(**kwargs)
-
-    def create_technician(self, lab_client_id=1, **kwargs):
-        """Create a laboratory technician user."""
-        kwargs.setdefault("role", "technician")
         kwargs.setdefault("lab_client_id", lab_client_id)
         return self.create_user(**kwargs)
 
@@ -323,9 +310,9 @@ class BaseTestMixin:
         user = self.create_patient()
         return self.authenticate(user), user
 
-    def authenticate_as_lab_manager(self, lab_client_id=1, **kwargs):
-        """Authenticate as a lab manager user."""
-        user = self.create_lab_manager(lab_client_id=lab_client_id, **kwargs)
+    def authenticate_as_lab_staff(self, lab_client_id=1, **kwargs):
+        """Authenticate as a lab staff user."""
+        user = self.create_lab_staff(lab_client_id=lab_client_id, **kwargs)
         return self.authenticate(user), user
 
     def authenticate_as_admin(self, **kwargs):

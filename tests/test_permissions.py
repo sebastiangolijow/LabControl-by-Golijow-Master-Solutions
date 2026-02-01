@@ -58,11 +58,11 @@ class TestDjangoAdminPermissions(BaseTestCase):
 
         assert self.site.has_permission(request) is False
 
-    def test_lab_manager_cannot_access_admin(self):
+    def test_lab_staff_cannot_access_admin(self):
         """Test that lab managers cannot access Django admin."""
-        lab_manager = self.create_lab_manager(is_staff=True, is_superuser=False)
+        lab_staff = self.create_lab_staff(is_staff=True, is_superuser=False)
         request = self.factory.get("/admin/")
-        request.user = lab_manager
+        request.user = lab_staff
 
         assert self.site.has_permission(request) is False
 
@@ -124,11 +124,11 @@ class TestPermissionClasses(BaseTestCase):
         permission = IsAdmin()
         assert permission.has_permission(request, None) is True
 
-    def test_is_admin_permission_denies_lab_manager(self):
+    def test_is_admin_permission_denies_lab_staff(self):
         """Test IsAdmin permission denies lab managers."""
-        lab_manager = self.create_lab_manager()
+        lab_staff = self.create_lab_staff()
         request = self.factory.get("/api/v1/users/")
-        request.user = lab_manager
+        request.user = lab_staff
 
         permission = IsAdmin()
         assert permission.has_permission(request, None) is False
@@ -142,7 +142,7 @@ class TestPermissionClasses(BaseTestCase):
         permission = IsAdmin()
         assert permission.has_permission(request, None) is False
 
-    def test_is_admin_or_lab_manager_allows_superuser(self):
+    def test_is_admin_or_lab_staff_allows_superuser(self):
         """Test IsAdminOrLabManager permission allows superusers."""
         superuser = self.create_admin(is_superuser=True)
         request = self.factory.get("/api/v1/users/")
@@ -151,7 +151,7 @@ class TestPermissionClasses(BaseTestCase):
         permission = IsAdminOrLabManager()
         assert permission.has_permission(request, None) is True
 
-    def test_is_admin_or_lab_manager_allows_admin(self):
+    def test_is_admin_or_lab_staff_allows_admin(self):
         """Test IsAdminOrLabManager permission allows admins."""
         admin = self.create_user(role="admin", is_superuser=False)
         request = self.factory.get("/api/v1/users/")
@@ -160,16 +160,16 @@ class TestPermissionClasses(BaseTestCase):
         permission = IsAdminOrLabManager()
         assert permission.has_permission(request, None) is True
 
-    def test_is_admin_or_lab_manager_allows_lab_manager(self):
+    def test_is_admin_or_lab_staff_allows_lab_staff(self):
         """Test IsAdminOrLabManager permission allows lab managers."""
-        lab_manager = self.create_lab_manager()
+        lab_staff = self.create_lab_staff()
         request = self.factory.get("/api/v1/users/")
-        request.user = lab_manager
+        request.user = lab_staff
 
         permission = IsAdminOrLabManager()
         assert permission.has_permission(request, None) is True
 
-    def test_is_admin_or_lab_manager_denies_patient(self):
+    def test_is_admin_or_lab_staff_denies_patient(self):
         """Test IsAdminOrLabManager permission denies patients."""
         patient = self.create_patient()
         request = self.factory.get("/api/v1/users/")
@@ -206,9 +206,9 @@ class TestUserDeleteEndpoint(BaseTestCase):
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_lab_manager_cannot_delete_users(self):
+    def test_lab_staff_cannot_delete_users(self):
         """Test that lab managers cannot delete users."""
-        client, lab_manager = self.authenticate_as_lab_manager()
+        client, lab_staff = self.authenticate_as_lab_staff()
         patient = self.create_patient()
 
         response = client.delete(f"/api/v1/users/{patient.pk}/")
@@ -351,9 +351,9 @@ class TestPermissionMatrix(BaseTestCase):
         response = client.delete(f"/api/v1/users/{deletable_patient.pk}/")
         assert response.status_code == status.HTTP_200_OK
 
-    def test_lab_manager_permissions(self):
+    def test_lab_staff_permissions(self):
         """Test lab manager role permissions."""
-        client, lab_manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, lab_staff = self.authenticate_as_lab_staff(lab_client_id=1)
 
         # Can view users in their lab only
         same_lab_user = self.create_patient(lab_client_id=1)

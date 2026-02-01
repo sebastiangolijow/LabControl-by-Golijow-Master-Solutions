@@ -83,6 +83,9 @@ collectstatic: ## Collect static files
 setup-periodic-tasks: ## Setup Celery Beat periodic tasks
 	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py setup_periodic_tasks
 
+throttle-reset: ## Clear cache to reset API throttling
+	@$(DOCKER_COMPOSE) exec -T $(SERVICE_WEB) python manage.py shell <<< "from django.core.cache import cache; cache.clear(); print('✓ Throttle cache cleared!')"
+
 # Testing Commands
 test: ## Run tests
 	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) bash -c "DJANGO_SETTINGS_MODULE=config.settings.test pytest"

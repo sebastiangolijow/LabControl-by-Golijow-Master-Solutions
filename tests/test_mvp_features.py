@@ -109,7 +109,6 @@ class PatientSearchTests(BaseTestCase):
         """Set up test data."""
         super().setUp()
         self.admin = self.create_admin()
-        self.lab_manager = self.create_lab_manager(lab_client_id=1)
         self.lab_staff = self.create_lab_staff(lab_client_id=1)
         self.patient1 = self.create_patient(
             email="john.doe@example.com",
@@ -141,9 +140,9 @@ class PatientSearchTests(BaseTestCase):
         results = response.data.get("results", response.data)
         self.assertEqual(len(results), 3)
 
-    def test_lab_manager_can_search_patients(self):
+    def test_lab_staff_can_search_patients(self):
         """Test that lab managers can search patients."""
-        client = self.authenticate(self.lab_manager)
+        client = self.authenticate(self.lab_staff)
 
         response = client.get("/api/v1/users/search-patients/")
 
@@ -151,14 +150,6 @@ class PatientSearchTests(BaseTestCase):
         # Should see only patients in their lab (2 patients)
         results = response.data.get("results", response.data)
         self.assertEqual(len(results), 2)
-
-    def test_lab_staff_cannot_search_patients(self):
-        """Test that lab staff cannot search patients."""
-        client = self.authenticate(self.lab_staff)
-
-        response = client.get("/api/v1/users/search-patients/")
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_patient_cannot_search_patients(self):
         """Test that patients cannot search other patients."""
@@ -192,9 +183,9 @@ class PatientSearchTests(BaseTestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["email"], "jane.smith@example.com")
 
-    def test_lab_manager_cannot_see_other_lab_patients(self):
+    def test_lab_staff_cannot_see_other_lab_patients(self):
         """Test that lab managers cannot see patients from other labs."""
-        client = self.authenticate(self.lab_manager)
+        client = self.authenticate(self.lab_staff)
 
         # Lab manager is in lab_client_id=1, should not see patient3 (lab_client_id=2)
         response = client.get("/api/v1/users/search-patients/?search=bob")
@@ -211,7 +202,6 @@ class AdminResultsManagementTests(BaseTestCase):
         """Set up test data."""
         super().setUp()
         self.admin = self.create_admin(lab_client_id=1)
-        self.lab_manager = self.create_lab_manager(lab_client_id=1)
         self.lab_staff = self.create_lab_staff(lab_client_id=1)
         self.patient = self.create_patient(lab_client_id=1)
         self.study_type = self.create_study_type(name="X-Ray")
@@ -254,29 +244,6 @@ class AdminResultsManagementTests(BaseTestCase):
         self.study.refresh_from_db()
         self.assertIn("results_v2.pdf", self.study.results_file.name)
 
-    def test_lab_staff_cannot_replace_results(self):
-        """Test that regular lab staff cannot replace results."""
-        # First upload by admin
-        admin_client = self.authenticate(self.admin)
-        admin_client.post(
-            f"/api/v1/studies/{self.study.pk}/upload_result/",
-            {"results_file": self.pdf_file, "results": "First upload"},
-            format="multipart",
-        )
-
-        # Try to replace as lab staff
-        staff_client = self.authenticate(self.lab_staff)
-        pdf_content2 = b"%PDF-1.4 updated content"
-        pdf_file2 = SimpleUploadedFile(
-            "results_v2.pdf", pdf_content2, content_type="application/pdf"
-        )
-        response = staff_client.post(
-            f"/api/v1/studies/{self.study.pk}/upload_result/",
-            {"results_file": pdf_file2, "results": "Second upload"},
-            format="multipart",
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
     def test_admin_can_delete_results(self):
         """Test that admins can delete results."""
         # Upload result
@@ -299,23 +266,6 @@ class AdminResultsManagementTests(BaseTestCase):
         self.study.refresh_from_db()
         self.assertFalse(self.study.results_file)
         self.assertEqual(self.study.status, "in_progress")
-
-    def test_lab_staff_cannot_delete_results(self):
-        """Test that lab staff cannot delete results."""
-        # Upload result as admin
-        admin_client = self.authenticate(self.admin)
-        admin_client.post(
-            f"/api/v1/studies/{self.study.pk}/upload_result/",
-            {"results_file": self.pdf_file, "results": "Test upload"},
-            format="multipart",
-        )
-
-        # Try to delete as lab staff
-        staff_client = self.authenticate(self.lab_staff)
-        response = staff_client.delete(
-            f"/api/v1/studies/{self.study.pk}/delete-result/"
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_can_list_studies_with_results(self):
         """Test that admins can list all studies with uploaded results."""

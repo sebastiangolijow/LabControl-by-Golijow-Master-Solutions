@@ -7,8 +7,8 @@ class CanViewAnalytics(permissions.BasePermission):
     """
     Permission to view analytics data.
 
-    Only admin and lab_manager users can view analytics.
-    Lab managers can only view their own lab's statistics.
+    Only admin and lab_staff users can view analytics.
+    Lab staff can only view their own lab's statistics.
     """
 
     def has_permission(self, request, view):
@@ -17,20 +17,21 @@ class CanViewAnalytics(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        # Only admin and lab_manager can view analytics
-        return request.user.role in ["admin", "lab_manager"]
+        # Only admin and lab_staff can view analytics
+        return request.user.role in ["admin", "lab_staff"]
 
 
 class IsAdminOrLabManager(permissions.BasePermission):
     """
-    Permission class for admin or lab manager access.
+    Permission class for admin or lab staff access.
 
     This is an alias for CanViewAnalytics for consistency.
+    Note: Class name kept as IsAdminOrLabManager for backward compatibility.
     """
 
     def has_permission(self, request, view):
-        """Check if user is admin or lab manager."""
+        """Check if user is admin or lab staff."""
         if not request.user or not request.user.is_authenticated:
             return False
 
-        return request.user.role in ["admin", "lab_manager"]
+        return request.user.role in ["admin", "lab_staff"]

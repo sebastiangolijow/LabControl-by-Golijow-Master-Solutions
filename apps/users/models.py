@@ -116,11 +116,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     # User role and permissions
     ROLE_CHOICES = [
         ("admin", _("Administrator")),
-        ("lab_manager", _("Laboratory Manager")),
-        ("technician", _("Laboratory Technician")),
+        ("lab_staff", _("Laboratory Staff")),
         ("doctor", _("Doctor")),
         ("patient", _("Patient")),
-        ("staff", _("Staff Member")),
     ]
     role = models.CharField(
         _("user role"),
@@ -224,14 +222,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.first_name or self.email
 
     @property
-    def is_lab_manager(self):
-        """Check if user is a laboratory manager."""
-        return self.role == "lab_manager"
-
-    @property
-    def is_technician(self):
-        """Check if user is a laboratory technician."""
-        return self.role == "technician"
+    def is_lab_staff(self):
+        """Check if user is laboratory staff."""
+        return self.role == "lab_staff"
 
     @property
     def is_doctor(self):

@@ -401,9 +401,9 @@ class TestPaymentAPI(BaseTestCase):
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["id"] == own_invoice.id
 
-    def test_lab_manager_can_see_lab_invoices(self):
+    def test_lab_staff_can_see_lab_invoices(self):
         """Test lab manager can see all invoices for their lab."""
-        client, manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, staff = self.authenticate_as_lab_staff(lab_client_id=1)
 
         # Create invoices for different labs
         lab1_inv = self.create_invoice(lab_client_id=1)

@@ -31,16 +31,9 @@ class TestAnalyticsPermissions(BaseTestCase):
         response = client.get("/api/v1/analytics/dashboard/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_lab_staff_cannot_access_analytics(self):
-        """Test that lab staff cannot access analytics endpoints."""
-        staff = self.create_lab_staff()
-        client = self.authenticate(staff)
-        response = client.get("/api/v1/analytics/dashboard/")
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
-    def test_lab_manager_can_access_analytics(self):
+    def test_lab_staff_can_access_analytics(self):
         """Test that lab managers can access analytics endpoints."""
-        client, _user = self.authenticate_as_lab_manager()
+        client, _user = self.authenticate_as_lab_staff()
         response = client.get("/api/v1/analytics/dashboard/")
         assert response.status_code == status.HTTP_200_OK
 
@@ -56,7 +49,7 @@ class TestDashboardSummaryAPI(BaseTestCase):
 
     def test_dashboard_summary_structure(self):
         """Test that dashboard summary returns correct structure."""
-        client, _user = self.authenticate_as_lab_manager()
+        client, _user = self.authenticate_as_lab_staff()
 
         response = client.get("/api/v1/analytics/dashboard/")
         assert response.status_code == status.HTTP_200_OK
@@ -68,10 +61,10 @@ class TestDashboardSummaryAPI(BaseTestCase):
         assert "users" in data
         assert "period" in data
 
-    def test_lab_manager_sees_own_lab_only(self):
+    def test_lab_staff_sees_own_lab_only(self):
         """Test that lab managers only see their own lab's data."""
         # Create data for lab 1
-        client, manager1 = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, staff1 = self.authenticate_as_lab_staff(lab_client_id=1)
         patient1 = self.create_patient(lab_client_id=1)
         self.create_study(patient=patient1, lab_client_id=1)
 
@@ -113,7 +106,7 @@ class TestStudyStatisticsAPI(BaseTestCase):
 
     def test_study_statistics_counts_by_status(self):
         """Test that study statistics shows correct counts by status."""
-        client, manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
         # Create studies with different statuses
@@ -133,7 +126,7 @@ class TestStudyStatisticsAPI(BaseTestCase):
 
     def test_study_statistics_by_type(self):
         """Test that statistics show breakdown by study type."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
         blood_test = self.create_study_type(name="Blood Test", code="BT001")
@@ -161,7 +154,7 @@ class TestStudyTrendsAPI(BaseTestCase):
 
     def test_study_trends_by_month(self):
         """Test getting study trends grouped by month."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
         # Create studies across different months
@@ -186,7 +179,7 @@ class TestRevenueStatisticsAPI(BaseTestCase):
 
     def test_revenue_statistics_shows_invoices_and_payments(self):
         """Test that revenue statistics shows correct financial data."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
         study = self.create_study(patient=patient)
 
@@ -222,7 +215,7 @@ class TestRevenueStatisticsAPI(BaseTestCase):
 
     def test_revenue_statistics_counts_by_payment_method(self):
         """Test that revenue statistics shows breakdown by payment method."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
         study = self.create_study(patient=patient)
 
@@ -245,7 +238,7 @@ class TestAppointmentStatisticsAPI(BaseTestCase):
 
     def test_appointment_statistics_counts_by_status(self):
         """Test that appointment statistics shows counts by status."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
         # Create appointments with different statuses
@@ -266,7 +259,7 @@ class TestAppointmentStatisticsAPI(BaseTestCase):
 
     def test_appointment_statistics_calculates_show_rate(self):
         """Test that show rate percentage is calculated correctly."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
         # Create 3 completed and 1 no_show = 75% show rate
@@ -286,7 +279,7 @@ class TestUserStatisticsAPI(BaseTestCase):
 
     def test_user_statistics_counts_by_role(self):
         """Test that user statistics shows counts by role."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
 
         # Create users with different roles (all in lab 1)
         self.create_patient(lab_client_id=1)
@@ -298,7 +291,7 @@ class TestUserStatisticsAPI(BaseTestCase):
         assert response.status_code == status.HTTP_200_OK
 
         data = response.data
-        # +1 for the lab_manager we authenticated with
+        # +1 for the lab_staff we authenticated with
         assert data["total_users"] >= 5
         assert data["patients"] >= 2
         assert data["doctors"] >= 1
@@ -310,7 +303,7 @@ class TestPopularStudyTypesAPI(BaseTestCase):
 
     def test_popular_study_types_shows_order_counts(self):
         """Test that popular study types are ranked by order count."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
         # Create study types
@@ -338,7 +331,7 @@ class TestTopRevenueStudyTypesAPI(BaseTestCase):
 
     def test_top_revenue_study_types_ranked_by_revenue(self):
         """Test that study types are ranked by revenue generated."""
-        client, _manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
         # Create study types

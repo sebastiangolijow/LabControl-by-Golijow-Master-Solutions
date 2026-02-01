@@ -11,6 +11,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from .filters import UserFilter
 from .models import User
 from .permissions import IsAdmin
 from .permissions import IsAdminOrLabManager
@@ -33,11 +34,9 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [
         DjangoFilterBackend,
-        filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    filterset_fields = ["role", "is_active", "lab_client_id"]
-    search_fields = ["email", "first_name", "last_name", "phone_number"]
+    filterset_class = UserFilter
     ordering_fields = ["date_joined", "email", "first_name", "last_name"]
     ordering = ["-date_joined"]
 
@@ -63,15 +62,19 @@ class UserViewSet(viewsets.ModelViewSet):
         Filter queryset based on user role and permissions.
 
         - Superusers and admins can see all users
-        - Lab managers can see users in their lab
+        - Lab staff can see users in their lab
+        - Doctors can only see patients
         - Others can only see themselves
         """
         user = self.request.user
 
         if user.is_superuser or user.role == "admin":
             return User.objects.all()
-        elif user.role == "lab_manager" and user.lab_client_id:
+        elif user.role == "lab_staff" and user.lab_client_id:
             return User.objects.filter(lab_client_id=user.lab_client_id)
+        elif user.role == "doctor":
+            # Doctors can only see patients
+            return User.objects.filter(role="patient")
         else:
             return User.objects.filter(pk=user.pk)
 
@@ -146,15 +149,15 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def search_patients(self, request):
         """
-        Search for patients (admin and lab manager only).
+        Search for patients (admin and lab staff only).
 
-        This endpoint allows admins and lab managers to search for patients
+        This endpoint allows admins and lab staff to search for patients
         when assigning lab results or managing appointments.
 
         Query Parameters:
             - search: Search by email, first_name, last_name, phone_number
             - email: Filter by exact email
-            - lab_client_id: Filter by lab (lab managers see only their lab)
+            - lab_client_id: Filter by lab (lab staff see only their lab)
             - ordering: Sort results (e.g., -created_at, email)
 
         Example: /api/v1/users/search-patients/?search=john&ordering=last_name
@@ -164,8 +167,8 @@ class UserViewSet(viewsets.ModelViewSet):
         # Start with patients only
         queryset = User.objects.filter(role="patient")
 
-        # Lab managers can only see patients in their lab
-        if user.role == "lab_manager" and user.lab_client_id:
+        # Lab staff can only see patients in their lab
+        if user.role == "lab_staff" and user.lab_client_id:
             queryset = queryset.filter(lab_client_id=user.lab_client_id)
 
         # Apply search filter if provided
@@ -261,15 +264,15 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def search_doctors(self, request):
         """
-        Search for doctors (admin and lab manager only).
+        Search for doctors (admin and lab staff only).
 
-        This endpoint allows admins and lab managers to search for doctors
+        This endpoint allows admins and lab staff to search for doctors
         when assigning studies or managing appointments.
 
         Query Parameters:
             - search: Search by email, first_name, last_name, phone_number
             - email: Filter by exact email
-            - lab_client_id: Filter by lab (lab managers see only their lab)
+            - lab_client_id: Filter by lab (lab staff see only their lab)
             - ordering: Sort results (e.g., -created_at, email)
 
         Example: /api/v1/users/search-doctors/?search=john&ordering=last_name
@@ -279,8 +282,8 @@ class UserViewSet(viewsets.ModelViewSet):
         # Start with doctors only
         queryset = User.objects.filter(role="doctor")
 
-        # Lab managers can only see doctors in their lab
-        if user.role == "lab_manager" and user.lab_client_id:
+        # Lab staff can only see doctors in their lab
+        if user.role == "lab_staff" and user.lab_client_id:
             queryset = queryset.filter(lab_client_id=user.lab_client_id)
 
         # Apply search filter if provided

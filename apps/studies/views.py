@@ -2,10 +2,14 @@
 
 import os
 
-from django.http import FileResponse, Http404
+from django.http import FileResponse
+from django.http import Http404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets
+from rest_framework import filters
+from rest_framework import permissions
+from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
@@ -14,12 +18,12 @@ from apps.notifications.models import Notification
 from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
-from .models import Study, StudyType
-from .serializers import (
-    StudyResultUploadSerializer,
-    StudySerializer,
-    StudyTypeSerializer,
-)
+from .filters import StudyFilter
+from .models import Study
+from .models import StudyType
+from .serializers import StudyResultUploadSerializer
+from .serializers import StudySerializer
+from .serializers import StudyTypeSerializer
 
 
 class StudyTypeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -38,16 +42,9 @@ class StudyViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [
         DjangoFilterBackend,
-        filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    filterset_fields = ["status", "patient", "study_type", "lab_client_id"]
-    search_fields = [
-        "order_number",
-        "patient__email",
-        "patient__first_name",
-        "patient__last_name",
-    ]
+    filterset_class = StudyFilter
     ordering_fields = ["created_at", "completed_at", "order_number"]
     ordering = ["-created_at"]
 
@@ -58,8 +55,13 @@ class StudyViewSet(viewsets.ModelViewSet):
         # Base queryset: exclude soft-deleted studies
         base_queryset = Study.objects.filter(is_deleted=False)
 
-        if user.is_superuser or user.role in ["admin", "lab_manager"]:
-            # Admins and lab managers see all non-deleted studies in their lab
+        if user.is_superuser or user.role == "admin":
+            # Admins see all non-deleted studies in their lab
+            # if user.lab_client_id:
+            #     return base_queryset.filter(lab_client_id=user.lab_client_id)
+            return base_queryset
+        elif user.role == "lab_staff":
+            # Lab staff see all non-deleted studies in their lab
             if user.lab_client_id:
                 return base_queryset.filter(lab_client_id=user.lab_client_id)
             return base_queryset
@@ -70,9 +72,6 @@ class StudyViewSet(viewsets.ModelViewSet):
             # Doctors only see studies they ordered
             return base_queryset.filter(ordered_by=user)
         else:
-            # Technicians and other staff see all non-deleted studies in their lab
-            if user.lab_client_id:
-                return base_queryset.filter(lab_client_id=user.lab_client_id)
             return Study.objects.none()
 
     def destroy(self, request, *args, **kwargs):
@@ -87,7 +86,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         user = request.user
 
         # Check permissions
-        is_admin = user.is_superuser or user.role in ["admin", "lab_manager"]
+        is_admin = user.is_superuser or user.role == "admin"
         is_owner = user.is_patient and study.patient == user
 
         if not (is_admin or is_owner):
@@ -119,7 +118,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         """
         Upload study results (PDF or file).
 
-        Only lab staff, lab managers, and admins can upload results.
+        Only lab staff and admins can upload results.
         """
         study = self.get_object()
         user = request.user
@@ -127,7 +126,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         # Check permissions - only lab staff can upload results
         if not (
             user.is_superuser
-            or user.role in ["admin", "lab_manager", "lab_staff", "technician", "staff"]
+            or user.role in ["admin", "lab_staff"]
         ):
             return Response(
                 {"error": "Only lab staff can upload results."},
@@ -136,7 +135,7 @@ class StudyViewSet(viewsets.ModelViewSet):
 
         # Check if result already exists (warn but allow re-upload for admins)
         if study.is_completed and study.results_file:
-            if not (user.is_superuser or user.role in ["admin", "lab_manager"]):
+            if not (user.is_superuser or user.role == "admin"):
                 return Response(
                     {
                         "error": "Results already uploaded. Only admins can replace results."
@@ -238,7 +237,7 @@ class StudyViewSet(viewsets.ModelViewSet):
     )
     def delete_result(self, request, pk=None):
         """
-        Delete study result file (admin and lab manager only).
+        Delete study result file (admin and lab staff only).
 
         This allows admins to remove incorrect or outdated results.
         The study status will be reset to 'in_progress'.
@@ -280,7 +279,7 @@ class StudyViewSet(viewsets.ModelViewSet):
     )
     def with_results(self, request):
         """
-        List all studies with uploaded results (admin and lab manager only).
+        List all studies with uploaded results (admin and lab staff only).
 
         This endpoint helps admins manage and review all uploaded results.
 
@@ -295,6 +294,45 @@ class StudyViewSet(viewsets.ModelViewSet):
 
         # Filter only studies with results (must have actual file, not empty string)
         queryset = queryset.exclude(results_file="")
+
+        # Paginate results
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAdminOrLabManager],
+        url_path="available-for-upload",
+    )
+    def available_for_upload(self, request):
+        """
+        List studies available for result upload (admin and lab staff only).
+
+        Returns studies that are pending or in_progress and don't have results yet.
+        This endpoint is used by the upload results modal to show available studies.
+
+        Query Parameters:
+            - search: Search by order_number, patient name
+            - patient: Filter by patient ID
+            - study_type: Filter by study type ID
+            - ordering: Sort results (default: -created_at)
+
+        Returns:
+            List of studies without uploaded results
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Filter only studies without results
+        queryset = queryset.filter(
+            results_file__in=["", None],
+            status__in=["pending", "in_progress"],
+        )
 
         # Paginate results
         page = self.paginate_queryset(queryset)

@@ -365,7 +365,7 @@ class TestDoctorSearchAPI(BaseTestCase):
 
         doctor = self.create_doctor(first_name="Doctor", last_name="Test")
         _patient = self.create_patient(first_name="Patient", last_name="Test")
-        _lab_manager = self.create_lab_manager(first_name="Manager", last_name="Test")
+        _lab_staff = self.create_lab_staff(first_name="Manager", last_name="Test")
 
         response = client.get("/api/v1/users/search-doctors/")
 
@@ -377,9 +377,9 @@ class TestDoctorSearchAPI(BaseTestCase):
         assert results[0]["email"] == doctor.email
         assert results[0]["role"] == "doctor"
 
-    def test_lab_manager_can_search_doctors_in_their_lab(self):
+    def test_lab_staff_can_search_doctors_in_their_lab(self):
         """Test that lab managers can search doctors in their lab."""
-        client, manager = self.authenticate_as_lab_manager(lab_client_id=1)
+        client, staff = self.authenticate_as_lab_staff(lab_client_id=1)
 
         # Create doctors in different labs
         doctor_lab1 = self.create_doctor(
