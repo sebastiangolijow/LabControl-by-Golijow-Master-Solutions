@@ -4,8 +4,7 @@ from decimal import Decimal
 
 from rest_framework import status
 
-from apps.studies.models import Study
-from apps.studies.models import StudyType
+from apps.studies.models import Study, StudyType
 from tests.base import BaseTestCase
 
 

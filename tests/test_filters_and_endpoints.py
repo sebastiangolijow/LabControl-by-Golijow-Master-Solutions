@@ -183,7 +183,9 @@ class TestStudyFilter(BaseTestCase):
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
         assert any(s["order_number"] == pending_study.order_number for s in results)
-        assert not any(s["order_number"] == completed_study.order_number for s in results)
+        assert not any(
+            s["order_number"] == completed_study.order_number for s in results
+        )
 
 
 class TestDoctorPermissions(BaseTestCase):
@@ -244,7 +246,9 @@ class TestAvailableForUploadEndpoint(BaseTestCase):
         # Create studies with and without results
         pending_study = self.create_study(status="pending")
         in_progress_study = self.create_study(status="in_progress")
-        completed_study = self.create_study(status="completed", results_file="results.pdf")
+        completed_study = self.create_study(
+            status="completed", results_file="results.pdf"
+        )
 
         # Get available studies
         response = client.get("/api/v1/studies/available-for-upload/")

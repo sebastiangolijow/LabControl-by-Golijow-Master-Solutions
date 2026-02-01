@@ -17,8 +17,7 @@ class IsAdminOrLabManager(permissions.BasePermission):
             request.user
             and request.user.is_authenticated
             and (
-                request.user.is_superuser
-                or request.user.role in ["admin", "lab_staff"]
+                request.user.is_superuser or request.user.role in ["admin", "lab_staff"]
             )
         )
 
