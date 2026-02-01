@@ -19,14 +19,14 @@ from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
 from .filters import StudyFilter
-from .models import Practice, Study, StudyType
-from .serializers import (
-    PracticeSerializer,
-    StudyCreateSerializer,
-    StudyResultUploadSerializer,
-    StudySerializer,
-    StudyTypeSerializer,
-)
+from .models import Practice
+from .models import Study
+from .models import StudyType
+from .serializers import PracticeSerializer
+from .serializers import StudyCreateSerializer
+from .serializers import StudyResultUploadSerializer
+from .serializers import StudySerializer
+from .serializers import StudyTypeSerializer
 
 
 class PracticeViewSet(viewsets.ModelViewSet):
@@ -109,7 +109,11 @@ class StudyViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         # Auto-assign lab_client_id from the user creating the study
-        lab_client_id = request.user.lab_client_id if hasattr(request.user, 'lab_client_id') else None
+        lab_client_id = (
+            request.user.lab_client_id
+            if hasattr(request.user, "lab_client_id")
+            else None
+        )
         serializer.save(lab_client_id=lab_client_id, status="pending")
 
         return Response(
@@ -196,10 +200,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         user = request.user
 
         # Check permissions - only lab staff can upload results
-        if not (
-            user.is_superuser
-            or user.role in ["admin", "lab_staff"]
-        ):
+        if not (user.is_superuser or user.role in ["admin", "lab_staff"]):
             return Response(
                 {"error": "Only lab staff can upload results."},
                 status=status.HTTP_403_FORBIDDEN,
