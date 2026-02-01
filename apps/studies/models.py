@@ -6,11 +6,9 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from simple_history.models import HistoricalRecords
 
-from apps.core.models import BaseModel
-from apps.core.models import LabClientModel
+from apps.core.models import BaseModel, LabClientModel
 
-from .managers import StudyManager
-from .managers import StudyTypeManager
+from .managers import StudyManager, StudyTypeManager
 
 
 class Practice(BaseModel):
@@ -83,7 +81,7 @@ class Practice(BaseModel):
         return self.name
 
 
-class StudyType(BaseModel): # Protocolo | Estudio
+class StudyType(BaseModel):  # Protocolo | Estudio
     """
     Type of medical study/test offered by the laboratory.
 
@@ -132,7 +130,7 @@ class StudyType(BaseModel): # Protocolo | Estudio
         return f"{self.name} ({self.code})"
 
 
-class Study(BaseModel, LabClientModel): 
+class Study(BaseModel, LabClientModel):
     """
     Individual study/test order for a patient.
 
