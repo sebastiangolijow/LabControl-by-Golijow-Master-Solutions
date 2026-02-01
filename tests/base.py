@@ -109,7 +109,6 @@ class BaseTestMixin:
             "code": f"CBC{self._user_counter}",
             "description": "Complete blood count test",
             "category": "Hematology",
-            "base_price": Decimal("50.00"),
             "requires_fasting": False,
             "estimated_processing_hours": 24,
             "is_active": True,

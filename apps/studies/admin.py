@@ -2,7 +2,23 @@
 
 from config.admin import admin, admin_site
 
-from .models import Study, StudyType
+from .models import Practice, Study, StudyType
+
+
+class PracticeAdmin(admin.ModelAdmin):
+    """Admin interface for Practice model."""
+
+    list_display = [
+        "name",
+        "technique",
+        "sample_type",
+        "price",
+        "delay_days",
+        "is_active",
+    ]
+    list_filter = ["is_active", "sample_type"]
+    search_fields = ["name", "technique", "sample_type"]
+    ordering = ["name"]
 
 
 class StudyTypeAdmin(admin.ModelAdmin):
@@ -12,7 +28,6 @@ class StudyTypeAdmin(admin.ModelAdmin):
         "name",
         "code",
         "category",
-        "base_price",
         "requires_fasting",
         "is_active",
     ]
@@ -39,5 +54,6 @@ class StudyAdmin(admin.ModelAdmin):
 
 
 # Register with custom admin site
+admin_site.register(Practice, PracticeAdmin)
 admin_site.register(StudyType, StudyTypeAdmin)
 admin_site.register(Study, StudyAdmin)

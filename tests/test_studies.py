@@ -17,7 +17,6 @@ class TestStudyTypeModel(BaseTestCase):
         study_type = self.create_study_type()
         assert study_type.name == "Complete Blood Count"
         assert study_type.code.startswith("CBC")
-        assert study_type.base_price == Decimal("50.00")
         assert study_type.is_active is True
 
     def test_study_type_has_uuid(self):

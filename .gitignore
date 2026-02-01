@@ -44,6 +44,9 @@ venv/
 ENV/
 env/
 
+*.bak
+*.backup
+
 # IDEs
 .vscode/*
 !.vscode/settings.json

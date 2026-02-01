@@ -336,10 +336,12 @@ class TestTopRevenueStudyTypesAPI(BaseTestCase):
 
         # Create study types
         expensive = self.create_study_type(
-            name="MRI", code="MRI001", base_price=Decimal("1000.00")
+            name="MRI",
+            code="MRI001",
         )
         cheap = self.create_study_type(
-            name="Blood Test", code="BT001", base_price=Decimal("50.00")
+            name="Blood Test",
+            code="BT001",
         )
 
         # Create studies and invoices

@@ -6,12 +6,84 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from simple_history.models import HistoricalRecords
 
-from apps.core.models import BaseModel, LabClientModel
+from apps.core.models import BaseModel
+from apps.core.models import LabClientModel
 
-from .managers import StudyManager, StudyTypeManager
+from .managers import StudyManager
+from .managers import StudyTypeManager
 
 
-class StudyType(BaseModel):
+class Practice(BaseModel):
+    """
+    Medical practice/test that can be included in study types (protocols).
+
+    Each practice represents a specific medical test or procedure with its
+    requirements and specifications.
+    """
+
+    name = models.CharField(_("name"), max_length=200)
+    technique = models.CharField(
+        _("technique"),
+        max_length=200,
+        blank=True,
+        help_text=_("Laboratory technique used for this practice"),
+    )
+
+    # Sample information
+    sample_type = models.CharField(
+        _("sample type"),
+        max_length=100,
+        blank=True,
+        help_text=_("Type of sample required (e.g., blood, urine, tissue)"),
+    )
+    sample_quantity = models.CharField(
+        _("sample quantity"),
+        max_length=100,
+        blank=True,
+        help_text=_("Required quantity of sample"),
+    )
+    sample_instructions = models.TextField(
+        _("sample instructions"),
+        blank=True,
+        help_text=_("Special instructions for sample collection"),
+    )
+
+    # Conservation and transport
+    conservation_transport = models.TextField(
+        _("conservation and transport"),
+        blank=True,
+        help_text=_("Instructions for sample conservation and transport"),
+    )
+
+    # Processing time
+    delay_days = models.IntegerField(
+        _("delay (days)"),
+        default=0,
+        help_text=_("Expected delay in days for results"),
+    )
+
+    # Pricing
+    price = models.DecimalField(
+        _("price"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        help_text=_("Price for this practice"),
+    )
+
+    # Status
+    is_active = models.BooleanField(_("active"), default=True)
+
+    class Meta:
+        verbose_name = _("practice")
+        verbose_name_plural = _("practices")
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class StudyType(BaseModel): # Protocolo | Estudio
     """
     Type of medical study/test offered by the laboratory.
 
@@ -23,14 +95,6 @@ class StudyType(BaseModel):
     description = models.TextField(_("description"), blank=True)
     category = models.CharField(_("category"), max_length=100, blank=True)
 
-    # Pricing
-    base_price = models.DecimalField(
-        _("base price"),
-        max_digits=10,
-        decimal_places=2,
-        help_text=_("Base price in local currency"),
-    )
-
     # Requirements
     requires_fasting = models.BooleanField(_("requires fasting"), default=False)
     preparation_instructions = models.TextField(
@@ -41,6 +105,16 @@ class StudyType(BaseModel):
     estimated_processing_hours = models.IntegerField(
         _("estimated processing time (hours)"),
         default=24,
+    )
+
+    # Protocol practices (catalog information)
+    # ManyToMany relationship with Practice model
+    practices = models.ManyToManyField(
+        Practice,
+        related_name="study_types",
+        blank=True,
+        verbose_name=_("practices"),
+        help_text=_("Practices/tests included in this protocol"),
     )
 
     # Status
@@ -58,7 +132,7 @@ class StudyType(BaseModel):
         return f"{self.name} ({self.code})"
 
 
-class Study(BaseModel, LabClientModel):
+class Study(BaseModel, LabClientModel): 
     """
     Individual study/test order for a patient.
 

@@ -19,19 +19,62 @@ from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
 from .filters import StudyFilter
-from .models import Study
-from .models import StudyType
-from .serializers import StudyResultUploadSerializer
-from .serializers import StudySerializer
-from .serializers import StudyTypeSerializer
+from .models import Practice, Study, StudyType
+from .serializers import (
+    PracticeSerializer,
+    StudyCreateSerializer,
+    StudyResultUploadSerializer,
+    StudySerializer,
+    StudyTypeSerializer,
+)
 
 
-class StudyTypeViewSet(viewsets.ReadOnlyModelViewSet):
-    """ViewSet for viewing study types."""
+class PracticeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing practices (medical tests).
+
+    Permissions:
+    - All authenticated users can view practices (GET)
+    - Only admins can create, update, or delete practices (POST, PUT, PATCH, DELETE)
+    """
+
+    queryset = Practice.objects.filter(is_active=True)
+    serializer_class = PracticeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "technique", "sample_type"]
+    ordering_fields = ["name", "price", "delay_days", "created_at"]
+    ordering = ["name"]
+
+    def get_permissions(self):
+        """Allow all authenticated users to read, only admins to write."""
+        if self.action in ["list", "retrieve"]:
+            return [permissions.IsAuthenticated()]
+        return [IsAdminOrLabManager()]
+
+
+class StudyTypeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing study types (protocols).
+
+    Permissions:
+    - All authenticated users can view study types (GET)
+    - Only admins can create, update, or delete study types (POST, PUT, PATCH, DELETE)
+    """
 
     queryset = StudyType.objects.filter(is_active=True)
     serializer_class = StudyTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code", "description", "category"]
+    ordering_fields = ["name", "base_price", "created_at"]
+    ordering = ["name"]
+
+    def get_permissions(self):
+        """Allow all authenticated users to read, only admins to write."""
+        if self.action in ["list", "retrieve"]:
+            return [permissions.IsAuthenticated()]
+        return [IsAdminOrLabManager()]
 
 
 class StudyViewSet(viewsets.ModelViewSet):
@@ -47,6 +90,35 @@ class StudyViewSet(viewsets.ModelViewSet):
     filterset_class = StudyFilter
     ordering_fields = ["created_at", "completed_at", "order_number"]
     ordering = ["-created_at"]
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == "create":
+            return StudyCreateSerializer
+        return StudySerializer
+
+    def get_permissions(self):
+        """Only admin and lab_staff can create studies."""
+        if self.action == "create":
+            return [IsAdminOrLabManager()]
+        return super().get_permissions()
+
+    def create(self, request, *args, **kwargs):
+        """Create a new study and auto-assign lab_client_id from user."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Auto-assign lab_client_id from the user creating the study
+        lab_client_id = request.user.lab_client_id if hasattr(request.user, 'lab_client_id') else None
+        serializer.save(lab_client_id=lab_client_id, status="pending")
+
+        return Response(
+            {
+                "message": "Study created successfully.",
+                "study": StudySerializer(serializer.instance).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     def get_queryset(self):
         """Filter studies based on user role."""

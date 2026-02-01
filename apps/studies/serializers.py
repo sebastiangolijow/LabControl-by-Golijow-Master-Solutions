@@ -2,15 +2,64 @@
 
 from rest_framework import serializers
 
-from .models import Study, StudyType
+from .models import Practice, Study, StudyType
+
+
+class PracticeSerializer(serializers.ModelSerializer):
+    """Serializer for Practice model."""
+
+    class Meta:
+        model = Practice
+        fields = [
+            "id",
+            "uuid",
+            "name",
+            "technique",
+            "sample_type",
+            "sample_quantity",
+            "sample_instructions",
+            "conservation_transport",
+            "delay_days",
+            "price",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["uuid", "created_at", "updated_at"]
 
 
 class StudyTypeSerializer(serializers.ModelSerializer):
     """Serializer for StudyType model."""
 
+    practices_detail = PracticeSerializer(source="practices", many=True, read_only=True)
+    practice_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Practice.objects.all(),
+        source="practices",
+        write_only=True,
+        required=False,
+    )
+
     class Meta:
         model = StudyType
-        fields = "__all__"
+        fields = [
+            "id",
+            "uuid",
+            "name",
+            "code",
+            "description",
+            "category",
+            "requires_fasting",
+            "preparation_instructions",
+            "estimated_processing_hours",
+            "practices",
+            "practices_detail",
+            "practice_ids",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["uuid", "created_at", "updated_at"]
 
 
 class StudySerializer(serializers.ModelSerializer):
@@ -49,6 +98,28 @@ class StudySerializer(serializers.ModelSerializer):
         if obj.ordered_by:
             return obj.ordered_by.get_full_name()
         return None
+
+
+class StudyCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a new study."""
+
+    class Meta:
+        model = Study
+        fields = [
+            "study_type",
+            "patient",
+            "ordered_by",
+            "order_number",
+            "notes",
+        ]
+
+    def validate_order_number(self, value):
+        """Ensure order number is unique."""
+        if Study.objects.filter(order_number=value).exists():
+            raise serializers.ValidationError(
+                "A study with this order number already exists."
+            )
+        return value
 
 
 class StudyResultUploadSerializer(serializers.ModelSerializer):
