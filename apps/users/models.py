@@ -236,6 +236,34 @@ class User(AbstractBaseUser, PermissionsMixin):
         """Check if user is a patient."""
         return self.role == "patient"
 
+    @property
+    def patients(self):
+        """
+        Get unique patients from studies ordered by this user.
+
+        Returns:
+            QuerySet: Empty queryset if user is not a doctor.
+                     QuerySet of User objects (patients) if user is a doctor.
+
+        Example:
+            doctor_user.patients  # Returns all patients with studies ordered by this doctor
+        """
+        if self.role != "doctor":
+            return User.objects.none()
+
+        # Import here to avoid circular import
+        from apps.studies.models import Study
+
+        # Get unique patient IDs from studies ordered by this doctor
+        patient_ids = (
+            Study.objects.filter(ordered_by=self)
+            .values_list("patient", flat=True)
+            .distinct()
+        )
+
+        # Return queryset of patient users
+        return User.objects.filter(pk__in=patient_ids, role="patient")
+
     def generate_verification_token(self):
         """Generate and set a new verification token."""
         from .tokens import generate_verification_token

@@ -19,6 +19,7 @@ from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
 from .filters import StudyFilter
+from .filters import StudyTypeFilter
 from .models import Practice
 from .models import Study
 from .models import StudyType
@@ -36,6 +37,9 @@ class PracticeViewSet(viewsets.ModelViewSet):
     Permissions:
     - All authenticated users can view practices (GET)
     - Only admins can create, update, or delete practices (POST, PUT, PATCH, DELETE)
+
+    Search:
+    - search: Search by name, technique, sample_type
     """
 
     queryset = Practice.objects.filter(is_active=True)
@@ -55,19 +59,25 @@ class PracticeViewSet(viewsets.ModelViewSet):
 
 class StudyTypeViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing study types (protocols).
+    ViewSet for managing study types (protocols/units).
 
     Permissions:
     - All authenticated users can view study types (GET)
     - Only admins can create, update, or delete study types (POST, PUT, PATCH, DELETE)
+
+    Filters:
+    - search: Search by name, code, description, category
+    - category: Filter by category (exact match)
+    - requires_fasting: Filter by fasting requirement (true/false)
+    - is_active: Filter by active status (true/false)
     """
 
     queryset = StudyType.objects.filter(is_active=True)
     serializer_class = StudyTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "code", "description", "category"]
-    ordering_fields = ["name", "base_price", "created_at"]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = StudyTypeFilter
+    ordering_fields = ["name", "created_at"]
     ordering = ["name"]
 
     def get_permissions(self):

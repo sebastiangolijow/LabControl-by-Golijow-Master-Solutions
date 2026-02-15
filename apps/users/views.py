@@ -43,7 +43,7 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserCreateSerializer
         elif self.action in ["update", "partial_update"]:
             return UserUpdateSerializer
-        elif self.action == "retrieve":
+        elif self.action in ["retrieve", "list"]:
             return UserDetailSerializer
         return UserSerializer
 
@@ -316,6 +316,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         serializer = UserSerializer(queryset, many=True)
         return Response(serializer.data)
+
 
 
 class PatientRegistrationView(generics.CreateAPIView):

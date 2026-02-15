@@ -1,0 +1,145 @@
+[
+  {
+    "name": "Detección Sars-CoV-2",
+    "technique": "RT-PCR en tiempo real",
+    "sample_type": "Hisopados (nasofaríngeos, orofaríngeos, combinados), esputo, saliva, aspirado traqueal",
+    "sample_quantity": "Hisopado en solución fisiológica o medio de transporte viral",
+    "sample_instructions": "Hisopados (nasofaríngeos, orofaríngeos, combinados) en solución fisiológica o medio de transporte viral, esputo, saliva, aspirado traqueal",
+    "conservation_transport": "Conservar y transportar refrigerado en triple envase",
+    "delay_days": 1,
+    "price": "21920.92",
+    "is_active": true
+  },
+  {
+    "name": "Detección Chlamydia trachomatis",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "Hisopados, citobrush, orina",
+    "sample_quantity": "Hisopados secos, citobrush en medio líquido, orina primera micción",
+    "sample_instructions": "Hisopados o citobrush secos, citobrush en medio de transporte líquido, orina primera micción",
+    "conservation_transport": "Conservar en heladera (2-8°C) y remitir dentro de las 72 hs",
+    "delay_days": 7,
+    "price": "14831.18",
+    "is_active": true
+  },
+  {
+    "name": "Detección Ureaplasma urealiticum",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "Hisopados, citobrush, orina",
+    "sample_quantity": "Hisopados secos, citobrush en medio líquido, orina primera micción",
+    "sample_instructions": "Hisopados o citobrush secos, citobrush en medio de transporte líquido, orina primera micción",
+    "conservation_transport": "Conservar en heladera (2-8°C) y remitir dentro de las 72 hs",
+    "delay_days": 7,
+    "price": "9269.47",
+    "is_active": true
+  },
+  {
+    "name": "Detección Mycoplasma hominis",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "Hisopados, citobrush, orina",
+    "sample_quantity": "Hisopados secos, citobrush en medio líquido, orina primera micción",
+    "sample_instructions": "Hisopados o citobrush secos, citobrush en medio de transporte líquido, orina primera micción",
+    "conservation_transport": "Conservar en heladera (2-8°C) y remitir dentro de las 72 hs",
+    "delay_days": 7,
+    "price": "9269.47",
+    "is_active": true
+  },
+  {
+    "name": "Papilomavirus humano - Detección + tipificación",
+    "technique": "PCR + hibridación en placa",
+    "sample_type": "Citologías líquidas",
+    "sample_quantity": "Citobrush en medio de transporte líquido",
+    "sample_instructions": "Citologías líquidas (citobrush en medio de transporte líquido)",
+    "conservation_transport": "Conservar en heladera (2-8°C) y remitir dentro de las 72 hs",
+    "delay_days": 15,
+    "price": "23835.77",
+    "is_active": true
+  },
+  {
+    "name": "Herpes Simplex Virus - Detección y tipificación (I, II)",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "Biopsias, cortes histológicos, orina, hisopados, LCR",
+    "sample_quantity": "Múltiples tipos de muestra según indicación",
+    "sample_instructions": "Biopsias en fresco, cortes histológicos parafinados, orina primera micción, hisopado de lesión, LCR, biopsias",
+    "conservation_transport": "LCR: tubo seco estéril con tapa a rosca (1 ml). Biopsias: tubo seco estéril. Remitir refrigerado (2-8°C) dentro de 24hs",
+    "delay_days": 15,
+    "price": "15890.52",
+    "is_active": true
+  },
+  {
+    "name": "Detección Epstein Barr Virus",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "LCR, BAL, biopsia",
+    "sample_quantity": "LCR (1-1.5 ml), BAL (2-3 ml), biopsia",
+    "sample_instructions": "LCR: tubo estéril con tapa a rosca. BAL: tubo seco estéril con tapa a rosca. Biopsia: tubo seco estéril sin fijador",
+    "conservation_transport": "Remitir refrigerado (2-8°C) dentro de 24hs de tomada",
+    "delay_days": 7,
+    "price": "13242.10",
+    "is_active": true
+  },
+  {
+    "name": "Detección Mycobacterium tuberculosis",
+    "technique": "PCR tiempo final",
+    "sample_type": "Esputo, BAL, LCR, cortes histológicos",
+    "sample_quantity": "Volumen mínimo 1 ml",
+    "sample_instructions": "Esputo, cortes histológicos parafinados, BAL, LCR. Remitir en tubo estéril",
+    "conservation_transport": "Remitir en tubo estéril, volumen mínimo 1 ml",
+    "delay_days": 15,
+    "price": "13242.10",
+    "is_active": true
+  },
+  {
+    "name": "Detección Citomegalovirus",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "LCR, BAL, biopsia, orina, líquido de punción",
+    "sample_quantity": "LCR (1-1.5 ml), BAL (2-3 ml), biopsia, orina",
+    "sample_instructions": "LCR: tubo estéril con tapa a rosca. BAL: tubo seco estéril. Biopsia: tubo seco sin fijador. Orina: frasco estéril",
+    "conservation_transport": "Remitir refrigerado (2-8°C) dentro de 24hs de tomada",
+    "delay_days": 7,
+    "price": "13242.10",
+    "is_active": true
+  },
+  {
+    "name": "Detección Neisseria gonorrhoeae",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "Hisopados, orina",
+    "sample_quantity": "Hisopados, orina primera micción",
+    "sample_instructions": "Hisopados, orina primera micción",
+    "conservation_transport": "Conservar en heladera (2-8°C) y remitir dentro de las 72 hs",
+    "delay_days": 7,
+    "price": "10483.33",
+    "is_active": true
+  },
+  {
+    "name": "Detección Mycoplasma genitalium",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "Hisopados, orina",
+    "sample_quantity": "Hisopados, orina primera micción",
+    "sample_instructions": "Hisopados, orina primera micción",
+    "conservation_transport": "Conservar en heladera (2-8°C) y remitir dentro de las 72 hs",
+    "delay_days": 7,
+    "price": "13242.10",
+    "is_active": true
+  },
+  {
+    "name": "Detección DENV (Dengue)",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "Plasma",
+    "sample_quantity": "Plasma con EDTA",
+    "sample_instructions": "Plasma con EDTA",
+    "conservation_transport": "Conservar y transportar refrigerado",
+    "delay_days": 1,
+    "price": "21201.35",
+    "is_active": true
+  },
+  {
+    "name": "Panel ginecológico (C. trachomatis + N. gonorrhoeae + U. urealiticum + M. hominis + M. genitalium)",
+    "technique": "PCR en tiempo real con sondas de hidrólisis",
+    "sample_type": "Hisopados, citobrush, orina",
+    "sample_quantity": "Hisopados secos, citobrush en medio líquido, orina primera micción",
+    "sample_instructions": "Hisopados o citobrush secos, citobrush en medio de transporte líquido, orina primera micción",
+    "conservation_transport": "Conservar en heladera (2-8°C) y remitir dentro de las 72 hs",
+    "delay_days": 7,
+    "price": "27337.22",
+    "is_active": true
+  }
+]

@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs shell dbshell test test-coverage format lint migrate makemigrations superuser loaddata backup restore clean
+.PHONY: help build up down restart logs shell dbshell test test-coverage format lint migrate makemigrations superuser loaddata load_practices load_practices_clear backup restore clean
 
 # Variables
 DOCKER_COMPOSE = docker-compose
@@ -147,6 +147,16 @@ restore: ## Restore database from backup (Usage: make restore BACKUP_FILE=backup
 
 loaddata: ## Load fixture data
 	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py loaddata fixtures/*.json
+
+load_practices: ## Load practices from JSON file
+	@echo "Loading practices from data/practices_data.json..."
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py load_practices
+	@echo "✓ Practices loaded successfully!"
+
+load_practices_clear: ## Load practices (clear existing first)
+	@echo "Loading practices (clearing existing data)..."
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py load_practices --clear
+	@echo "✓ Practices loaded successfully!"
 
 # Celery Commands
 celery-worker: ## Start Celery worker

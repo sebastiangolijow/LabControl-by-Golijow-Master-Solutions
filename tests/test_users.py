@@ -101,6 +101,83 @@ class TestUserModel(BaseTestCase):
         assert staff.is_lab_staff is True
         assert staff.is_patient is False
 
+    def test_doctor_patients_property(self):
+        """Test that doctor.patients returns unique patients from ordered studies."""
+        # Create doctor and patients
+        doctor = self.create_doctor()
+        patient1 = self.create_patient(email="patient1@test.com")
+        patient2 = self.create_patient(email="patient2@test.com")
+        patient3 = self.create_patient(email="patient3@test.com")
+
+        # Create studies ordered by this doctor
+        study1 = self.create_study(patient=patient1, ordered_by=doctor)
+        study2 = self.create_study(patient=patient2, ordered_by=doctor)
+        # Create another study for patient1 (should not duplicate)
+        study3 = self.create_study(patient=patient1, ordered_by=doctor)
+
+        # Get doctor's patients
+        doctor_patients = doctor.patients
+
+        # Should return 2 unique patients (patient1 and patient2)
+        assert doctor_patients.count() == 2
+        assert patient1 in doctor_patients
+        assert patient2 in doctor_patients
+        assert patient3 not in doctor_patients  # Not ordered by this doctor
+
+        # Should return User objects with role='patient'
+        for patient in doctor_patients:
+            assert patient.role == "patient"
+
+    def test_doctor_patients_property_empty(self):
+        """Test that doctor.patients returns empty queryset when no studies ordered."""
+        doctor = self.create_doctor()
+
+        # Doctor has no studies
+        assert doctor.patients.count() == 0
+
+    def test_non_doctor_patients_property(self):
+        """Test that non-doctor users get empty queryset from patients property."""
+        # Create different role users
+        patient = self.create_patient()
+        admin = self.create_admin()
+        staff = self.create_lab_staff()
+
+        # Create a study to ensure there's data in the database
+        doctor = self.create_doctor()
+        self.create_study(patient=patient, ordered_by=doctor)
+
+        # Non-doctors should always get empty queryset
+        assert patient.patients.count() == 0
+        assert admin.patients.count() == 0
+        assert staff.patients.count() == 0
+
+    def test_doctor_patients_property_is_queryset(self):
+        """Test that doctor.patients returns a QuerySet that can be filtered."""
+        doctor = self.create_doctor()
+        patient1 = self.create_patient(
+            email="patient1@test.com", first_name="Alice", last_name="Smith"
+        )
+        patient2 = self.create_patient(
+            email="patient2@test.com", first_name="Bob", last_name="Jones"
+        )
+
+        self.create_study(patient=patient1, ordered_by=doctor)
+        self.create_study(patient=patient2, ordered_by=doctor)
+
+        # Test that it returns a QuerySet
+        doctor_patients = doctor.patients
+        assert hasattr(doctor_patients, "filter")
+        assert hasattr(doctor_patients, "order_by")
+
+        # Test filtering
+        alice_only = doctor_patients.filter(first_name="Alice")
+        assert alice_only.count() == 1
+        assert patient1 in alice_only
+
+        # Test ordering
+        ordered_patients = doctor_patients.order_by("first_name")
+        assert list(ordered_patients) == [patient1, patient2]
+
 
 class TestUserManager(BaseTestCase):
     """Test cases for User custom manager."""

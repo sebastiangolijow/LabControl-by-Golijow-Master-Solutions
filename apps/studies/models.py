@@ -12,6 +12,16 @@ from apps.core.models import LabClientModel
 from .managers import StudyManager
 from .managers import StudyTypeManager
 
+# Class determinaciones(BaseModel):
+#     nombre
+#     cod
+#     estimaciones = model.models.CharField(_(""), max_length=50)
+
+
+# class userestimatmato:
+#     fk
+#     fk
+#     valor
 
 class Practice(BaseModel):
     """
@@ -28,6 +38,7 @@ class Practice(BaseModel):
         blank=True,
         help_text=_("Laboratory technique used for this practice"),
     )
+    num_protocolo = models.CharField()
 
     # Sample information
     sample_type = models.CharField(
@@ -73,6 +84,7 @@ class Practice(BaseModel):
 
     # Status
     is_active = models.BooleanField(_("active"), default=True)
+    determinaciones = ... -->
 
     class Meta:
         verbose_name = _("practice")
@@ -83,7 +95,7 @@ class Practice(BaseModel):
         return self.name
 
 
-class StudyType(BaseModel): # Protocolo | Estudio
+class StudyType(BaseModel):  # Protocolo | Estudio
     """
     Type of medical study/test offered by the laboratory.
 
@@ -132,7 +144,7 @@ class StudyType(BaseModel): # Protocolo | Estudio
         return f"{self.name} ({self.code})"
 
 
-class Study(BaseModel, LabClientModel): 
+class Study(BaseModel, LabClientModel):
     """
     Individual study/test order for a patient.
 
