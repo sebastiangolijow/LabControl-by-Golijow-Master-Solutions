@@ -19,7 +19,6 @@ from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
 from .filters import StudyFilter
-from .filters import StudyTypeFilter
 from .models import Practice
 from .models import Study
 from .models import StudyType
