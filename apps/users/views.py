@@ -318,7 +318,6 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-
 class PatientRegistrationView(generics.CreateAPIView):
     """
     Public endpoint for patient self-registration.

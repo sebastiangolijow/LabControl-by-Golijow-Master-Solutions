@@ -74,9 +74,7 @@ class Command(BaseCommand):
 
             status = "created" if created else "already exists (updated)"
             self.stdout.write(
-                self.style.SUCCESS(
-                    f"  ✓ [{user.role}] {email} — {status}"
-                )
+                self.style.SUCCESS(f"  ✓ [{user.role}] {email} — {status}")
             )
 
         self.stdout.write("")

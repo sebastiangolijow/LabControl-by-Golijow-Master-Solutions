@@ -182,7 +182,9 @@ class TestStudyFilter(BaseTestCase):
         response = client.get("/api/v1/studies/?status=pending")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        assert any(s["protocol_number"] == pending_study.protocol_number for s in results)
+        assert any(
+            s["protocol_number"] == pending_study.protocol_number for s in results
+        )
         assert not any(
             s["protocol_number"] == completed_study.protocol_number for s in results
         )

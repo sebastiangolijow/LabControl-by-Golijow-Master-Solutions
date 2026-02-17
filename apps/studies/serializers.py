@@ -66,7 +66,9 @@ class PracticeSerializer(serializers.ModelSerializer):
 class UserDeterminationSerializer(serializers.ModelSerializer):
     """Serializer for UserDetermination model."""
 
-    determination_detail = DeterminationSerializer(source="determination", read_only=True)
+    determination_detail = DeterminationSerializer(
+        source="determination", read_only=True
+    )
 
     class Meta:
         model = UserDetermination
@@ -163,8 +165,9 @@ class StudyResultUploadSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         # Import User model dynamically to avoid circular imports
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
-        self.fields['ordered_by'] = serializers.PrimaryKeyRelatedField(
+        self.fields["ordered_by"] = serializers.PrimaryKeyRelatedField(
             queryset=User.objects.filter(role="doctor"),
             required=False,
             allow_null=True,
