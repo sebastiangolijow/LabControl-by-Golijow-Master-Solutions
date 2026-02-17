@@ -6,27 +6,52 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from simple_history.models import HistoricalRecords
 
-from apps.core.models import BaseModel, LabClientModel
+from apps.core.models import BaseModel
+from apps.core.models import LabClientModel
 
-from .managers import StudyManager, StudyTypeManager
-
-# Class determinaciones(BaseModel):
-#     nombre
-#     cod
-#     estimaciones = model.models.CharField(_(""), max_length=50)
+from .managers import StudyManager
 
 
-# class userestimatmato:
-#     fk
-#     fk
-#     valor
+class Determination(BaseModel):
+    """
+    Determination/analyte that can be measured in a practice.
+
+    Examples: Glucose, Hemoglobin, White Blood Cell Count, etc.
+    One determination can be part of multiple practices.
+    """
+
+    name = models.CharField(_("name"), max_length=200)
+    code = models.CharField(_("code"), max_length=50, unique=True)
+    unit = models.CharField(
+        _("unit"),
+        max_length=50,
+        blank=True,
+        help_text=_("Unit of measurement (e.g., mg/dL, g/L, cells/μL)"),
+    )
+    reference_range = models.CharField(
+        _("reference range"),
+        max_length=200,
+        blank=True,
+        help_text=_("Normal reference range for this determination"),
+    )
+    description = models.TextField(_("description"), blank=True)
+    is_active = models.BooleanField(_("active"), default=True)
+
+    class Meta:
+        verbose_name = _("determination")
+        verbose_name_plural = _("determinations")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
 
 class Practice(BaseModel):
     """
-    Medical practice/test that can be included in study types (protocols).
+    Medical practice/test that can be ordered.
 
     Each practice represents a specific medical test or procedure with its
-    requirements and specifications.
+    requirements and specifications. A practice can include multiple determinations.
     """
 
     name = models.CharField(_("name"), max_length=200)
@@ -36,7 +61,6 @@ class Practice(BaseModel):
         blank=True,
         help_text=_("Laboratory technique used for this practice"),
     )
-    num_protocolo = models.CharField()
 
     # Sample information
     sample_type = models.CharField(
@@ -80,9 +104,17 @@ class Practice(BaseModel):
         help_text=_("Price for this practice"),
     )
 
+    # Determinations relationship
+    determinations = models.ManyToManyField(
+        Determination,
+        related_name="practices",
+        blank=True,
+        verbose_name=_("determinations"),
+        help_text=_("Determinations/analytes included in this practice"),
+    )
+
     # Status
     is_active = models.BooleanField(_("active"), default=True)
-    determinaciones = ... -->
 
     class Meta:
         verbose_name = _("practice")
@@ -91,55 +123,6 @@ class Practice(BaseModel):
 
     def __str__(self):
         return self.name
-
-
-class StudyType(BaseModel):  # Protocolo | Estudio
-    """
-    Type of medical study/test offered by the laboratory.
-
-    Examples: Blood Test, X-Ray, MRI, COVID-19 Test, etc.
-    """
-
-    name = models.CharField(_("name"), max_length=200)
-    code = models.CharField(_("code"), max_length=50, unique=True)
-    description = models.TextField(_("description"), blank=True)
-    category = models.CharField(_("category"), max_length=100, blank=True)
-
-    # Requirements
-    requires_fasting = models.BooleanField(_("requires fasting"), default=False)
-    preparation_instructions = models.TextField(
-        _("preparation instructions"), blank=True
-    )
-
-    # Processing time
-    estimated_processing_hours = models.IntegerField(
-        _("estimated processing time (hours)"),
-        default=24,
-    )
-
-    # Protocol practices (catalog information)
-    # ManyToMany relationship with Practice model
-    practices = models.ManyToManyField(
-        Practice,
-        related_name="study_types",
-        blank=True,
-        verbose_name=_("practices"),
-        help_text=_("Practices/tests included in this protocol"),
-    )
-
-    # Status
-    is_active = models.BooleanField(_("active"), default=True)
-
-    # Custom manager
-    objects = StudyTypeManager()
-
-    class Meta:
-        verbose_name = _("study type")
-        verbose_name_plural = _("study types")
-        ordering = ["name"]
-
-    def __str__(self):
-        return f"{self.name} ({self.code})"
 
 
 class Study(BaseModel, LabClientModel):
@@ -164,10 +147,11 @@ class Study(BaseModel, LabClientModel):
         related_name="studies",
         limit_choices_to={"role": "patient"},
     )
-    study_type = models.ForeignKey(
-        StudyType,
+    practice = models.ForeignKey(
+        Practice,
         on_delete=models.PROTECT,
         related_name="studies",
+        help_text=_("The practice/test being ordered"),
     )
     ordered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -180,11 +164,11 @@ class Study(BaseModel, LabClientModel):
     )
 
     # Study details
-    order_number = models.CharField(
-        _("order number"),
+    protocol_number = models.CharField(
+        _("protocol number"),
         max_length=50,
         unique=True,
-        help_text=_("Unique identifier for this study"),
+        help_text=_("Unique protocol identifier for this study"),
     )
     status = models.CharField(
         _("status"),
@@ -238,13 +222,13 @@ class Study(BaseModel, LabClientModel):
         verbose_name_plural = _("studies")
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["order_number"]),
+            models.Index(fields=["protocol_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["lab_client_id"]),
         ]
 
     def __str__(self):
-        return f"{self.order_number} - {self.study_type.name}"
+        return f"{self.protocol_number} - {self.practice.name}"
 
     def clean(self):
         """Validate that ordered_by is a doctor."""
@@ -267,3 +251,48 @@ class Study(BaseModel, LabClientModel):
     def is_pending(self):
         """Check if the study is pending."""
         return self.status == "pending"
+
+
+class UserDetermination(BaseModel):
+    """
+    Stores the result value of a determination for a specific user/study.
+
+    Links a patient's study with specific determination results.
+    """
+
+    study = models.ForeignKey(
+        Study,
+        on_delete=models.CASCADE,
+        related_name="determination_results",
+        help_text=_("The study this result belongs to"),
+    )
+    determination = models.ForeignKey(
+        Determination,
+        on_delete=models.PROTECT,
+        related_name="user_results",
+        help_text=_("The determination being measured"),
+    )
+    value = models.CharField(
+        _("value"),
+        max_length=200,
+        help_text=_("The measured value for this determination"),
+    )
+    is_abnormal = models.BooleanField(
+        _("abnormal"),
+        default=False,
+        help_text=_("Flag if value is outside normal range"),
+    )
+    notes = models.TextField(
+        _("notes"),
+        blank=True,
+        help_text=_("Additional notes about this result"),
+    )
+
+    class Meta:
+        verbose_name = _("user determination")
+        verbose_name_plural = _("user determinations")
+        ordering = ["study", "determination"]
+        unique_together = [["study", "determination"]]
+
+    def __str__(self):
+        return f"{self.study.protocol_number} - {self.determination.name}: {self.value}"

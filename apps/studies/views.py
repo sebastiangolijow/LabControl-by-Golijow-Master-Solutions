@@ -18,15 +18,17 @@ from apps.notifications.models import Notification
 from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
-from .filters import StudyFilter
-from .models import Practice
-from .models import Study
-from .models import StudyType
-from .serializers import PracticeSerializer
-from .serializers import StudyCreateSerializer
-from .serializers import StudyResultUploadSerializer
-from .serializers import StudySerializer
-from .serializers import StudyTypeSerializer
+from .filters import DeterminationFilter, StudyFilter
+from .models import Determination, Practice, Study, UserDetermination
+from .serializers import (
+    DeterminationSerializer,
+    PracticeSerializer,
+    StudyCreateSerializer,
+    StudyResultUploadSerializer,
+    StudySerializer,
+    UserDeterminationCreateSerializer,
+    UserDeterminationSerializer,
+)
 
 
 class PracticeViewSet(viewsets.ModelViewSet):
@@ -56,27 +58,25 @@ class PracticeViewSet(viewsets.ModelViewSet):
         return [IsAdminOrLabManager()]
 
 
-class StudyTypeViewSet(viewsets.ModelViewSet):
+class DeterminationViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing study types (protocols/units).
+    ViewSet for managing determinations (lab test measurements).
 
     Permissions:
-    - All authenticated users can view study types (GET)
-    - Only admins can create, update, or delete study types (POST, PUT, PATCH, DELETE)
+    - All authenticated users can view determinations (GET)
+    - Only admins can create, update, or delete determinations (POST, PUT, PATCH, DELETE)
 
     Filters:
-    - search: Search by name, code, description, category
-    - category: Filter by category (exact match)
-    - requires_fasting: Filter by fasting requirement (true/false)
+    - search: Search by name, code, description
     - is_active: Filter by active status (true/false)
     """
 
-    queryset = StudyType.objects.filter(is_active=True)
-    serializer_class = StudyTypeSerializer
+    queryset = Determination.objects.filter(is_active=True)
+    serializer_class = DeterminationSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_class = StudyTypeFilter
-    ordering_fields = ["name", "created_at"]
+    filterset_class = DeterminationFilter
+    ordering_fields = ["name", "code", "created_at"]
     ordering = ["name"]
 
     def get_permissions(self):
@@ -84,6 +84,50 @@ class StudyTypeViewSet(viewsets.ModelViewSet):
         if self.action in ["list", "retrieve"]:
             return [permissions.IsAuthenticated()]
         return [IsAdminOrLabManager()]
+
+
+class UserDeterminationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user determination results.
+
+    Permissions:
+    - Lab staff and admins can create and update results
+    - Patients can view their own results
+    - Doctors can view results for studies they ordered
+    """
+
+    queryset = UserDetermination.objects.all()
+    serializer_class = UserDeterminationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action in ["create", "update", "partial_update"]:
+            return UserDeterminationCreateSerializer
+        return UserDeterminationSerializer
+
+    def get_permissions(self):
+        """Only lab staff and admins can create/update results."""
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAdminOrLabManager()]
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        """Filter results based on user role."""
+        user = self.request.user
+        queryset = UserDetermination.objects.all()
+
+        if user.is_superuser or user.role in ["admin", "lab_staff"]:
+            # Admins and lab staff see all results
+            return queryset
+        elif user.role == "patient":
+            # Patients only see their own results
+            return queryset.filter(study__patient=user)
+        elif user.role == "doctor":
+            # Doctors see results for studies they ordered
+            return queryset.filter(study__ordered_by=user)
+        else:
+            return UserDetermination.objects.none()
 
 
 class StudyViewSet(viewsets.ModelViewSet):
@@ -97,7 +141,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         filters.OrderingFilter,
     ]
     filterset_class = StudyFilter
-    ordering_fields = ["created_at", "completed_at", "order_number"]
+    ordering_fields = ["created_at", "completed_at", "protocol_number"]
     ordering = ["-created_at"]
 
     def get_serializer_class(self):
@@ -186,9 +230,9 @@ class StudyViewSet(viewsets.ModelViewSet):
 
         return Response(
             {
-                "message": f"Study {study.order_number} has been deleted successfully.",
+                "message": f"Study {study.protocol_number} has been deleted successfully.",
                 "study_id": str(study.pk),
-                "order_number": study.order_number,
+                "protocol_number": study.protocol_number,
             },
             status=status.HTTP_200_OK,
         )
@@ -241,7 +285,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         Notification.objects.create(
             user=study.patient,
             title="Test Results Ready",
-            message=f"Your {study.study_type.name} results are now available.",
+            message=f"Your {study.practice.name} results are now available.",
             notification_type="result_ready",
             related_study_id=study.pk,
             channel="in_app",
@@ -254,7 +298,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         send_result_notification_email.delay(
             user_id=study.patient.pk,
             study_id=study.pk,
-            study_type_name=study.study_type.name,
+            study_type_name=study.practice.name,
         )
 
         return Response(
@@ -306,7 +350,7 @@ class StudyViewSet(viewsets.ModelViewSet):
             return FileResponse(
                 study.results_file.open("rb"),
                 as_attachment=True,
-                filename=f"results_{study.order_number}.pdf",
+                filename=f"results_{study.protocol_number}.pdf",
             )
         except Exception as e:
             raise Http404(f"File not found: {str(e)}")
@@ -366,11 +410,11 @@ class StudyViewSet(viewsets.ModelViewSet):
         This endpoint helps admins manage and review all uploaded results.
 
         Query Parameters:
-            - search: Search by order_number, patient email/name
+            - search: Search by protocol_number, patient email/name
             - status: Filter by status
             - patient: Filter by patient ID
-            - study_type: Filter by study type ID
-            - ordering: Sort results (e.g., -completed_at, order_number)
+            - practice: Filter by practice ID
+            - ordering: Sort results (e.g., -completed_at, protocol_number)
         """
         queryset = self.filter_queryset(self.get_queryset())
 
@@ -400,9 +444,9 @@ class StudyViewSet(viewsets.ModelViewSet):
         This endpoint is used by the upload results modal to show available studies.
 
         Query Parameters:
-            - search: Search by order_number, patient name
+            - search: Search by protocol_number, patient name
             - patient: Filter by patient ID
-            - study_type: Filter by study type ID
+            - practice: Filter by practice ID
             - ordering: Sort results (default: -created_at)
 
         Returns:

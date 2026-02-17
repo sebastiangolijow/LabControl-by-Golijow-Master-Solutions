@@ -121,20 +121,20 @@ class TestUserFilter(BaseTestCase):
 class TestStudyFilter(BaseTestCase):
     """Test cases for StudyFilter with django_filters."""
 
-    def test_study_search_filter_by_order_number(self):
-        """Test searching studies by order number."""
+    def test_study_search_filter_by_protocol_number(self):
+        """Test searching studies by protocol number."""
         client, admin = self.authenticate_as_admin()
 
         # Create test studies
-        study1 = self.create_study(order_number="ORD-2024-0001")
-        study2 = self.create_study(order_number="ORD-2024-0002")
+        study1 = self.create_study(protocol_number="ORD-2024-0001")
+        study2 = self.create_study(protocol_number="ORD-2024-0002")
 
-        # Search by order number
+        # Search by protocol number
         response = client.get("/api/v1/studies/?search=0001")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        assert any(s["order_number"] == "ORD-2024-0001" for s in results)
-        assert not any(s["order_number"] == "ORD-2024-0002" for s in results)
+        assert any(s["protocol_number"] == "ORD-2024-0001" for s in results)
+        assert not any(s["protocol_number"] == "ORD-2024-0002" for s in results)
 
     def test_study_search_filter_by_patient_name(self):
         """Test searching studies by patient name."""
@@ -150,25 +150,25 @@ class TestStudyFilter(BaseTestCase):
         response = client.get("/api/v1/studies/?search=Michael")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        assert any(s["order_number"] == study1.order_number for s in results)
-        assert not any(s["order_number"] == study2.order_number for s in results)
+        assert any(s["protocol_number"] == study1.protocol_number for s in results)
+        assert not any(s["protocol_number"] == study2.protocol_number for s in results)
 
-    def test_study_search_filter_by_study_type_name(self):
-        """Test searching studies by study type name."""
+    def test_study_search_filter_by_practice_name(self):
+        """Test searching studies by practice name."""
         client, admin = self.authenticate_as_admin()
 
-        # Create study types and studies
-        study_type1 = self.create_study_type(name="Blood Test")
-        study_type2 = self.create_study_type(name="X-Ray Scan", code="XRAY001")
-        study1 = self.create_study(study_type=study_type1)
-        study2 = self.create_study(study_type=study_type2)
+        # Create practices and studies
+        practice1 = self.create_practice(name="Blood Test")
+        practice2 = self.create_practice(name="X-Ray Scan")
+        study1 = self.create_study(practice=practice1)
+        study2 = self.create_study(practice=practice2)
 
-        # Search by study type name
+        # Search by practice name
         response = client.get("/api/v1/studies/?search=Blood")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        assert any(s["order_number"] == study1.order_number for s in results)
-        assert not any(s["order_number"] == study2.order_number for s in results)
+        assert any(s["protocol_number"] == study1.protocol_number for s in results)
+        assert not any(s["protocol_number"] == study2.protocol_number for s in results)
 
     def test_study_filter_by_status(self):
         """Test filtering studies by status."""
@@ -182,9 +182,9 @@ class TestStudyFilter(BaseTestCase):
         response = client.get("/api/v1/studies/?status=pending")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        assert any(s["order_number"] == pending_study.order_number for s in results)
+        assert any(s["protocol_number"] == pending_study.protocol_number for s in results)
         assert not any(
-            s["order_number"] == completed_study.order_number for s in results
+            s["protocol_number"] == completed_study.protocol_number for s in results
         )
 
 
@@ -231,9 +231,9 @@ class TestDoctorPermissions(BaseTestCase):
         response = client.get("/api/v1/studies/")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        order_numbers = [s["order_number"] for s in results]
-        assert my_study.order_number in order_numbers
-        assert other_study.order_number not in order_numbers
+        protocol_numbers = [s["protocol_number"] for s in results]
+        assert my_study.protocol_number in protocol_numbers
+        assert other_study.protocol_number not in protocol_numbers
 
 
 class TestAvailableForUploadEndpoint(BaseTestCase):
@@ -254,14 +254,14 @@ class TestAvailableForUploadEndpoint(BaseTestCase):
         response = client.get("/api/v1/studies/available-for-upload/")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        order_numbers = [s["order_number"] for s in results]
+        protocol_numbers = [s["protocol_number"] for s in results]
 
         # Should include pending and in_progress
-        assert pending_study.order_number in order_numbers
-        assert in_progress_study.order_number in order_numbers
+        assert pending_study.protocol_number in protocol_numbers
+        assert in_progress_study.protocol_number in protocol_numbers
 
         # Should not include completed with results
-        assert completed_study.order_number not in order_numbers
+        assert completed_study.protocol_number not in protocol_numbers
 
     def test_available_for_upload_requires_admin_or_lab_staff(self):
         """Test that only admin and lab staff can access endpoint."""
@@ -301,9 +301,9 @@ class TestAvailableForUploadEndpoint(BaseTestCase):
         response = client.get("/api/v1/studies/available-for-upload/?search=Alice")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        order_numbers = [s["order_number"] for s in results]
-        assert study1.order_number in order_numbers
-        assert study2.order_number not in order_numbers
+        protocol_numbers = [s["protocol_number"] for s in results]
+        assert study1.protocol_number in protocol_numbers
+        assert study2.protocol_number not in protocol_numbers
 
 
 class TestPermissionsClassUpdate(BaseTestCase):

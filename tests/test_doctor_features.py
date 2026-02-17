@@ -34,8 +34,8 @@ class TestStudyDoctorValidation(BaseTestCase):
 
         study = Study(
             patient=patient,
-            study_type=self.create_study_type(),
-            order_number="ORD-2024-TEST-001",
+            practice=self.create_practice(),
+            protocol_number="ORD-2024-TEST-001",
             ordered_by=non_doctor,
             status="pending",
         )
@@ -54,8 +54,8 @@ class TestStudyDoctorValidation(BaseTestCase):
 
         study = Study(
             patient=patient,
-            study_type=self.create_study_type(),
-            order_number="ORD-2024-TEST-002",
+            practice=self.create_practice(),
+            protocol_number="ORD-2024-TEST-002",
             ordered_by=admin,
             status="pending",
         )
@@ -72,8 +72,8 @@ class TestStudyDoctorValidation(BaseTestCase):
 
         study = Study(
             patient=patient,
-            study_type=self.create_study_type(),
-            order_number="ORD-2024-TEST-003",
+            practice=self.create_practice(),
+            protocol_number="ORD-2024-TEST-003",
             ordered_by=doctor,
             status="pending",
         )
@@ -97,10 +97,10 @@ class TestDoctorPermissions(BaseTestCase):
 
         # Create studies ordered by different doctors
         study1 = self.create_study(
-            patient=patient1, ordered_by=doctor1, order_number="ORD-2024-DOC1"
+            patient=patient1, ordered_by=doctor1, protocol_number="ORD-2024-DOC1"
         )
         study2 = self.create_study(
-            patient=patient2, ordered_by=doctor2, order_number="ORD-2024-DOC2"
+            patient=patient2, ordered_by=doctor2, protocol_number="ORD-2024-DOC2"
         )
 
         # Authenticate as doctor1
@@ -110,8 +110,8 @@ class TestDoctorPermissions(BaseTestCase):
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
         assert len(results) == 1
-        assert results[0]["order_number"] == study1.order_number
-        assert results[0]["order_number"] != study2.order_number
+        assert results[0]["protocol_number"] == study1.protocol_number
+        assert results[0]["protocol_number"] != study2.protocol_number
 
     def test_doctor_cannot_see_studies_ordered_by_others(self):
         """Test that doctors cannot see studies ordered by other doctors."""
@@ -144,7 +144,7 @@ class TestDoctorPermissions(BaseTestCase):
         response = client.get(f"/api/v1/studies/{study.pk}/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["order_number"] == study.order_number
+        assert response.data["protocol_number"] == study.protocol_number
 
     def test_doctor_cannot_download_other_doctor_study_results(self):
         """Test that doctors cannot download results ordered by other doctors."""

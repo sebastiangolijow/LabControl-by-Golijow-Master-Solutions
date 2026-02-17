@@ -4,45 +4,35 @@ from decimal import Decimal
 
 from rest_framework import status
 
-from apps.studies.models import Study, StudyType
+from apps.studies.models import Practice, Study
 from tests.base import BaseTestCase
 
 
-class TestStudyTypeModel(BaseTestCase):
-    """Test cases for StudyType model."""
+class TestPracticeModel(BaseTestCase):
+    """Test cases for Practice model."""
 
-    def test_create_study_type(self):
-        """Test creating a study type."""
-        study_type = self.create_study_type()
-        assert study_type.name == "Complete Blood Count"
-        assert study_type.code.startswith("CBC")
-        assert study_type.is_active is True
+    def test_create_practice(self):
+        """Test creating a practice."""
+        practice = self.create_practice()
+        assert practice.name.startswith("Test Practice")
+        assert practice.is_active is True
 
-    def test_study_type_has_uuid(self):
-        """Test that study type has UUID field."""
-        study_type = self.create_study_type()
-        self.assertUUID(study_type.uuid)
+    def test_practice_has_uuid(self):
+        """Test that practice has UUID field."""
+        practice = self.create_practice()
+        self.assertUUID(practice.uuid)
 
-    def test_study_type_has_timestamps(self):
-        """Test that study type has timestamp fields."""
-        study_type = self.create_study_type()
-        self.assertIsNotNone(study_type.created_at)
-        self.assertIsNotNone(study_type.updated_at)
-        self.assertTimestampRecent(study_type.created_at)
+    def test_practice_has_timestamps(self):
+        """Test that practice has timestamp fields."""
+        practice = self.create_practice()
+        self.assertIsNotNone(practice.created_at)
+        self.assertIsNotNone(practice.updated_at)
+        self.assertTimestampRecent(practice.created_at)
 
-    def test_study_type_str_representation(self):
-        """Test study type string representation."""
-        study_type = self.create_study_type()
-        assert str(study_type) == f"{study_type.name} ({study_type.code})"
-
-    def test_study_type_custom_staff_active(self):
-        """Test StudyTypeManager.active() method."""
-        active = self.create_study_type(is_active=True)
-        inactive = self.create_study_type(code="INV001", is_active=False)
-
-        active_types = StudyType.objects.active()
-        assert active in active_types
-        assert inactive not in active_types
+    def test_practice_str_representation(self):
+        """Test practice string representation."""
+        practice = self.create_practice(name="Blood Test")
+        assert str(practice) == "Blood Test"
 
 
 class TestStudyModel(BaseTestCase):
@@ -51,7 +41,7 @@ class TestStudyModel(BaseTestCase):
     def test_create_study(self):
         """Test creating a study."""
         study = self.create_study()
-        assert study.order_number.startswith("ORD-2024-")
+        assert study.protocol_number.startswith("PROT-2024-")
         assert study.status == "pending"
         assert study.is_pending is True
         assert study.is_completed is False
@@ -82,38 +72,38 @@ class TestStudyModel(BaseTestCase):
     def test_study_str_representation(self):
         """Test study string representation."""
         study = self.create_study()
-        expected = f"{study.order_number} - {study.study_type.name}"
+        expected = f"{study.protocol_number} - {study.practice.name}"
         assert str(study) == expected
 
-    def test_study_custom_staff_pending(self):
+    def test_study_custom_manager_pending(self):
         """Test StudyManager.pending() method."""
         pending_study = self.create_study(status="pending")
         completed_study = self.create_study(
-            order_number="ORD-2024-9999", status="completed"
+            protocol_number="PROT-2024-9999", status="completed"
         )
 
         pending_studies = Study.objects.pending()
         assert pending_study in pending_studies
         assert completed_study not in pending_studies
 
-    def test_study_custom_staff_completed(self):
+    def test_study_custom_manager_completed(self):
         """Test StudyManager.completed() method."""
         pending_study = self.create_study(status="pending")
         completed_study = self.create_study(
-            order_number="ORD-2024-9999", status="completed"
+            protocol_number="PROT-2024-9999", status="completed"
         )
 
         completed_studies = Study.objects.completed()
         assert completed_study in completed_studies
         assert pending_study not in completed_studies
 
-    def test_study_custom_staff_for_patient(self):
+    def test_study_custom_manager_for_patient(self):
         """Test StudyManager.for_patient() method."""
         patient1 = self.create_patient()
         patient2 = self.create_patient()
 
         study1 = self.create_study(patient=patient1)
-        study2 = self.create_study(patient=patient2, order_number="ORD-2024-9999")
+        study2 = self.create_study(patient=patient2, protocol_number="PROT-2024-9999")
 
         patient1_studies = Study.objects.for_patient(patient1)
         assert study1 in patient1_studies
@@ -126,7 +116,7 @@ class TestStudyModel(BaseTestCase):
 
         lab1_study = self.create_study(patient=lab1_patient)
         lab2_study = self.create_study(
-            patient=lab2_patient, order_number="ORD-2024-9999"
+            patient=lab2_patient, protocol_number="PROT-2024-9999"
         )
 
         lab1_studies = Study.objects.for_lab(1)
@@ -137,14 +127,15 @@ class TestStudyModel(BaseTestCase):
 class TestStudyAPI(BaseTestCase):
     """Test cases for Study API endpoints."""
 
-    def test_list_study_types(self):
-        """Test listing active study types."""
+    def test_list_practices(self):
+        """Test listing active practices."""
         client, user = self.authenticate_as_patient()
-        _study_type = self.create_study_type()  # noqa: F841
+        practice = self.create_practice()
 
-        response = client.get("/api/v1/studies/types/")
+        response = client.get("/api/v1/studies/practices/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["name"] == practice.name
 
     def test_list_patient_studies(self):
         """Test patient can see their own studies."""
@@ -154,7 +145,7 @@ class TestStudyAPI(BaseTestCase):
         response = client.get("/api/v1/studies/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 1
-        assert response.data["results"][0]["order_number"] == study.order_number
+        assert response.data["results"][0]["protocol_number"] == study.protocol_number
 
     def test_patient_cannot_see_other_patient_studies(self):
         """Test patients cannot see other patients' studies."""

@@ -3,8 +3,7 @@
 import django_filters
 from django.db.models import Q
 
-from .models import Study
-from .models import StudyType
+from .models import Determination, Practice, Study
 
 
 class StudyFilter(django_filters.FilterSet):
@@ -17,7 +16,7 @@ class StudyFilter(django_filters.FilterSet):
         model = Study
         fields = {
             "status": ["exact"],
-            "study_type": ["exact"],
+            "practice": ["exact"],
             "patient": ["exact"],
             "ordered_by": ["exact"],
         }
@@ -26,38 +25,36 @@ class StudyFilter(django_filters.FilterSet):
         """
         Filter studies by search term across multiple fields.
 
-        Searches in: order_number, patient name, study type name
+        Searches in: protocol_number, patient name, practice name
         """
         if not value:
             return queryset
 
         return queryset.filter(
-            Q(order_number__icontains=value)
+            Q(protocol_number__icontains=value)
             | Q(patient__first_name__icontains=value)
             | Q(patient__last_name__icontains=value)
-            | Q(study_type__name__icontains=value)
+            | Q(practice__name__icontains=value)
         )
 
 
-class StudyTypeFilter(django_filters.FilterSet):
-    """Filter set for StudyType model (protocols/units)."""
+class DeterminationFilter(django_filters.FilterSet):
+    """Filter set for Determination model."""
 
     # Search across multiple fields
     search = django_filters.CharFilter(method="filter_search", label="Search")
 
     class Meta:
-        model = StudyType
+        model = Determination
         fields = {
-            "category": ["exact"],
-            "requires_fasting": ["exact"],
             "is_active": ["exact"],
         }
 
     def filter_search(self, queryset, name, value):
         """
-        Filter study types by search term across multiple fields.
+        Filter determinations by search term across multiple fields.
 
-        Searches in: name, code, description, category
+        Searches in: name, code, description
         """
         if not value:
             return queryset
@@ -66,5 +63,4 @@ class StudyTypeFilter(django_filters.FilterSet):
             Q(name__icontains=value)
             | Q(code__icontains=value)
             | Q(description__icontains=value)
-            | Q(category__icontains=value)
         )

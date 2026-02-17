@@ -7,7 +7,7 @@ class StudyStatisticsSerializer(serializers.Serializer):
     """Serializer for study statistics response."""
 
     overview = serializers.DictField()
-    by_type = serializers.ListField()
+    by_practice = serializers.ListField()
     avg_processing_hours = serializers.FloatField(allow_null=True)
 
 
@@ -72,21 +72,19 @@ class DashboardSummarySerializer(serializers.Serializer):
     period = serializers.DictField()
 
 
-class PopularStudyTypeSerializer(serializers.Serializer):
-    """Serializer for popular study types."""
+class PopularPracticeSerializer(serializers.Serializer):
+    """Serializer for popular practices."""
 
-    study_type__name = serializers.CharField()
-    study_type__category = serializers.CharField()
-    study_type__code = serializers.CharField()
+    practice__name = serializers.CharField()
+    practice__technique = serializers.CharField()
     order_count = serializers.IntegerField()
     completed_count = serializers.IntegerField()
 
 
-class TopRevenueStudyTypeSerializer(serializers.Serializer):
-    """Serializer for top revenue study types."""
+class TopRevenuePracticeSerializer(serializers.Serializer):
+    """Serializer for top revenue practices."""
 
-    study__study_type__name = serializers.CharField()
-    study__study_type__category = serializers.CharField()
-    study__study_type__code = serializers.CharField()
+    study__practice__name = serializers.CharField()
+    study__practice__technique = serializers.CharField()
     total_revenue = serializers.DecimalField(max_digits=10, decimal_places=2)
     order_count = serializers.IntegerField()

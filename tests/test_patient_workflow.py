@@ -49,14 +49,14 @@ class TestPatientWorkflow(BaseTestCase):
         # ======================================================================
         # STEP 2: Patient Login and Schedule Appointment
         # ======================================================================
-        # Create a study type first (before authentication)
-        study_type = self.create_study_type(name="Blood Test", code="BT001")
+        # Create a practice first (before authentication)
+        practice = self.create_practice(name="Blood Test")
 
         # Authenticate as the newly registered patient
         client, patient = self.authenticate_user_by_email("newpatient@test.com")
 
-        # Get available study types
-        response = client.get("/api/v1/studies/types/")
+        # Get available practices
+        response = client.get("/api/v1/studies/practices/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
@@ -96,7 +96,7 @@ class TestPatientWorkflow(BaseTestCase):
         # Create a study for the patient
         study = self.create_study(
             patient=patient,
-            study_type=study_type,
+            practice=practice,
             status="in_progress",
             lab_client_id=patient.lab_client_id,
         )
@@ -162,7 +162,7 @@ class TestPatientWorkflow(BaseTestCase):
         other_patient = self.create_patient(email="other@test.com")
         other_study = self.create_study(
             patient=other_patient,
-            study_type=study_type,
+            practice=practice,
             status="completed",
         )
 

@@ -3,11 +3,19 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import PracticeViewSet, StudyTypeViewSet, StudyViewSet
+from .views import (
+    DeterminationViewSet,
+    PracticeViewSet,
+    StudyViewSet,
+    UserDeterminationViewSet,
+)
 
 router = DefaultRouter()
 router.register(r"practices", PracticeViewSet, basename="practice")
-router.register(r"types", StudyTypeViewSet, basename="study-type")
+router.register(r"determinations", DeterminationViewSet, basename="determination")
+router.register(
+    r"user-determinations", UserDeterminationViewSet, basename="user-determination"
+)
 router.register(r"", StudyViewSet, basename="study")
 
 app_name = "studies"

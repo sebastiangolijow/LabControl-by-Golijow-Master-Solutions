@@ -41,10 +41,8 @@ class MVPFullScenarioTest(BaseTestCase):
         # SETUP: Create lab infrastructure
         # ===================================================================
         lab_client_id = 1
-        study_type = self.create_study_type(
+        practice = self.create_practice(
             name="Complete Blood Count",
-            code="CBC",
-            category="Hematology",
         )
 
         # ===================================================================
@@ -139,11 +137,11 @@ class MVPFullScenarioTest(BaseTestCase):
         # Create a study for the patient
         study = self.create_study(
             patient=patient,
-            study_type=study_type,
+            practice=practice,
             status="in_progress",
             lab_client_id=lab_client_id,
         )
-        print(f"✓ Study created: {study.order_number}")
+        print(f"✓ Study created: {study.protocol_number}")
 
         # Prepare PDF result file
         pdf_content = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
@@ -221,10 +219,10 @@ class MVPFullScenarioTest(BaseTestCase):
         ), f"Study {str(study.pk)} not found in results list. Available IDs: {result_ids}"
         assert new_result["status"] == "completed"
         assert new_result["results_file"] is not None
-        assert new_result["study_type_detail"]["name"] == "Complete Blood Count"
+        assert new_result["practice_detail"]["name"] == "Complete Blood Count"
         print(f"✓ Patient sees {len(results)} results (new result visible)")
         print(
-            f"  New result: {new_result['study_type_detail']['name']} - {new_result['status']}"
+            f"  New result: {new_result['practice_detail']['name']} - {new_result['status']}"
         )
 
         # ===================================================================
@@ -235,7 +233,7 @@ class MVPFullScenarioTest(BaseTestCase):
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
         assert "attachment" in response["Content-Disposition"]
-        assert f"results_{study.order_number}.pdf" in response["Content-Disposition"]
+        assert f"results_{study.protocol_number}.pdf" in response["Content-Disposition"]
         print(f"✓ Patient downloaded PDF: {response['Content-Disposition']}")
 
         # ===================================================================
@@ -354,7 +352,7 @@ class MVPFullScenarioTest(BaseTestCase):
         )
         other_study = self.create_study(
             patient=other_patient,
-            study_type=study_type,
+            practice=practice,
             status="completed",
             lab_client_id=2,
         )

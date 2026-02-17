@@ -21,10 +21,10 @@ class EmailNotificationTests(BaseTestCase):
         super().setUp()
         self.patient = self.create_patient(lab_client_id=1)
         self.lab_staff = self.create_lab_staff(lab_client_id=1)
-        self.study_type = self.create_study_type(name="Blood Test")
+        self.practice = self.create_practice(name="Blood Test")
         self.study = self.create_study(
             patient=self.patient,
-            study_type=self.study_type,
+            practice=self.practice,
             lab_client_id=1,
         )
 
@@ -73,7 +73,7 @@ class EmailNotificationTests(BaseTestCase):
         result = send_result_notification_email(
             user_id=self.patient.pk,
             study_id=self.study.pk,
-            study_type_name=self.study_type.name,
+            study_type_name=self.practice.name,
         )
 
         # Check that email was sent
@@ -98,7 +98,7 @@ class EmailNotificationTests(BaseTestCase):
                 send_result_notification_email(
                     user_id=self.patient.pk,
                     study_id=self.study.pk,
-                    study_type_name=self.study_type.name,
+                    study_type_name=self.practice.name,
                 )
 
 
@@ -204,10 +204,10 @@ class AdminResultsManagementTests(BaseTestCase):
         self.admin = self.create_admin(lab_client_id=1)
         self.lab_staff = self.create_lab_staff(lab_client_id=1)
         self.patient = self.create_patient(lab_client_id=1)
-        self.study_type = self.create_study_type(name="X-Ray")
+        self.practice = self.create_practice(name="X-Ray")
         self.study = self.create_study(
             patient=self.patient,
-            study_type=self.study_type,
+            practice=self.practice,
             lab_client_id=1,
         )
 
@@ -287,7 +287,7 @@ class AdminResultsManagementTests(BaseTestCase):
         # Create another study without results (for testing filtering)
         _study_without_results = self.create_study(  # noqa: F841
             patient=self.patient,
-            study_type=self.study_type,
+            practice=self.practice,
             lab_client_id=1,
         )
 

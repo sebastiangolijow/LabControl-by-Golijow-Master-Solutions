@@ -5,12 +5,12 @@ from django.urls import path
 from .views import (
     AppointmentStatisticsView,
     DashboardSummaryView,
-    PopularStudyTypesView,
+    PopularPracticesView,
     RevenueStatisticsView,
     RevenueTrendsView,
     StudyStatisticsView,
     StudyTrendsView,
-    TopRevenueStudyTypesView,
+    TopRevenuePracticesView,
     UserStatisticsView,
 )
 
@@ -33,15 +33,15 @@ urlpatterns = [
     ),
     # User statistics
     path("users/", UserStatisticsView.as_view(), name="user-statistics"),
-    # Study type analytics
+    # Practice analytics
     path(
-        "popular-study-types/",
-        PopularStudyTypesView.as_view(),
-        name="popular-study-types",
+        "popular-practices/",
+        PopularPracticesView.as_view(),
+        name="popular-practices",
     ),
     path(
-        "top-revenue-study-types/",
-        TopRevenueStudyTypesView.as_view(),
-        name="top-revenue-study-types",
+        "top-revenue-practices/",
+        TopRevenuePracticesView.as_view(),
+        name="top-revenue-practices",
     ),
 ]

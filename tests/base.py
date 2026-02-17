@@ -92,37 +92,37 @@ class BaseTestMixin:
     # Study Factories
     # ======================
 
-    def create_study_type(self, **kwargs):
+    def create_practice(self, **kwargs):
         """
-        Factory for creating study types.
+        Factory for creating practices.
 
         Returns:
-            StudyType instance
+            Practice instance
         """
-        from apps.studies.models import StudyType
+        from apps.studies.models import Practice
 
-        # Increment counter to ensure unique codes
+        # Increment counter to ensure unique practice names
         self._user_counter += 1
 
         defaults = {
-            "name": "Complete Blood Count",
-            "code": f"CBC{self._user_counter}",
-            "description": "Complete blood count test",
-            "category": "Hematology",
-            "requires_fasting": False,
-            "estimated_processing_hours": 24,
+            "name": f"Test Practice {self._user_counter}",
+            "technique": "Test Technique",
+            "sample_type": "Blood",
+            "sample_quantity": "5ml",
+            "price": Decimal("100.00"),
+            "delay_days": 3,
             "is_active": True,
         }
         defaults.update(kwargs)
-        return StudyType.objects.create(**defaults)
+        return Practice.objects.create(**defaults)
 
-    def create_study(self, patient=None, study_type=None, **kwargs):
+    def create_study(self, patient=None, practice=None, **kwargs):
         """
         Factory for creating studies.
 
         Args:
             patient: Patient user (created if not provided)
-            study_type: StudyType (created if not provided)
+            practice: Practice (created if not provided)
 
         Returns:
             Study instance
@@ -131,16 +131,17 @@ class BaseTestMixin:
 
         if patient is None:
             patient = self.create_patient()
-        if study_type is None:
-            study_type = self.create_study_type()
 
-        # Increment counter to ensure unique order numbers
+        if practice is None:
+            practice = self.create_practice()
+
+        # Increment counter to ensure unique protocol numbers
         self._user_counter += 1
 
         defaults = {
             "patient": patient,
-            "study_type": study_type,
-            "order_number": f"ORD-2024-{self._user_counter:04d}",
+            "practice": practice,
+            "protocol_number": f"PROT-2024-{self._user_counter:04d}",
             "status": "pending",
             "lab_client_id": patient.lab_client_id or 1,
         }

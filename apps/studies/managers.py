@@ -38,9 +38,9 @@ class StudyQuerySet(LabClientQuerySet):
         """Filter studies for a specific patient."""
         return self.filter(patient=patient)
 
-    def for_study_type(self, study_type):
-        """Filter studies for a specific study type."""
-        return self.filter(study_type=study_type)
+    def for_practice(self, practice):
+        """Filter studies for a specific practice."""
+        return self.filter(practice=practice)
 
     def with_results(self):
         """Return studies that have results."""
@@ -95,39 +95,3 @@ class StudyManager(LabClientManager):
     def for_patient(self, patient):
         """Get all studies for a patient."""
         return self.get_queryset().for_patient(patient)
-
-
-class StudyTypeQuerySet(models.QuerySet):
-    """Custom queryset for StudyType model."""
-
-    def active(self):
-        """Return only active study types."""
-        return self.filter(is_active=True)
-
-    def inactive(self):
-        """Return inactive study types."""
-        return self.filter(is_active=False)
-
-    def by_category(self, category):
-        """Filter by category."""
-        return self.filter(category=category)
-
-    def requiring_fasting(self):
-        """Return study types that require fasting."""
-        return self.filter(requires_fasting=True)
-
-
-class StudyTypeManager(models.Manager):
-    """Custom manager for StudyType model."""
-
-    def get_queryset(self):
-        """Return custom queryset."""
-        return StudyTypeQuerySet(self.model, using=self._db)
-
-    def active(self):
-        """Get active study types."""
-        return self.get_queryset().active()
-
-    def by_category(self, category):
-        """Get study types by category."""
-        return self.get_queryset().by_category(category)

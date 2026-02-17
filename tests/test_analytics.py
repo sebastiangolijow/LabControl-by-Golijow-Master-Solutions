@@ -125,26 +125,26 @@ class TestStudyStatisticsAPI(BaseTestCase):
         assert overview["completed"] == 2
 
     def test_study_statistics_by_type(self):
-        """Test that statistics show breakdown by study type."""
+        """Test that statistics show breakdown by practice type."""
         client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
-        blood_test = self.create_study_type(name="Blood Test", code="BT001")
-        xray = self.create_study_type(name="X-Ray", code="XR001")
+        blood_test = self.create_practice(name="Blood Test")
+        xray = self.create_practice(name="X-Ray")
 
-        self.create_study(patient=patient, study_type=blood_test)
-        self.create_study(patient=patient, study_type=blood_test)
-        self.create_study(patient=patient, study_type=xray)
+        self.create_study(patient=patient, practice=blood_test)
+        self.create_study(patient=patient, practice=blood_test)
+        self.create_study(patient=patient, practice=xray)
 
         response = client.get("/api/v1/analytics/studies/")
         assert response.status_code == status.HTTP_200_OK
 
-        by_type = response.data["by_type"]
+        by_type = response.data["by_practice"]
         assert len(by_type) == 2
 
         # Find blood test entry
         blood_entry = next(
-            item for item in by_type if item["study_type__name"] == "Blood Test"
+            item for item in by_type if item["practice__name"] == "Blood Test"
         )
         assert blood_entry["count"] == 2
 
@@ -299,54 +299,52 @@ class TestUserStatisticsAPI(BaseTestCase):
 
 
 class TestPopularStudyTypesAPI(BaseTestCase):
-    """Test popular study types endpoint."""
+    """Test popular practices endpoint."""
 
-    def test_popular_study_types_shows_order_counts(self):
-        """Test that popular study types are ranked by order count."""
+    def test_popular_practices_shows_order_counts(self):
+        """Test that popular practices are ranked by order count."""
         client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
-        # Create study types
-        blood_test = self.create_study_type(name="Blood Test", code="BT001")
-        xray = self.create_study_type(name="X-Ray", code="XR001")
+        # Create practices
+        blood_test = self.create_practice(name="Blood Test")
+        xray = self.create_practice(name="X-Ray")
 
         # Create more blood tests than x-rays
         for _ in range(3):
-            self.create_study(patient=patient, study_type=blood_test)
-        self.create_study(patient=patient, study_type=xray)
+            self.create_study(patient=patient, practice=blood_test)
+        self.create_study(patient=patient, practice=xray)
 
-        response = client.get("/api/v1/analytics/popular-study-types/")
+        response = client.get("/api/v1/analytics/popular-practices/")
         assert response.status_code == status.HTTP_200_OK
 
         types = response.data
         assert len(types) >= 2
 
         # Blood test should be first (most popular)
-        assert types[0]["study_type__name"] == "Blood Test"
+        assert types[0]["practice__name"] == "Blood Test"
         assert types[0]["order_count"] == 3
 
 
 class TestTopRevenueStudyTypesAPI(BaseTestCase):
-    """Test top revenue study types endpoint."""
+    """Test top revenue practices endpoint."""
 
-    def test_top_revenue_study_types_ranked_by_revenue(self):
-        """Test that study types are ranked by revenue generated."""
+    def test_top_revenue_practices_ranked_by_revenue(self):
+        """Test that practices are ranked by revenue generated."""
         client, _staff = self.authenticate_as_lab_staff(lab_client_id=1)
         patient = self.create_patient(lab_client_id=1)
 
-        # Create study types
-        expensive = self.create_study_type(
+        # Create practices
+        expensive = self.create_practice(
             name="MRI",
-            code="MRI001",
         )
-        cheap = self.create_study_type(
+        cheap = self.create_practice(
             name="Blood Test",
-            code="BT001",
         )
 
         # Create studies and invoices
-        mri_study = self.create_study(patient=patient, study_type=expensive)
-        blood_study = self.create_study(patient=patient, study_type=cheap)
+        mri_study = self.create_study(patient=patient, practice=expensive)
+        blood_study = self.create_study(patient=patient, practice=cheap)
 
         _mri_invoice = self.create_invoice(  # noqa: F841
             patient=patient,
@@ -363,14 +361,14 @@ class TestTopRevenueStudyTypesAPI(BaseTestCase):
             status="paid",
         )
 
-        response = client.get("/api/v1/analytics/top-revenue-study-types/")
+        response = client.get("/api/v1/analytics/top-revenue-practices/")
         assert response.status_code == status.HTTP_200_OK
 
         types = response.data
         assert len(types) >= 2
 
         # MRI should be first (highest revenue)
-        assert types[0]["study__study_type__name"] == "MRI"
+        assert types[0]["study__practice__name"] == "MRI"
         assert Decimal(types[0]["total_revenue"]) == Decimal("1000.00")
 
 
@@ -388,7 +386,7 @@ class TestStatisticsServiceLayer(BaseTestCase):
         assert stats["overview"]["total"] == 2
         assert stats["overview"]["pending"] == 1
         assert stats["overview"]["completed"] == 1
-        assert "by_type" in stats
+        assert "by_practice" in stats
 
     def test_multi_tenant_isolation_in_service(self):
         """Test that service layer properly isolates data by lab."""

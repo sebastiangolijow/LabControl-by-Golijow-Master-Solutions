@@ -15,7 +15,7 @@ from django.utils import timezone
 from apps.appointments.models import Appointment
 from apps.notifications.models import Notification
 from apps.payments.models import Invoice, Payment
-from apps.studies.models import Study, StudyType
+from apps.studies.models import Practice, Study
 from apps.users.models import User
 
 
@@ -61,9 +61,9 @@ class StatisticsService:
             cancelled=Count("pk", filter=Q(status="cancelled")),
         )
 
-        # Count by study type
-        by_type = list(
-            queryset.values("study_type__name", "study_type__category")
+        # Count by practice
+        by_practice = list(
+            queryset.values("practice__name")
             .annotate(count=Count("pk"))
             .order_by("-count")
         )
@@ -78,7 +78,7 @@ class StatisticsService:
 
         return {
             "overview": status_counts,
-            "by_type": by_type,
+            "by_practice": by_practice,
             "avg_processing_hours": (
                 avg_processing["avg_hours"].total_seconds() / 3600
                 if avg_processing["avg_hours"]
@@ -367,27 +367,26 @@ class StatisticsService:
         }
 
     @staticmethod
-    def get_popular_study_types(lab_client_id=None, limit=10):
+    def get_popular_practices(lab_client_id=None, limit=10):
         """
-        Get most popular study types by order count.
+        Get most popular practices by order count.
 
         Args:
             lab_client_id: Filter by lab client
-            limit: Number of top study types to return
+            limit: Number of top practices to return
 
         Returns:
-            list: Study types with order counts
+            list: Practices with order counts
         """
         queryset = Study.objects.all()
 
         if lab_client_id:
             queryset = queryset.for_lab(lab_client_id)
 
-        popular_types = list(
+        popular_practices = list(
             queryset.values(
-                "study_type__name",
-                "study_type__category",
-                "study_type__code",
+                "practice__name",
+                "practice__technique",
             )
             .annotate(
                 order_count=Count("pk"),
@@ -396,32 +395,31 @@ class StatisticsService:
             .order_by("-order_count")[:limit]
         )
 
-        return popular_types
+        return popular_practices
 
     @staticmethod
-    def get_top_revenue_study_types(lab_client_id=None, limit=10):
+    def get_top_revenue_practices(lab_client_id=None, limit=10):
         """
-        Get study types generating most revenue.
+        Get practices generating most revenue.
 
         Args:
             lab_client_id: Filter by lab client
-            limit: Number of top study types to return
+            limit: Number of top practices to return
 
         Returns:
-            list: Study types with revenue totals
+            list: Practices with revenue totals
         """
         queryset = Invoice.objects.filter(status__in=["paid", "partially_paid"])
 
         if lab_client_id:
             queryset = queryset.for_lab(lab_client_id)
 
-        # Join with studies to get study types
+        # Join with studies to get practices
         top_revenue = list(
             queryset.filter(study__isnull=False)
             .values(
-                "study__study_type__name",
-                "study__study_type__category",
-                "study__study_type__code",
+                "study__practice__name",
+                "study__practice__technique",
             )
             .annotate(
                 total_revenue=Coalesce(Sum("paid_amount"), Value(Decimal("0.00"))),

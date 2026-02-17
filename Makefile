@@ -69,6 +69,9 @@ create-superuser: ## Create superuser with email and password (Usage: make creat
 	@echo "Creating superuser with email: $(EMAIL)"
 	@$(DOCKER_COMPOSE) exec -T $(SERVICE_WEB) python manage.py shell <<< "from apps.users.models import User; User.objects.create_superuser(email='$(EMAIL)', password='$(PASSWORD)', first_name='Admin', last_name='User') if not User.objects.filter(email='$(EMAIL)').exists() else print('User already exists'); print('Superuser created successfully!' if not User.objects.filter(email='$(EMAIL)').exists() else 'User already exists')"
 
+seed-users: ## Create seed users for development (admin, doctor, patient @labcontrol.com / test1234)
+	$(DOCKER_COMPOSE) exec $(SERVICE_WEB) python manage.py create_seed_users
+
 verify-email: ## Verify email for a user (Usage: make verify-email EMAIL=user@example.com)
 	@if [ -z "$(EMAIL)" ]; then \
 		echo "Error: EMAIL is required."; \

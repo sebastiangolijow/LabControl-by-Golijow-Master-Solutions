@@ -10,12 +10,12 @@ from .permissions import CanViewAnalytics
 from .serializers import (
     AppointmentStatisticsSerializer,
     DashboardSummarySerializer,
-    PopularStudyTypeSerializer,
+    PopularPracticeSerializer,
     RevenueStatisticsSerializer,
     RevenueTrendSerializer,
     StudyStatisticsSerializer,
     StudyTrendSerializer,
-    TopRevenueStudyTypeSerializer,
+    TopRevenuePracticeSerializer,
     UserStatisticsSerializer,
 )
 from .services import StatisticsService
@@ -300,57 +300,57 @@ class UserStatisticsView(BaseAnalyticsView):
         return Response(serializer.data)
 
 
-class PopularStudyTypesView(BaseAnalyticsView):
+class PopularPracticesView(BaseAnalyticsView):
     """
-    GET /api/v1/analytics/popular-study-types/
+    GET /api/v1/analytics/popular-practices/
 
-    Get most popular study types by order count.
+    Get most popular practices by order count.
 
     Query Parameters:
         - lab_client_id (admin only): Filter by lab client
         - limit: Number of results to return (default: 10)
 
     Returns:
-        List of study types with order counts
+        List of practices with order counts
     """
 
     def get(self, request):
-        """Get popular study types."""
+        """Get popular practices."""
         lab_client_id = self.get_lab_client_id(request)
         limit = int(request.query_params.get("limit", 10))
 
-        data = StatisticsService.get_popular_study_types(
+        data = StatisticsService.get_popular_practices(
             lab_client_id=lab_client_id,
             limit=limit,
         )
 
-        serializer = PopularStudyTypeSerializer(data, many=True)
+        serializer = PopularPracticeSerializer(data, many=True)
         return Response(serializer.data)
 
 
-class TopRevenueStudyTypesView(BaseAnalyticsView):
+class TopRevenuePracticesView(BaseAnalyticsView):
     """
-    GET /api/v1/analytics/top-revenue-study-types/
+    GET /api/v1/analytics/top-revenue-practices/
 
-    Get study types generating most revenue.
+    Get practices generating most revenue.
 
     Query Parameters:
         - lab_client_id (admin only): Filter by lab client
         - limit: Number of results to return (default: 10)
 
     Returns:
-        List of study types with revenue totals
+        List of practices with revenue totals
     """
 
     def get(self, request):
-        """Get top revenue study types."""
+        """Get top revenue practices."""
         lab_client_id = self.get_lab_client_id(request)
         limit = int(request.query_params.get("limit", 10))
 
-        data = StatisticsService.get_top_revenue_study_types(
+        data = StatisticsService.get_top_revenue_practices(
             lab_client_id=lab_client_id,
             limit=limit,
         )
 
-        serializer = TopRevenueStudyTypeSerializer(data, many=True)
+        serializer = TopRevenuePracticeSerializer(data, many=True)
         return Response(serializer.data)
