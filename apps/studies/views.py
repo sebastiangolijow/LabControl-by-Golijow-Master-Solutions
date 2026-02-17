@@ -152,30 +152,89 @@ class StudyViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Only admin and lab_staff can create studies."""
-        if self.action == "create":
+        if self.action in ["create", "last_protocol_number"]:
             return [IsAdminOrLabManager()]
         return super().get_permissions()
 
+    def get_parsers(self):
+        """Use MultiPartParser for create so files can be uploaded at creation time."""
+        if getattr(self, "action", None) == "create":
+            return [MultiPartParser()]
+        return super().get_parsers()
+
     def create(self, request, *args, **kwargs):
-        """Create a new study and auto-assign lab_client_id from user."""
+        """
+        Create a new study, optionally with a results file attached.
+
+        - If results_file is provided → study is created as 'completed',
+          completed_at is set, and the patient receives a notification.
+        - If no results_file → study is created as 'pending'.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Auto-assign lab_client_id from the user creating the study
         lab_client_id = (
             request.user.lab_client_id
             if hasattr(request.user, "lab_client_id")
             else None
         )
-        serializer.save(lab_client_id=lab_client_id, status="pending")
+
+        has_file = bool(serializer.validated_data.get("results_file"))
+        study_status = "completed" if has_file else "pending"
+        completed_at = timezone.now() if has_file else None
+
+        study = serializer.save(
+            lab_client_id=lab_client_id,
+            status=study_status,
+            completed_at=completed_at,
+        )
+
+        # If file was attached, notify patient immediately
+        if has_file:
+            Notification.objects.create(
+                user=study.patient,
+                title="Test Results Ready",
+                message=f"Your {study.practice.name} results are now available.",
+                notification_type="result_ready",
+                related_study_id=study.pk,
+                channel="in_app",
+                status="sent",
+                sent_at=timezone.now(),
+                created_by=request.user,
+            )
+            send_result_notification_email.delay(
+                user_id=study.patient.pk,
+                study_id=study.pk,
+                study_type_name=study.practice.name,
+            )
 
         return Response(
             {
                 "message": "Study created successfully.",
-                "study": StudySerializer(serializer.instance).data,
+                "study": StudySerializer(study).data,
             },
             status=status.HTTP_201_CREATED,
         )
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAdminOrLabManager],
+        url_path="last-protocol-number",
+    )
+    def last_protocol_number(self, request):
+        """
+        Return the last used protocol number for the current lab.
+
+        Used by the frontend to hint the next sequential number to the staff.
+        """
+        user = request.user
+        qs = Study.objects.filter(is_deleted=False)
+        if user.lab_client_id:
+            qs = qs.filter(lab_client_id=user.lab_client_id)
+
+        last = qs.order_by("-protocol_number").values_list("protocol_number", flat=True).first()
+        return Response({"last_protocol_number": last})
 
     def get_queryset(self):
         """Filter studies based on user role."""

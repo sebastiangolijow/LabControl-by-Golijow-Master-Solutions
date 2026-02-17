@@ -310,6 +310,11 @@ class BaseTestMixin:
         user = self.create_patient()
         return self.authenticate(user), user
 
+    def authenticate_as_doctor(self, **kwargs):
+        """Authenticate as a doctor user."""
+        user = self.create_doctor(**kwargs)
+        return self.authenticate(user), user
+
     def authenticate_as_lab_staff(self, lab_client_id=1, **kwargs):
         """Authenticate as a lab staff user."""
         user = self.create_lab_staff(lab_client_id=lab_client_id, **kwargs)

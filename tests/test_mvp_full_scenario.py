@@ -68,6 +68,8 @@ class MVPFullScenarioTest(BaseTestCase):
             "first_name": "María",
             "last_name": "González",
             "phone_number": "+525512345678",
+            "dni": "12345678",
+            "birthday": "1992-03-15",
             "lab_client_id": lab_client_id,
         }
 
@@ -444,6 +446,9 @@ Email Notifications: ✓ Verified
             "password_confirm": "Pass123!",
             "first_name": "Test",
             "last_name": "User",
+            "phone_number": "+1234567890",
+            "dni": "99887766",
+            "birthday": "1985-07-20",
             "lab_client_id": 1,
         }
 
@@ -493,3 +498,169 @@ Email Notifications: ✓ Verified
         print("✓ Invalid file type correctly rejected")
 
         print("\n✓ All edge cases handled correctly!")
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_new_study_creation_flow(self):
+        """
+        Test the new study creation flow where staff creates the study
+        directly via POST /studies/ (with all metadata), with or without
+        attaching a results PDF in the same request.
+
+        This validates the reworked 'Upload Result' view behaviour:
+        - No pre-existing study selection required.
+        - Staff fills in: protocol_number, patient, practice, solicited_date,
+          sample_collected_at (optional), ordered_by (optional), notes (optional),
+          results_file (optional).
+        - With file  → status = completed, notification triggered immediately.
+        - Without file → status = pending, no notification yet.
+        - last-protocol-number endpoint hints the next protocol number.
+        """
+        print("\n[NEW FLOW] Testing new study creation flow...")
+
+        lab_client_id = 1
+        practice = self.create_practice(name="Hepatograma Completo")
+        doctor = self.create_doctor(first_name="Ana", last_name="García")
+        patient = self.create_patient(
+            email="newflow@test.com",
+            first_name="Luis",
+            last_name="Martínez",
+            lab_client_id=lab_client_id,
+        )
+        staff = self.create_lab_staff(lab_client_id=lab_client_id)
+        staff_client = self.authenticate(staff)
+        patient_client = self.authenticate(patient)
+
+        # ── 1. last-protocol-number returns null when no studies exist ─────
+        response = staff_client.get("/api/v1/studies/last-protocol-number/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["last_protocol_number"] is None
+        print("✓ last-protocol-number returns null for empty lab")
+
+        # ── 2. Create study WITHOUT file → pending ─────────────────────────
+        create_response = staff_client.post(
+            "/api/v1/studies/",
+            {
+                "patient": str(patient.pk),
+                "practice": str(practice.pk),
+                "protocol_number": "2026-NF001",
+                "solicited_date": "2026-02-10",
+                "ordered_by": str(doctor.pk),
+                "notes": "Ayuno de 12 horas",
+            },
+            format="multipart",
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED, create_response.data
+        study_id_pending = create_response.data["study"]["id"]
+        assert create_response.data["study"]["status"] == "pending"
+        assert create_response.data["study"]["completed_at"] is None
+        assert create_response.data["study"]["solicited_date"] == "2026-02-10"
+        assert create_response.data["study"]["ordered_by_name"] is not None
+        print("✓ Study created without file → status=pending")
+
+        # Verify no notification yet
+        from apps.notifications.models import Notification
+        assert not Notification.objects.filter(
+            user=patient, notification_type="result_ready"
+        ).exists()
+        print("✓ No notification when study created without file")
+
+        # Patient can already see the pending study
+        response = patient_client.get("/api/v1/studies/")
+        pending_data = next(
+            (s for s in response.data["results"] if str(s["id"]) == str(study_id_pending)),
+            None,
+        )
+        assert pending_data is not None
+        assert pending_data["status"] == "pending"
+        assert pending_data["solicited_date"] == "2026-02-10"
+        print("✓ Patient sees pending study in list")
+
+        # hint now reflects first study
+        response = staff_client.get("/api/v1/studies/last-protocol-number/")
+        assert response.data["last_protocol_number"] is not None
+        print(f"✓ last-protocol-number hint: {response.data['last_protocol_number']}")
+
+        # ── 3. Create study WITH file → completed immediately ──────────────
+        mail.outbox = []
+        pdf_file = SimpleUploadedFile(
+            "hepatograma.pdf",
+            b"%PDF-1.4\n1 0 obj\n<</Type/Catalog>>\nendobj\n",
+            content_type="application/pdf",
+        )
+        create_response = staff_client.post(
+            "/api/v1/studies/",
+            {
+                "patient": str(patient.pk),
+                "practice": str(practice.pk),
+                "protocol_number": "2026-NF002",
+                "solicited_date": "2026-02-12",
+                "sample_collected_at": "2026-02-12T08:30:00",
+                "results_file": pdf_file,
+                "results": "GPT: 25 U/L — dentro de valores normales",
+            },
+            format="multipart",
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED, create_response.data
+        study_id_completed = create_response.data["study"]["id"]
+        assert create_response.data["study"]["status"] == "completed"
+        assert create_response.data["study"]["completed_at"] is not None
+        assert create_response.data["study"]["results_file"] is not None
+        print("✓ Study created with file → status=completed immediately")
+
+        # Notification triggered on creation
+        assert Notification.objects.filter(
+            user=patient, notification_type="result_ready"
+        ).exists()
+        assert len(mail.outbox) >= 1
+        email_obj = mail.outbox[-1]
+        assert "newflow@test.com" in email_obj.to
+        assert "Hepatograma Completo" in email_obj.subject
+        print("✓ Notification + email sent on study creation with file")
+
+        # Patient can download immediately
+        response = patient_client.get(
+            f"/api/v1/studies/{study_id_completed}/download_result/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "application/pdf"
+        print("✓ Patient can download result immediately after creation")
+
+        # ── 4. Both studies visible in patient list ────────────────────────
+        response = patient_client.get("/api/v1/studies/")
+        ids = [str(s["id"]) for s in response.data["results"]]
+        assert str(study_id_pending) in ids
+        assert str(study_id_completed) in ids
+        print("✓ Both studies visible in patient list")
+
+        # ── 5. Completed study in with-results; pending in available-for-upload ─
+        admin = self.create_admin(is_superuser=True)
+        admin_client = self.authenticate(admin)
+
+        response = admin_client.get("/api/v1/studies/with-results/")
+        with_ids = [str(s["id"]) for s in response.data.get("results", response.data)]
+        assert str(study_id_completed) in with_ids
+        assert str(study_id_pending) not in with_ids
+        print("✓ with-results only shows completed study")
+
+        response = admin_client.get("/api/v1/studies/available-for-upload/")
+        avail_ids = [str(s["id"]) for s in response.data.get("results", response.data)]
+        assert str(study_id_pending) in avail_ids
+        assert str(study_id_completed) not in avail_ids
+        print("✓ available-for-upload only shows pending study")
+
+        # ── 6. Duplicate protocol number is rejected ───────────────────────
+        response = staff_client.post(
+            "/api/v1/studies/",
+            {
+                "patient": str(patient.pk),
+                "practice": str(practice.pk),
+                "protocol_number": "2026-NF001",  # already used
+            },
+            format="multipart",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "protocol_number" in response.data
+        print("✓ Duplicate protocol_number correctly rejected")
+
+        print("\n✓ New study creation flow fully validated!")

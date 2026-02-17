@@ -23,6 +23,8 @@ class EmailVerificationTests(BaseTestCase):
             "first_name": "John",
             "last_name": "Doe",
             "phone_number": "+1234567890",
+            "dni": "12345678",
+            "birthday": "1990-05-15",
             "lab_client_id": 1,
         }
 
@@ -279,6 +281,9 @@ class EmailVerificationIntegrationTests(BaseTestCase):
             "password_confirm": "securepass123",
             "first_name": "Integration",
             "last_name": "Test",
+            "phone_number": "+1234567890",
+            "dni": "11223344",
+            "birthday": "1988-12-01",
             "lab_client_id": 1,
         }
 

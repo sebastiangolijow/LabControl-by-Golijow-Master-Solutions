@@ -334,3 +334,34 @@ class TestUserAPI(BaseTestCase):
         assert response.status_code == status.HTTP_200_OK
         assert "uuid" in response.data
         self.assertUUID(user.uuid)
+
+    def test_list_users_as_doctor_only_sees_own_patients(self):
+        """Test that a doctor only sees patients with studies ordered by them."""
+        client, doctor = self.authenticate_as_doctor()
+
+        # Create patients related to this doctor (via studies)
+        own_patient1 = self.create_patient(email="own1@test.com")
+        own_patient2 = self.create_patient(email="own2@test.com")
+        self.create_study(patient=own_patient1, ordered_by=doctor)
+        self.create_study(patient=own_patient2, ordered_by=doctor)
+
+        # Create a patient NOT related to this doctor
+        other_doctor = self.create_doctor(email="otherdoctor@test.com")
+        unrelated_patient = self.create_patient(email="unrelated@test.com")
+        self.create_study(patient=unrelated_patient, ordered_by=other_doctor)
+
+        response = client.get("/api/v1/users/")
+
+        assert response.status_code == status.HTTP_200_OK
+        returned_emails = [u["email"] for u in response.data["results"]]
+
+        # Doctor should see their own patients
+        assert own_patient1.email in returned_emails
+        assert own_patient2.email in returned_emails
+
+        # Doctor should NOT see unrelated patients
+        assert unrelated_patient.email not in returned_emails
+
+        # Doctor should NOT see themselves or other doctors/staff
+        assert doctor.email not in returned_emails
+        assert other_doctor.email not in returned_emails

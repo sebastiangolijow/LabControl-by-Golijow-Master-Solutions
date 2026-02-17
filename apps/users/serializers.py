@@ -143,6 +143,13 @@ class PatientRegistrationSerializer(serializers.ModelSerializer):
             "carnet",
             "lab_client_id",
         ]
+        extra_kwargs = {
+            "first_name": {"required": True, "allow_blank": False},
+            "last_name": {"required": True, "allow_blank": False},
+            "phone_number": {"required": True, "allow_blank": False},
+            "dni": {"required": True, "allow_blank": False},
+            "birthday": {"required": True, "allow_null": False},
+        }
 
     def validate(self, attrs):
         """Validate password confirmation and set role to patient."""
@@ -196,6 +203,13 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
             "carnet",
             "lab_client_id",
         ]
+        extra_kwargs = {
+            "first_name": {"required": True, "allow_blank": False},
+            "last_name": {"required": True, "allow_blank": False},
+            "phone_number": {"required": True, "allow_blank": False},
+            "dni": {"required": True, "allow_blank": False},
+            "birthday": {"required": True, "allow_null": False},
+        }
 
     def validate_role(self, value):
         """Validate that only allowed roles can be created."""

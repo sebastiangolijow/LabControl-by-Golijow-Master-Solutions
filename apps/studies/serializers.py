@@ -108,6 +108,7 @@ class StudySerializer(serializers.ModelSerializer):
             "ordered_by",
             "ordered_by_name",
             "status",
+            "solicited_date",
             "sample_id",
             "sample_collected_at",
             "results",
@@ -132,7 +133,15 @@ class StudySerializer(serializers.ModelSerializer):
 
 
 class StudyCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating a new study."""
+    """
+    Serializer for creating a new study.
+
+    Supports creating a study with or without a results file in a single request.
+    - If results_file is provided → status is set to 'completed' by the view.
+    - If no results_file → status defaults to 'pending'.
+    """
+
+    results_file = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = Study
@@ -141,6 +150,10 @@ class StudyCreateSerializer(serializers.ModelSerializer):
             "patient",
             "ordered_by",
             "protocol_number",
+            "solicited_date",
+            "sample_collected_at",
+            "results_file",
+            "results",
             "notes",
         ]
 
@@ -149,6 +162,20 @@ class StudyCreateSerializer(serializers.ModelSerializer):
         if Study.objects.filter(protocol_number=value).exists():
             raise serializers.ValidationError(
                 "A study with this protocol number already exists."
+            )
+        return value
+
+    def validate_results_file(self, value):
+        """Validate file size and type (same rules as upload serializer)."""
+        if value is None:
+            return value
+        max_size = 10 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError("File size cannot exceed 10MB.")
+        allowed_types = ["application/pdf", "image/jpeg", "image/png"]
+        if value.content_type not in allowed_types:
+            raise serializers.ValidationError(
+                "Only PDF, JPEG, and PNG files are allowed."
             )
         return value
 

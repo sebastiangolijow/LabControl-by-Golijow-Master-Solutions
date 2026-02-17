@@ -192,25 +192,31 @@ class TestDoctorPermissions(BaseTestCase):
     """Test cases for doctor role permissions."""
 
     def test_doctor_can_only_see_patients(self):
-        """Test that doctors can only see patients in user list."""
+        """Test that doctors only see patients they have ordered studies for."""
         client, doctor = self.authenticate_as_admin()
         doctor.role = "doctor"
         doctor.save()
 
         # Create users with different roles
-        patient = self.create_patient()
+        own_patient = self.create_patient(email="own@test.com")
+        unrelated_patient = self.create_patient(email="unrelated@test.com")
         admin = self.create_admin(email="admin@test.com")
         lab_staff = self.create_lab_staff(email="staff@test.com")
 
-        # Doctor should only see patients
+        # Link doctor to own_patient via a study
+        self.create_study(patient=own_patient, ordered_by=doctor)
+
+        # Doctor should only see their own linked patients
         response = client.get("/api/v1/users/")
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"]
-        # Should see patients but not admin or lab staff
         emails = [u["email"] for u in results]
-        assert patient.email in emails
-        # Doctor will see themselves if they're in the list
-        # But should not see admin or lab_staff
+
+        # Should see their own linked patient
+        assert own_patient.email in emails
+        # Should NOT see an unrelated patient (no study linking them)
+        assert unrelated_patient.email not in emails
+        # Should not see admin or lab_staff
         assert admin.email not in emails
         assert lab_staff.email not in emails
 

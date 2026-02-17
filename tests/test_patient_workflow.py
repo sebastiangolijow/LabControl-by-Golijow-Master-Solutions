@@ -31,6 +31,8 @@ class TestPatientWorkflow(BaseTestCase):
             "first_name": "John",
             "last_name": "Doe",
             "phone_number": "+1234567890",
+            "dni": "12345678",
+            "birthday": "1995-08-10",
             "lab_client_id": 1,
         }
 
@@ -252,13 +254,16 @@ class TestPatientWorkflow(BaseTestCase):
 
     def test_patient_registration_validation(self):
         """Test patient registration validation."""
-        # Test password mismatch
+        # Test password mismatch - include all required fields to isolate password error
         registration_data = {
             "email": "test@test.com",
             "password": "password123",
             "password_confirm": "password456",
             "first_name": "John",
             "last_name": "Doe",
+            "phone_number": "+1234567890",
+            "dni": "12345678",
+            "birthday": "1990-01-01",
             "lab_client_id": 1,
         }
 

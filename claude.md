@@ -12,186 +12,240 @@
 ```
 apps/
 ├── users/          # User management, authentication
-│   ├── models.py   # User (UUID PK, roles: patient/doctor/lab_staff/lab_manager/admin)
+│   ├── models.py   # User (UUID PK, roles: patient/doctor/lab_staff/admin)
 │   ├── views.py    # User CRUD, doctor/patient search, create user
-│   ├── serializers.py # UserSerializer, UserDetailSerializer, UserCreateSerializer
-│   └── permissions.py # IsAdminUser, IsLabManager, etc.
-├── studies/        # Lab studies and results
-│   ├── models.py   # Study, StudyType (ordered_by FK to User)
+│   ├── serializers.py
+│   ├── permissions.py
+│   └── management/commands/
+│       ├── verify_email.py       # Verify single user email
+│       └── create_seed_users.py  # Create admin/doctor/patient seed users
+├── studies/        # Lab studies, practices, determinations
+│   ├── models.py   # Practice, Determination, Study, UserDetermination
 │   ├── views.py    # Study CRUD, upload/download results
-│   ├── serializers.py # StudySerializer (ordered_by_name computed field)
-│   └── managers.py # Active studies manager
+│   ├── serializers.py
+│   ├── filters.py
+│   ├── managers.py
+│   └── management/commands/load_practices.py
 ├── appointments/   # Appointment scheduling
 ├── payments/       # Payment processing
-├── notifications/  # Notifications (email/in-app)
-│   └── tasks.py    # Celery tasks (send_password_setup_email)
+├── notifications/  # Notifications (email/in-app, Celery tasks)
 ├── analytics/      # Analytics and reporting
-└── core/           # Base models, mixins, utilities
-    ├── models.py   # BaseModel (UUID, soft delete, audit)
-    ├── managers.py # ActiveManager
-    └── permissions.py # RBAC utilities
+└── core/           # BaseModel, BaseManager, RBAC utilities
 
 config/
-├── settings/       # Settings (base, dev, test, prod)
-├── celery.py       # Celery configuration
-└── urls.py         # URL routing
+├── settings/       # base, dev, test, prod
+├── celery.py
+└── urls.py
 
-tests/              # Test suite (261 tests, 82.73% coverage)
-└── test_doctor_features.py # 25 doctor-specific tests
+tests/              # 277 tests, 82% coverage
 ```
 
 ## Models
 
 ### User (apps/users/models.py)
 ```python
-class User(AbstractBaseUser, PermissionsMixin, BaseModel):
-    # UUID primary key (from BaseModel)
+class User(AbstractBaseUser, PermissionsMixin):
+    uuid = UUIDField(primary_key=True)
     email = EmailField(unique=True)
-    role = CharField(choices=ROLE_CHOICES)  # patient, doctor, lab_staff, lab_manager, admin
+    role = CharField(choices=['admin','lab_staff','doctor','patient'])
     first_name, last_name, phone_number, dni, birthday
-    gender, location, direction  # New fields
-    mutual_code, mutual_name, carnet  # Insurance fields
-    is_active, is_staff, is_superuser
-    email_verified, lab_client (FK)
+    gender, location, direction           # profile fields
+    mutual_code, mutual_name, carnet      # insurance fields
+    lab_client_id = IntegerField()        # multi-tenant (TODO: FK to Company)
+    is_active, is_staff, is_verified
+    verification_token, verification_token_created_at
+    created_by = FK('self', null=True)
+    history = HistoricalRecords()         # audit trail
+```
+
+### Practice (apps/studies/models.py)
+```python
+class Practice(BaseModel):
+    name, technique, sample_type, sample_quantity
+    price = DecimalField()
+    delay_days = IntegerField()
+    is_active = BooleanField()
+    determinations = ManyToManyField(Determination, blank=True)
+```
+
+### Determination (apps/studies/models.py)
+```python
+class Determination(BaseModel):
+    # Individual lab measurement (e.g. Glucose, Hemoglobin, WBC)
+    name = CharField(max_length=200)
+    code = CharField(max_length=50, unique=True)
+    unit = CharField()
+    reference_range = CharField()
+    description = TextField()
+    is_active = BooleanField()
 ```
 
 ### Study (apps/studies/models.py)
 ```python
-class Study(BaseModel):
-    # UUID primary key
+class Study(BaseModel, LabClientModel):
     patient = FK(User, related_name='studies')
-    study_type = FK(StudyType)
-    ordered_by = FK(User, null=True, blank=True, related_name='ordered_studies')
-    # ^^^ Must be doctor role (validated in clean())
-    status = CharField(choices=STATUS_CHOICES)
-    results_file, results_text
-    created_at, completed_at
-    lab_client (FK)
+    practice = FK(Practice)               # replaces old study_type FK
+    protocol_number = CharField(unique=True)  # replaces old order_number
+    ordered_by = FK(User, null=True, related_name='ordered_studies')  # doctor
+    status = CharField(choices=['pending','in_progress','completed','cancelled'])
+    results_file, results, completed_at
+    lab_client_id = IntegerField()
+    history = HistoricalRecords()
 
-    def clean(self):
-        if self.ordered_by and self.ordered_by.role != 'doctor':
-            raise ValidationError("ordered_by must be doctor")
+    # Custom managers
+    Study.objects.pending()
+    Study.objects.completed()
+    Study.objects.for_patient(patient)
+    Study.objects.for_lab(lab_client_id)
+
+    def __str__(self): return f"{protocol_number} - {practice.name}"
+    @property is_pending, is_completed
+```
+
+### UserDetermination (apps/studies/models.py)
+```python
+class UserDetermination(BaseModel):
+    # Stores result value of a determination for a specific study
+    study = FK(Study, related_name='determination_results')
+    determination = FK(Determination, related_name='user_results')
+    value = CharField(max_length=200)
+    is_abnormal = BooleanField(default=False)
+    notes = TextField()
+    class Meta:
+        unique_together = [['study', 'determination']]
 ```
 
 ## API Endpoints
 
 ### Authentication
 ```
-POST   /api/v1/auth/login/          # Login (returns access + refresh tokens)
-POST   /api/v1/auth/logout/         # Logout
-POST   /api/v1/auth/token/refresh/  # Refresh access token
-GET    /api/v1/auth/user/           # Get current user
-PATCH  /api/v1/auth/user/           # Update user profile
+POST   /api/v1/auth/login/
+POST   /api/v1/auth/logout/
+POST   /api/v1/auth/token/refresh/
+GET    /api/v1/auth/user/
+PATCH  /api/v1/auth/user/
 ```
 
 ### Users
 ```
-POST   /api/v1/users/create-user/       # Create user (admin only)
-GET    /api/v1/users/search-doctors/    # Search doctors (admin/lab_manager)
-GET    /api/v1/users/search-patients/   # Search patients (admin/lab_manager)
-GET    /api/v1/users/                   # List users (admin only)
-GET    /api/v1/users/{id}/              # Get user (admin only)
-PATCH  /api/v1/users/{id}/              # Update user (admin only)
-DELETE /api/v1/users/{id}/              # Delete user (admin only)
+POST   /api/v1/users/register/          # Public registration
+POST   /api/v1/users/create-user/       # Admin only
+GET    /api/v1/users/search-doctors/    # Admin/lab_staff
+GET    /api/v1/users/search-patients/   # Admin/lab_staff
+GET    /api/v1/users/                   # Admin only
+GET/PATCH/DELETE /api/v1/users/{id}/
 ```
 
 ### Studies
 ```
-GET    /api/v1/studies/                     # List studies (filtered by role)
-GET    /api/v1/studies/{id}/                # Get study
-POST   /api/v1/studies/{id}/upload_result/  # Upload result (admin/staff)
-GET    /api/v1/studies/{id}/download_result/# Download PDF
-DELETE /api/v1/studies/{id}/delete-result/  # Delete result (admin)
-DELETE /api/v1/studies/{id}/                # Soft delete study
+GET    /api/v1/studies/                          # Filtered by role
+GET    /api/v1/studies/{id}/
+POST   /api/v1/studies/{id}/upload_result/       # Admin/staff
+GET    /api/v1/studies/{id}/download_result/
+DELETE /api/v1/studies/{id}/delete-result/       # Admin/staff
+GET    /api/v1/studies/with-results/             # Admin/staff
+GET    /api/v1/studies/available-for-upload/     # Admin/staff
+
+GET    /api/v1/studies/practices/                # List active practices
+GET    /api/v1/studies/determinations/           # List determinations
+GET/POST/PATCH /api/v1/studies/user-determinations/  # Study result values
+```
+
+### Analytics
+```
+GET    /api/v1/analytics/dashboard/
+GET    /api/v1/analytics/studies/
+GET    /api/v1/analytics/studies/trends/
+GET    /api/v1/analytics/revenue/
+GET    /api/v1/analytics/revenue/trends/
+GET    /api/v1/analytics/appointments/
+GET    /api/v1/analytics/users/
+GET    /api/v1/analytics/popular-practices/        # renamed from popular-study-types
+GET    /api/v1/analytics/top-revenue-practices/    # renamed from top-revenue-study-types
 ```
 
 ## Key Patterns
 
-### UUID Primary Keys
+### UUID Primary Keys — CRITICAL
 ```python
-# ✓ ALWAYS use .pk (works with any PK type)
-user.pk
-study.pk
+# ✓ ALWAYS use .pk
+user.pk / study.pk
 Count("pk", filter=Q(...))
+str(obj.pk)   # in assertions
 
-# ✗ NEVER use .id (fails with UUID)
-user.id          # AttributeError
-Count("id")      # FieldError
-```
-
-### Permissions
-```python
-# views.py
-class UserViewSet(viewsets.ModelViewSet):
-    @action(detail=False, methods=['get'], permission_classes=[IsAdminOrLabManager])
-    def search_doctors(self, request):
-        # Multi-tenant filtering
-        qs = User.objects.filter(role='doctor', lab_client=request.user.lab_client)
-        return Response(...)
+# ✗ NEVER use .id (fails with UUID PKs)
 ```
 
 ### Multi-Tenant Filtering
 ```python
-# All queries filtered by lab_client
-User.objects.filter(lab_client=request.user.lab_client)
-Study.objects.filter(patient__lab_client=request.user.lab_client)
+# lab_client_id is an IntegerField on User and Study
+Study.objects.filter(lab_client_id=request.user.lab_client_id)
+User.objects.filter(lab_client_id=request.user.lab_client_id)
 ```
 
-### Serializers
+### Permissions
 ```python
-class StudySerializer(ModelSerializer):
-    ordered_by_name = SerializerMethodField()
-
-    def get_ordered_by_name(self, obj):
-        if obj.ordered_by:
-            return f"{obj.ordered_by.first_name} {obj.ordered_by.last_name}"
-        return None
+# Role checks
+user.role in ['admin', 'lab_staff']
+# Permission classes: IsAdminUser, IsAdminOrLabStaff
 ```
 
-### Celery Tasks
-```python
-# apps/notifications/tasks.py
-@shared_task(bind=True, max_retries=3)
-def send_password_setup_email(self, user_id, reset_token):
-    try:
-        user = User.objects.get(pk=user_id)  # Note: .pk not .id
-        send_mail(...)
-    except Exception as exc:
-        raise self.retry(exc=exc, countdown=60)
-```
-
-## Tests
-
-```bash
-make test                # Run all tests (261 tests)
-make test-coverage       # With coverage report (82.73%)
-make test-verbose        # Verbose output
-make test-fast           # No coverage (quick)
-make throttle-reset      # Clear rate limit cache
-```
-
-### Test Structure
+### Tests
 ```python
 from tests.base import BaseTestCase
 
-class TestDoctorFeatures(BaseTestCase):
-    def setUp(self):
-        super().setUp()
-        self.doctor = self.create_user(role='doctor')
-        self.study = self.create_study(ordered_by=self.doctor)
+# Factories available:
+self.create_user(role=...)
+self.create_admin() / create_lab_staff() / create_doctor() / create_patient()
+self.create_practice(**kwargs)         # name, technique, sample_type, price, etc.
+self.create_study(patient, practice)   # protocol_number auto-generated
+self.create_appointment(patient, study)
+self.create_invoice(patient, study)
+self.create_payment(invoice)
+self.create_notification(user)
+self.authenticate(user) → APIClient
+self.authenticate_as_patient() → (client, user)
+self.authenticate_as_lab_staff(lab_client_id=1) → (client, user)
+self.authenticate_as_admin() → (client, user)
+```
 
-    def test_ordered_by_validation(self):
-        # Doctor validation
-        patient = self.create_user(role='patient')
-        with self.assertRaises(ValidationError):
-            study = Study(ordered_by=patient)
-            study.clean()
+## Migrations
+
+**All migrations were deleted and recreated from scratch (2026-02-17).**
+Fresh 0001/0002 migrations exist in all apps. No legacy migration history.
+
+## Seed Users
+
+```bash
+make seed-users   # Creates admin/doctor/patient for dev
+```
+| role    | email                    | password |
+|---------|--------------------------|----------|
+| admin   | admin@labcontrol.com     | test1234 |
+| doctor  | doctor@labcontrol.com    | test1234 |
+| patient | patient@labcontrol.com   | test1234 |
+
+All: `is_active=True`, `is_verified=True`, allauth EmailAddress created.
+
+## Commands
+
+```bash
+make up / down / restart / logs
+make migrate / makemigrations / showmigrations
+make seed-users          # Create dev seed users
+make superuser           # Interactive superuser
+make verify-email EMAIL=x@y.com
+make test                # 277 tests (DJANGO_SETTINGS_MODULE=config.settings.test)
+make test-coverage / test-verbose / test-fast
+make throttle-reset      # Clear rate limit cache
+make load_practices      # Load practice catalogue from JSON
+make db-reset            # Drop + recreate DB (destroys data)
+make format / lint / isort / quality
 ```
 
 ## Environment
 
 ```env
-# .env
 DJANGO_SECRET_KEY=...
 DATABASE_URL=postgresql://labcontrol_user:password@db:5432/labcontrol_db
 CELERY_BROKER_URL=redis://redis:6379/0
@@ -200,81 +254,9 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 ```
 
-## Commands
-
-```bash
-# Docker
-make up down restart logs shell
-
-# Django
-make migrate makemigrations superuser
-make collectstatic setup-periodic-tasks
-
-# Testing
-make test test-coverage test-verbose test-fast
-
-# Utilities
-make throttle-reset      # Clear API rate limits
-make clean db-reset
-
-# Code Quality
-make format lint isort quality
-
-# Setup
-make setup rebuild      # Initial setup / rebuild
-```
-
-## Migrations
-
-### Recent Migrations
-```
-apps/users/migrations/
-├── 0002_auto_*.py    # Doctor role + ordered_by field
-└── 0003_auto_*.py    # New profile fields (gender, location, etc.)
-
-apps/studies/migrations/
-└── 0002_auto_*.py    # ordered_by FK to User
-```
-
-## Recent Changes (2026-01-31)
-
-### Doctor Role Implementation
-1. **User Model**:
-   - Added `doctor` to ROLE_CHOICES
-   - New fields: gender, location, direction, mutual_code, mutual_name, carnet
-
-2. **Study Model**:
-   - Added `ordered_by` FK (nullable, validated for doctor role)
-   - `clean()` method validates doctor role
-
-3. **Study Serializer**:
-   - `ordered_by_name` computed field
-
-4. **User Views**:
-   - `create_user()` action: Creates user + sends password email
-   - `search_doctors()` action: Returns doctors (multi-tenant filtered)
-   - `search_patients()` action: Returns patients (multi-tenant filtered)
-
-5. **Notifications**:
-   - `send_password_setup_email` Celery task
-
-6. **UUID Fixes** (50+ occurrences):
-   - All `.id` → `.pk`
-   - All `Count("id")` → `Count("pk")`
-   - Test assertions: `str(obj.pk)` comparisons
-
-7. **Tests**:
-   - `tests/test_doctor_features.py`: 25 tests
-   - All tests passing: 261 tests, 82.73% coverage
-
-### Throttle Reset Command
-```bash
-make throttle-reset  # Clears Django cache to reset rate limits
-```
-
 ## Known Issues
 
-**None** - All features working as expected
+**None** - All features working, 277/277 tests passing.
 
 ---
-*AI Context File - Keep concise, update after major changes*
+*AI Context File — update after major changes*

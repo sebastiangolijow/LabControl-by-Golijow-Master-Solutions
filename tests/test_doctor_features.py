@@ -216,6 +216,8 @@ class TestAdminUserCreationAPI(BaseTestCase):
             "first_name": "Jane",
             "last_name": "Doe",
             "phone_number": "+1234567890",
+            "dni": "12345678",
+            "birthday": "1985-06-15",
         }
 
         response = client.post("/api/v1/users/create-user/", data, format="json")
@@ -239,6 +241,9 @@ class TestAdminUserCreationAPI(BaseTestCase):
             "role": "patient",
             "first_name": "Bob",
             "last_name": "Smith",
+            "phone_number": "+1234567890",
+            "dni": "87654321",
+            "birthday": "1990-03-20",
         }
 
         response = client.post("/api/v1/users/create-user/", data, format="json")
@@ -255,6 +260,9 @@ class TestAdminUserCreationAPI(BaseTestCase):
             "role": "admin",
             "first_name": "Admin",
             "last_name": "User",
+            "phone_number": "+1234567890",
+            "dni": "11223344",
+            "birthday": "1980-01-01",
         }
 
         response = client.post("/api/v1/users/create-user/", data, format="json")
@@ -302,6 +310,8 @@ class TestAdminUserCreationAPI(BaseTestCase):
             "first_name": "Complete",
             "last_name": "Profile",
             "phone_number": "+1234567890",
+            "dni": "99887766",
+            "birthday": "1975-09-30",
             "gender": "F",
             "location": "New York",
             "direction": "123 Main St",

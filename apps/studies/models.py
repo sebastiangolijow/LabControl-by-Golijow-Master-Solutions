@@ -177,10 +177,21 @@ class Study(BaseModel, LabClientModel):
         default="pending",
     )
 
+    # Dates
+    solicited_date = models.DateField(
+        _("solicited date"),
+        null=True,
+        blank=True,
+        help_text=_("Date the study was requested/ordered by the doctor"),
+    )
+
     # Sample information
     sample_id = models.CharField(_("sample ID"), max_length=50, blank=True)
     sample_collected_at = models.DateTimeField(
-        _("sample collected at"), null=True, blank=True
+        _("sample collected at"),
+        null=True,
+        blank=True,
+        help_text=_("Date and time the physical sample was collected from the patient"),
     )
 
     # Results

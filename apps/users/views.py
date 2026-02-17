@@ -70,8 +70,8 @@ class UserViewSet(viewsets.ModelViewSet):
         elif user.role == "lab_staff" and user.lab_client_id:
             return User.objects.filter(lab_client_id=user.lab_client_id)
         elif user.role == "doctor":
-            # Doctors can only see patients
-            return User.objects.filter(role="patient")
+            # Doctors can only see their own patients (patients with studies ordered by them)
+            return user.patients
         else:
             return User.objects.filter(pk=user.pk)
 
