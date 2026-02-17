@@ -229,7 +229,11 @@ class StudyViewSet(viewsets.ModelViewSet):
         if user.lab_client_id:
             qs = qs.filter(lab_client_id=user.lab_client_id)
 
-        last = qs.order_by("-protocol_number").values_list("protocol_number", flat=True).first()
+        last = (
+            qs.order_by("-protocol_number")
+            .values_list("protocol_number", flat=True)
+            .first()
+        )
         return Response({"last_protocol_number": last})
 
     def get_queryset(self):

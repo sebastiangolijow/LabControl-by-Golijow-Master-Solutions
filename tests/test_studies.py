@@ -12,20 +12,24 @@ from apps.notifications.models import Notification
 from apps.studies.models import Practice, Study
 from tests.base import BaseTestCase
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_pdf(name="results.pdf"):
     """Return a minimal valid-looking PDF SimpleUploadedFile."""
-    return SimpleUploadedFile(name, b"%PDF-1.4\n1 0 obj\n<</Type/Catalog>>\nendobj\n",
-                              content_type="application/pdf")
+    return SimpleUploadedFile(
+        name,
+        b"%PDF-1.4\n1 0 obj\n<</Type/Catalog>>\nendobj\n",
+        content_type="application/pdf",
+    )
 
 
 # ===========================================================================
 # Practice model
 # ===========================================================================
+
 
 class TestPracticeModel(BaseTestCase):
     """Test cases for Practice model."""
@@ -57,6 +61,7 @@ class TestPracticeModel(BaseTestCase):
 # ===========================================================================
 # Study model
 # ===========================================================================
+
 
 class TestStudyModel(BaseTestCase):
     """Test cases for Study model."""
@@ -167,6 +172,7 @@ class TestStudyModel(BaseTestCase):
 # Practice API
 # ===========================================================================
 
+
 class TestPracticeAPI(BaseTestCase):
     """Tests for the practice CRUD endpoints."""
 
@@ -219,6 +225,7 @@ class TestPracticeAPI(BaseTestCase):
 # ===========================================================================
 # Study list / retrieve API
 # ===========================================================================
+
 
 class TestStudyListAPI(BaseTestCase):
     """Test cases for Study list/retrieve endpoints."""
@@ -295,6 +302,7 @@ class TestStudyListAPI(BaseTestCase):
 # Study creation API (new flow: create study + optional file in one request)
 # ===========================================================================
 
+
 class TestStudyCreateAPI(BaseTestCase):
     """
     Tests for the new study creation endpoint (POST /studies/).
@@ -357,7 +365,9 @@ class TestStudyCreateAPI(BaseTestCase):
         payload = self._base_payload()
         payload["results_file"] = _make_pdf()
 
-        response = self.staff_client.post("/api/v1/studies/", payload, format="multipart")
+        response = self.staff_client.post(
+            "/api/v1/studies/", payload, format="multipart"
+        )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["study"]["status"] == "completed"
         assert response.data["study"]["completed_at"] is not None
@@ -386,7 +396,9 @@ class TestStudyCreateAPI(BaseTestCase):
         payload = self._base_payload(
             solicited_date="2026-02-10",
         )
-        response = self.staff_client.post("/api/v1/studies/", payload, format="multipart")
+        response = self.staff_client.post(
+            "/api/v1/studies/", payload, format="multipart"
+        )
         assert response.status_code == status.HTTP_201_CREATED
 
         study_id = response.data["study"]["id"]
@@ -400,7 +412,9 @@ class TestStudyCreateAPI(BaseTestCase):
             solicited_date="2026-02-10",
             sample_collected_at="2026-02-12T09:30:00",
         )
-        response = self.staff_client.post("/api/v1/studies/", payload, format="multipart")
+        response = self.staff_client.post(
+            "/api/v1/studies/", payload, format="multipart"
+        )
         assert response.status_code == status.HTTP_201_CREATED
 
         study_id = response.data["study"]["id"]
@@ -415,7 +429,9 @@ class TestStudyCreateAPI(BaseTestCase):
         self.create_study(patient=self.patient, protocol_number="2026-DUP")
 
         payload = self._base_payload(protocol_number="2026-DUP")
-        response = self.staff_client.post("/api/v1/studies/", payload, format="multipart")
+        response = self.staff_client.post(
+            "/api/v1/studies/", payload, format="multipart"
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "protocol_number" in response.data
 
@@ -436,17 +452,23 @@ class TestStudyCreateAPI(BaseTestCase):
         payload = self._base_payload()
         payload["results_file"] = exe_file
 
-        response = self.staff_client.post("/api/v1/studies/", payload, format="multipart")
+        response = self.staff_client.post(
+            "/api/v1/studies/", payload, format="multipart"
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_study_oversized_file_rejected(self):
         """File larger than 10 MB is rejected."""
         big_content = b"%PDF-1.4\n" + b"X" * (10 * 1024 * 1024 + 1)
-        big_file = SimpleUploadedFile("big.pdf", big_content, content_type="application/pdf")
+        big_file = SimpleUploadedFile(
+            "big.pdf", big_content, content_type="application/pdf"
+        )
         payload = self._base_payload(protocol_number="2026-BIG")
         payload["results_file"] = big_file
 
-        response = self.staff_client.post("/api/v1/studies/", payload, format="multipart")
+        response = self.staff_client.post(
+            "/api/v1/studies/", payload, format="multipart"
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     # ── Permissions ──────────────────────────────────────────────────────────
@@ -465,6 +487,7 @@ class TestStudyCreateAPI(BaseTestCase):
     def test_unauthenticated_cannot_create_study(self):
         """Unauthenticated requests are rejected (401 or 403)."""
         from rest_framework.test import APIClient
+
         anon = APIClient()
         response = anon.post(
             "/api/v1/studies/",
@@ -480,6 +503,7 @@ class TestStudyCreateAPI(BaseTestCase):
 # ===========================================================================
 # Last protocol number hint endpoint
 # ===========================================================================
+
 
 class TestLastProtocolNumberEndpoint(BaseTestCase):
     """Tests for GET /studies/last-protocol-number/."""
@@ -519,6 +543,7 @@ class TestLastProtocolNumberEndpoint(BaseTestCase):
 # ===========================================================================
 # End-to-end: complete study upload workflow
 # ===========================================================================
+
 
 class TestStudyUploadEndToEnd(BaseTestCase):
     """
@@ -578,7 +603,9 @@ class TestStudyUploadEndToEnd(BaseTestCase):
         patient_client = self.authenticate(self.patient)
         response = patient_client.get("/api/v1/studies/")
         assert response.status_code == status.HTTP_200_OK
-        study_data = next((s for s in response.data["results"] if str(s["id"]) == str(study_id)), None)
+        study_data = next(
+            (s for s in response.data["results"] if str(s["id"]) == str(study_id)), None
+        )
         assert study_data is not None
         assert study_data["status"] == "pending"
         assert study_data["solicited_date"] == "2026-02-10"
@@ -731,7 +758,9 @@ class TestStudyUploadEndToEnd(BaseTestCase):
 
     def test_soft_delete_study(self):
         """Admin can soft-delete a study; it disappears from lists."""
-        study = self.create_study(patient=self.patient, practice=self.practice, lab_client_id=1)
+        study = self.create_study(
+            patient=self.patient, practice=self.practice, lab_client_id=1
+        )
         study_id = str(study.pk)
 
         response = self.admin_client.delete(f"/api/v1/studies/{study_id}/")

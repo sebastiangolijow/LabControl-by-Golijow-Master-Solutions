@@ -550,7 +550,9 @@ Email Notifications: ✓ Verified
             },
             format="multipart",
         )
-        assert create_response.status_code == status.HTTP_201_CREATED, create_response.data
+        assert (
+            create_response.status_code == status.HTTP_201_CREATED
+        ), create_response.data
         study_id_pending = create_response.data["study"]["id"]
         assert create_response.data["study"]["status"] == "pending"
         assert create_response.data["study"]["completed_at"] is None
@@ -560,6 +562,7 @@ Email Notifications: ✓ Verified
 
         # Verify no notification yet
         from apps.notifications.models import Notification
+
         assert not Notification.objects.filter(
             user=patient, notification_type="result_ready"
         ).exists()
@@ -568,7 +571,11 @@ Email Notifications: ✓ Verified
         # Patient can already see the pending study
         response = patient_client.get("/api/v1/studies/")
         pending_data = next(
-            (s for s in response.data["results"] if str(s["id"]) == str(study_id_pending)),
+            (
+                s
+                for s in response.data["results"]
+                if str(s["id"]) == str(study_id_pending)
+            ),
             None,
         )
         assert pending_data is not None
@@ -601,7 +608,9 @@ Email Notifications: ✓ Verified
             },
             format="multipart",
         )
-        assert create_response.status_code == status.HTTP_201_CREATED, create_response.data
+        assert (
+            create_response.status_code == status.HTTP_201_CREATED
+        ), create_response.data
         study_id_completed = create_response.data["study"]["id"]
         assert create_response.data["study"]["status"] == "completed"
         assert create_response.data["study"]["completed_at"] is not None
