@@ -33,9 +33,9 @@ X_FRAME_OPTIONS = "DENY"
 
 # Cookie settings
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = "Strict"
-CSRF_COOKIE_SAMESITE = "Strict"
+CSRF_COOKIE_HTTPONLY = False  # Must be False so JavaScript can read it
+SESSION_COOKIE_SAMESITE = "Lax"  # Changed from Strict to Lax
+CSRF_COOKIE_SAMESITE = "Lax"  # Changed from Strict to Lax
 
 # Email Configuration for Production
 # Use a proper email backend like SendGrid, Mailgun, or AWS SES
@@ -81,11 +81,14 @@ DATABASES["default"]["CONN_MAX_AGE"] = 600  # noqa
 # Cache configuration for production - use Redis
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": env("REDIS_URL"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "CONNECTION_POOL_KWARGS": {"max_connections": 50},
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 50,
+                "retry_on_timeout": True,
+            }
         },
         "KEY_PREFIX": "labcontrol",
     }
