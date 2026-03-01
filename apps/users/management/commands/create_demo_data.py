@@ -8,12 +8,14 @@ Creates:
 - Multiple studies with realistic data
 """
 
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from apps.studies.models import Practice, Study
-from django.utils import timezone
-from datetime import timedelta
 import random
+from datetime import timedelta
+
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+
+from apps.studies.models import Practice, Study
 
 User = get_user_model()
 
@@ -94,12 +96,14 @@ class Command(BaseCommand):
                     "is_active": True,
                     "is_verified": True,
                     "lab_client_id": 1,
-                }
+                },
             )
             if created:
                 user.set_password("test1234")
                 user.save()
-                self.stdout.write(f"  ✓ Created admin: {admin_data['first_name']} {admin_data['last_name']}")
+                self.stdout.write(
+                    f"  ✓ Created admin: {admin_data['first_name']} {admin_data['last_name']}"
+                )
             else:
                 self.stdout.write(f"  - Admin already exists: {admin_data['email']}")
 
@@ -159,14 +163,18 @@ class Command(BaseCommand):
                     "is_active": True,
                     "is_verified": True,
                     "lab_client_id": 1,
-                }
+                },
             )
             if created:
                 user.set_password("test1234")
                 user.save()
-                self.stdout.write(f"  ✓ Created patient: {patient_data['first_name']} {patient_data['last_name']}")
+                self.stdout.write(
+                    f"  ✓ Created patient: {patient_data['first_name']} {patient_data['last_name']}"
+                )
             else:
-                self.stdout.write(f"  - Patient already exists: {patient_data['email']}")
+                self.stdout.write(
+                    f"  - Patient already exists: {patient_data['email']}"
+                )
 
     def create_doctors(self):
         """Create 2 doctor users"""
@@ -198,12 +206,14 @@ class Command(BaseCommand):
                     "is_active": True,
                     "is_verified": True,
                     "lab_client_id": 1,
-                }
+                },
             )
             if created:
                 user.set_password("test1234")
                 user.save()
-                self.stdout.write(f"  ✓ Created doctor: Dr. {doctor_data['first_name']} {doctor_data['last_name']}")
+                self.stdout.write(
+                    f"  ✓ Created doctor: Dr. {doctor_data['first_name']} {doctor_data['last_name']}"
+                )
             else:
                 self.stdout.write(f"  - Doctor already exists: {doctor_data['email']}")
 
@@ -254,8 +264,7 @@ class Command(BaseCommand):
 
         for practice_data in practices_data:
             practice, created = Practice.objects.get_or_create(
-                name=practice_data["name"],
-                defaults=practice_data
+                name=practice_data["name"], defaults=practice_data
             )
             if created:
                 self.stdout.write(f"  ✓ Created practice: {practice_data['name']}")
@@ -267,11 +276,15 @@ class Command(BaseCommand):
         practices = Practice.objects.filter(is_active=True)
 
         if not patients.exists():
-            self.stdout.write(self.style.WARNING("  - No patients found, skipping studies"))
+            self.stdout.write(
+                self.style.WARNING("  - No patients found, skipping studies")
+            )
             return
 
         if not practices.exists():
-            self.stdout.write(self.style.WARNING("  - No practices found, skipping studies"))
+            self.stdout.write(
+                self.style.WARNING("  - No practices found, skipping studies")
+            )
             return
 
         # Create studies with different statuses
@@ -288,7 +301,9 @@ class Command(BaseCommand):
                 status = random.choice(statuses)
 
                 # Generate protocol number
-                protocol_number = f"LDM{timezone.now().year}{random.randint(1000, 9999)}"
+                protocol_number = (
+                    f"LDM{timezone.now().year}{random.randint(1000, 9999)}"
+                )
 
                 # Create study
                 study = Study.objects.create(
@@ -303,7 +318,9 @@ class Command(BaseCommand):
 
                 # Add results for completed studies
                 if status == "completed":
-                    study.completed_at = timezone.now() - timedelta(days=random.randint(0, 5))
+                    study.completed_at = timezone.now() - timedelta(
+                        days=random.randint(0, 5)
+                    )
                     study.results = f"Resultados normales para {practice.name}. Todos los valores dentro de rangos de referencia."
                     # Note: In production, you would upload a PDF file here
                     # study.results_file = 'path/to/pdf'

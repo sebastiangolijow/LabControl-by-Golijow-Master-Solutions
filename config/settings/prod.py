@@ -88,7 +88,7 @@ CACHES = {
             "CONNECTION_POOL_KWARGS": {
                 "max_connections": 50,
                 "retry_on_timeout": True,
-            }
+            },
         },
         "KEY_PREFIX": "labcontrol",
     }
