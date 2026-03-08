@@ -153,8 +153,8 @@ class StudyViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_parsers(self):
-        """Use MultiPartParser for create so files can be uploaded at creation time."""
-        if getattr(self, "action", None) == "create":
+        """Use MultiPartParser for create and update so files can be uploaded."""
+        if getattr(self, "action", None) in ["create", "update", "partial_update"]:
             return [MultiPartParser()]
         return super().get_parsers()
 
