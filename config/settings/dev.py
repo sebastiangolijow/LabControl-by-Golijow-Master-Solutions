@@ -45,7 +45,44 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 AUTH_PASSWORD_VALIDATORS = []
 
 # Less strict CORS in development
-CORS_ALLOW_ALL_ORIGINS = True
+# NOTE: Cannot use CORS_ALLOW_ALL_ORIGINS=True with CORS_ALLOW_CREDENTIALS=True
+# Browsers require explicit origins when credentials are included
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+]
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+# CSRF settings for local development
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF cookie
+CSRF_COOKIE_SAMESITE = "Lax"  # Less restrictive for local dev
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_USE_SESSIONS = False  # Use cookies, not sessions for CSRF
+CSRF_COOKIE_SECURE = False  # Don't require HTTPS for CSRF cookie in dev
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 # Development-specific logging
 LOGGING["loggers"]["django"]["level"] = "DEBUG"  # noqa
