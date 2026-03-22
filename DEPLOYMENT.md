@@ -25,6 +25,18 @@
 
 ### March 22, 2026: SSL Certificate & Port Preservation Fix
 
+**📦 Verified Working Backup Available**: `backups/2026-03-22-working-config/`
+
+A complete backup of this working configuration has been saved. See [backups/INDEX.md](backups/INDEX.md) for details.
+
+Quick restore if issues occur:
+```bash
+cd backups/2026-03-22-working-config
+./restore.sh nginx    # Restore nginx config only (30 seconds)
+./restore.sh env      # Restore environment variables (2-3 minutes)
+./restore.sh full     # Full restore (5-10 minutes)
+```
+
 **Issue**: After certificate renewal, the staging app showed SSL certificate errors ("Not Secure" warning) and Django admin redirects were losing the `:8443` port.
 
 **Root Causes Identified**:
