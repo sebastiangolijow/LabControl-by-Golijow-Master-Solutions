@@ -1,163 +1,263 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Email Address</title>
+    <title>Verificá tu Email</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #333333;
+            margin: 0;
+            padding: 0;
+            background-color: #fafafa;
+        }
+        .email-wrapper {
             max-width: 600px;
             margin: 0 auto;
+            background-color: #fafafa;
             padding: 20px;
-            background-color: #f4f4f4;
         }
-        .container {
+        .email-container {
             background-color: #ffffff;
-            border-radius: 8px;
-            padding: 40px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
         }
-        .header {
+        .email-header {
+            background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+            padding: 40px 30px;
             text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
         }
-        .header h1 {
-            color: #2c3e50;
+        .logo-container {
+            background-color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0d9488;
             margin: 0;
-            font-size: 24px;
+            letter-spacing: -0.5px;
         }
-        .logo {
-            font-size: 32px;
-            font-weight: bold;
-            color: #3498db;
-            margin-bottom: 10px;
+        .email-header h1 {
+            color: #ffffff;
+            margin: 15px 0 0 0;
+            font-size: 28px;
+            font-weight: 600;
         }
-        .content {
-            margin-bottom: 30px;
+        .email-body {
+            padding: 40px 30px;
         }
-        .content p {
+        .greeting {
+            font-size: 16px;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        .content-text {
+            font-size: 15px;
+            color: #4b5563;
             margin: 15px 0;
+            line-height: 1.8;
         }
-        .highlight {
-            background-color: #e8f4f8;
-            border-left: 4px solid #3498db;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
+        .highlight-box {
+            background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+            border-left: 4px solid #0d9488;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 10px;
+        }
+        .highlight-box p {
+            margin: 0;
+            font-weight: 600;
+            color: #0f766e;
+            font-size: 15px;
         }
         .cta-button {
             display: inline-block;
-            background-color: #3498db;
+            background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
             color: #ffffff !important;
             text-decoration: none;
-            padding: 14px 30px;
-            border-radius: 5px;
+            padding: 16px 40px;
+            border-radius: 12px;
             font-weight: 600;
-            margin: 20px 0;
+            font-size: 16px;
+            margin: 25px 0;
             text-align: center;
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+            transition: transform 0.2s;
         }
         .cta-button:hover {
-            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(13, 148, 136, 0.4);
         }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            font-size: 12px;
-            color: #7f8c8d;
+        .button-container {
             text-align: center;
+            margin: 30px 0;
         }
-        .security-notice {
-            background-color: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 20px 0;
-            font-size: 14px;
-        }
-        .security-notice strong {
-            color: #856404;
-        }
-        .token-box {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
+        .url-box {
+            background-color: #f9fafb;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
             padding: 15px;
             margin: 20px 0;
             text-align: center;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: 12px;
             word-break: break-all;
+            color: #6b7280;
+        }
+        .security-notice {
+            background-color: #fef3c7;
+            border: 1.5px solid #fbbf24;
+            border-radius: 10px;
+            padding: 18px;
+            margin: 25px 0;
+            font-size: 14px;
+        }
+        .security-notice strong {
+            color: #92400e;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .benefits-list {
+            background-color: #f9fafb;
+            border-radius: 10px;
+            padding: 20px 20px 20px 45px;
+            margin: 25px 0;
+        }
+        .benefits-list li {
+            color: #4b5563;
+            margin: 10px 0;
+            font-size: 15px;
+        }
+        .signature {
+            margin-top: 40px;
+            padding-top: 25px;
+            border-top: 1.5px solid #e5e7eb;
+        }
+        .signature p {
+            margin: 5px 0;
+            color: #6b7280;
+            font-size: 15px;
+        }
+        .signature strong {
+            color: #0d9488;
+            font-size: 16px;
+        }
+        .email-footer {
+            background-color: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            font-size: 13px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+        .email-footer p {
+            margin: 8px 0;
+        }
+        .footer-links {
+            margin: 15px 0;
+        }
+        .footer-links a {
+            color: #0d9488;
+            text-decoration: none;
+            margin: 0 10px;
         }
         @media only screen and (max-width: 600px) {
-            body {
+            .email-wrapper {
                 padding: 10px;
             }
-            .container {
-                padding: 20px;
+            .email-body {
+                padding: 30px 20px;
+            }
+            .email-header {
+                padding: 30px 20px;
+            }
+            .email-header h1 {
+                font-size: 24px;
             }
             .cta-button {
                 display: block;
                 width: 100%;
+                padding: 14px 20px;
+            }
+            .benefits-list {
+                padding: 15px 15px 15px 35px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">LabControl</div>
-            <h1>Verify Your Email Address</h1>
-        </div>
-
-        <div class="content">
-            <p>Dear {{ user_name }},</p>
-
-            <p>Thank you for registering with LabControl! To complete your account setup and access your patient portal, please verify your email address.</p>
-
-            <div class="highlight">
-                <p style="margin: 0;"><strong>Click the button below to verify your email:</strong></p>
-            </p>
+    <div class="email-wrapper">
+        <div class="email-container">
+            <!-- Header with Logo -->
+            <div class="email-header">
+                <div class="logo-container">
+                    <p class="logo-text">LDM - Laboratorio de Diagnóstico Molecular</p>
+                </div>
+                <h1>Verificá tu Email</h1>
             </div>
 
-            <p style="text-align: center;">
-                <a href="{{ verification_url }}" class="cta-button">Verify My Email</a>
-            </p>
+            <!-- Email Body -->
+            <div class="email-body">
+                <p class="greeting">Estimado/a {{ user_name }},</p>
 
-            <p style="font-size: 14px; color: #7f8c8d;">Or copy and paste this link into your browser:</p>
-            <div class="token-box">
-                {{ verification_url }}
+                <p class="content-text">
+                    ¡Gracias por registrarte en el Laboratorio de Diagnóstico Molecular! Para completar la configuración de tu cuenta y acceder a tu portal de paciente, por favor verificá tu dirección de email.
+                </p>
+
+                <div class="highlight-box">
+                    <p>Hacé clic en el botón de abajo para verificar tu email:</p>
+                </div>
+
+                <div class="button-container">
+                    <a href="{{ verification_url }}" class="cta-button">Verificar mi Email</a>
+                </div>
+
+                <p class="content-text" style="font-size: 14px; color: #6b7280; text-align: center;">
+                    O copiá y pegá este enlace en tu navegador:
+                </p>
+                <div class="url-box">
+                    {{ verification_url }}
+                </div>
+
+                <div class="security-notice">
+                    <strong>⚠️ Aviso de Seguridad:</strong>
+                    Este enlace de verificación expirará en 24 horas. Si no creaste una cuenta en el Laboratorio de Diagnóstico Molecular, por favor ignorá este email o contactanos si tenés alguna preocupación.
+                </div>
+
+                <p class="content-text">Después de la verificación, podrás:</p>
+                <ul class="benefits-list">
+                    <li>Ver tus resultados de laboratorio</li>
+                    <li>Descargar PDFs de resultados de forma segura</li>
+                    <li>Recibir notificaciones cuando nuevos resultados estén disponibles</li>
+                    <li>Gestionar la configuración de tu cuenta</li>
+                </ul>
+
+                <p class="content-text">
+                    Si tenés alguna pregunta, no dudes en contactar a nuestro equipo de soporte.
+                </p>
+
+                <div class="signature">
+                    <p>Saludos cordiales,</p>
+                    <p><strong>Equipo del Laboratorio de Diagnóstico Molecular</strong></p>
+                </div>
             </div>
 
-            <div class="security-notice">
-                <strong>Security Notice:</strong> This verification link will expire in 24 hours. If you didn't create an account with LabControl, please ignore this email or contact us if you have concerns.
+            <!-- Footer -->
+            <div class="email-footer">
+                <p>Este es un email automático. Por favor no respondas a este mensaje.</p>
+                <p>Si no solicitaste esta verificación, por favor contactanos inmediatamente.</p>
+                <div class="footer-links">
+                    <a href="mailto:info@labmolecular.com">info@labmolecular.com</a>
+                </div>
+                <p>&copy; 2024 Laboratorio de Diagnóstico Molecular. Todos los derechos reservados.</p>
             </div>
-
-            <p>After verification, you'll be able to:</p>
-            <ul>
-                <li>View your laboratory test results</li>
-                <li>Download result PDFs securely</li>
-                <li>Receive notifications when new results are available</li>
-                <li>Manage your account settings</li>
-            </ul>
-
-            <p>If you have any questions, please don't hesitate to contact our support team.</p>
-
-            <p style="margin-top: 30px;">
-                Best regards,<br>
-                <strong>LabControl Team</strong>
-            </p>
-        </div>
-
-        <div class="footer">
-            <p>This is an automated email. Please do not reply to this message.</p>
-            <p>If you didn't request this verification, please contact us immediately at support@labcontrol.com</p>
-            <p>&copy; 2024 LabControl. All rights reserved.</p>
         </div>
     </div>
 </body>

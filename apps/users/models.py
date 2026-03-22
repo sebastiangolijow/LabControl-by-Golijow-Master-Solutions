@@ -274,7 +274,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.verification_token
 
     def verify_email(self):
-        """Mark the user's email as verified."""
+        """Mark the user's email as verified and create EmailAddress for allauth."""
+        from allauth.account.models import EmailAddress
+
         self.is_verified = True
         self.verification_token = None
         self.verification_token_created_at = None
@@ -284,6 +286,16 @@ class User(AbstractBaseUser, PermissionsMixin):
                 "verification_token",
                 "verification_token_created_at",
             ]
+        )
+
+        # Create or update EmailAddress for django-allauth authentication
+        EmailAddress.objects.update_or_create(
+            user=self,
+            email=self.email.lower(),
+            defaults={
+                "verified": True,
+                "primary": True,
+            }
         )
 
     def is_verification_token_valid(self):

@@ -191,7 +191,7 @@ def send_verification_email(self, user_id):
         text_content = strip_tags(html_content)  # Fallback plain text
 
         # Create email
-        subject = "Verify Your Email Address - LabControl"
+        subject = "Verificá tu Email - Laboratorio de Diagnóstico Molecular"
         email = EmailMultiAlternatives(
             subject=subject,
             body=text_content,
@@ -255,7 +255,7 @@ def send_password_setup_email(self, user_id):
         text_content = strip_tags(html_content)  # Fallback plain text
 
         # Create email
-        subject = "Set Your Password - LabControl"
+        subject = "Configurá tu Contraseña - Laboratorio de Diagnóstico Molecular"
         email = EmailMultiAlternatives(
             subject=subject,
             body=text_content,

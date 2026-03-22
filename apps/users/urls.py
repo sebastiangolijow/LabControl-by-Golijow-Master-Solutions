@@ -6,6 +6,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     PatientRegistrationView,
     ResendVerificationEmailView,
+    SetPasswordView,
     UserViewSet,
     VerifyEmailView,
 )
@@ -18,6 +19,7 @@ app_name = "users"
 urlpatterns = [
     path("register/", PatientRegistrationView.as_view(), name="patient-register"),
     path("verify-email/", VerifyEmailView.as_view(), name="verify-email"),
+    path("set-password/", SetPasswordView.as_view(), name="set-password"),
     path(
         "resend-verification/",
         ResendVerificationEmailView.as_view(),

@@ -78,12 +78,12 @@ services:
     container_name: labcontrol_nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "8443:443"  # External 8443 -> Internal 443 (Traefik uses 80/443)
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro  # Let's Encrypt certificates
       - static_volume:/app/staticfiles:ro
       - media_volume:/app/media:ro
       - ./frontend/dist:/usr/share/nginx/html:ro  # Vue.js production build

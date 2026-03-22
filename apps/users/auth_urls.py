@@ -16,8 +16,7 @@ urlpatterns = [
     path("password/reset/", PasswordResetView.as_view(), name="rest_password_reset"),
     # Include remaining dj-rest-auth endpoints (logout, password change, etc.)
     path("", include("dj_rest_auth.urls")),
-    # Custom throttled registration endpoint
-    path("registration/", RegistrationView.as_view(), name="rest_register"),
-    # Include remaining registration endpoints (verify email, etc.)
+    # Include ALL registration endpoints (verify-email, resend, and base registration)
+    # TODO: Add custom throttling to registration endpoint via DRF settings
     path("registration/", include("dj_rest_auth.registration.urls")),
 ]

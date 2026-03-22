@@ -62,16 +62,17 @@ class UserViewSet(viewsets.ModelViewSet):
         - Lab staff can see users in their lab
         - Doctors can only see patients
         - Others can only see themselves
+        - Only active users are shown (is_active=True)
         """
         user = self.request.user
 
         if user.is_superuser or user.role == "admin":
-            return User.objects.all()
+            return User.objects.filter(is_active=True)
         elif user.role == "lab_staff" and user.lab_client_id:
-            return User.objects.filter(lab_client_id=user.lab_client_id)
+            return User.objects.filter(lab_client_id=user.lab_client_id, is_active=True)
         elif user.role == "doctor":
             # Doctors can only see their own patients (patients with studies ordered by them)
-            return user.patients
+            return user.patients.filter(is_active=True)
         else:
             return User.objects.filter(pk=user.pk)
 
@@ -161,8 +162,8 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         user = request.user
 
-        # Start with patients only
-        queryset = User.objects.filter(role="patient")
+        # Start with active patients only
+        queryset = User.objects.filter(role="patient", is_active=True)
 
         # Lab staff can only see patients in their lab
         if user.role == "lab_staff" and user.lab_client_id:
@@ -276,8 +277,8 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         user = request.user
 
-        # Start with doctors only
-        queryset = User.objects.filter(role="doctor")
+        # Start with active doctors only
+        queryset = User.objects.filter(role="doctor", is_active=True)
 
         # Lab staff can only see doctors in their lab
         if user.role == "lab_staff" and user.lab_client_id:
@@ -459,4 +460,84 @@ class ResendVerificationEmailView(generics.GenericAPIView):
                     "message": "If an account with this email exists, a verification email has been sent."
                 },
                 status=status.HTTP_200_OK,
+            )
+
+
+class SetPasswordView(generics.GenericAPIView):
+    """
+    Public endpoint for setting password for admin-created users.
+
+    Allows users created by admin to set their password using the token sent via email.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Set password with token for admin-created users."""
+        email = request.data.get("email")
+        token = request.data.get("token")
+        password = request.data.get("password")
+
+        if not email or not token or not password:
+            return Response(
+                {"error": "Email, token, and password are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(email=email)
+
+            # Verify token matches and is not expired
+            if user.verification_token != token:
+                return Response(
+                    {"error": "Invalid verification token."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not user.is_verification_token_valid():
+                return Response(
+                    {
+                        "error": "Verification token has expired. Please contact support."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Set the password
+            user.set_password(password)
+            user.is_verified = True
+            user.verification_token = None
+            user.verification_token_created_at = None
+            user.save(
+                update_fields=[
+                    "password",
+                    "is_verified",
+                    "verification_token",
+                    "verification_token_created_at",
+                ]
+            )
+
+            # Create EmailAddress for django-allauth authentication
+            from allauth.account.models import EmailAddress
+
+            EmailAddress.objects.update_or_create(
+                user=user,
+                email=user.email.lower(),
+                defaults={
+                    "verified": True,
+                    "primary": True,
+                },
+            )
+
+            return Response(
+                {
+                    "message": "Password set successfully! You can now log in.",
+                    "user": UserDetailSerializer(user).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND,
             )
