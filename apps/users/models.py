@@ -295,7 +295,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             defaults={
                 "verified": True,
                 "primary": True,
-            }
+            },
         )
 
     def is_verification_token_valid(self):
