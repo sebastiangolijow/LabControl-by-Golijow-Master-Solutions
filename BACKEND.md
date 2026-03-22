@@ -1,0 +1,1782 @@
+# LabControl Backend - Agent Context
+
+**Last Updated**: March 22, 2026
+**Python**: 3.11
+**Django**: 4.2
+**Database**: PostgreSQL 15 with UUID primary keys
+**Task Queue**: Celery + Redis
+**API Framework**: Django REST Framework 3.x
+
+---
+
+## 📋 Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Architecture & Design Patterns](#architecture--design-patterns)
+3. [Project Structure](#project-structure)
+4. [Core Models & Relationships](#core-models--relationships)
+5. [API Endpoints](#api-endpoints)
+6. [Authentication & Permissions](#authentication--permissions)
+7. [Key Patterns & Conventions](#key-patterns--conventions)
+8. [Testing](#testing)
+9. [Database](#database)
+10. [Celery Tasks](#celery-tasks)
+11. [Development Workflow](#development-workflow)
+12. [Common Tasks](#common-tasks)
+
+---
+
+## 🎯 Project Overview
+
+LabControl is a **multi-tenant medical laboratory management platform** that handles:
+
+- **Patient Management**: Registration, profiles, medical history
+- **Study Management**: Lab tests, practices, determinations, results
+- **Appointments**: Scheduling, reminders, check-in/out
+- **Payments**: Invoices, payment tracking, multiple payment methods
+- **Notifications**: Email, in-app, SMS notifications
+- **Analytics**: Revenue tracking, study trends, performance metrics
+
+### Multi-Tenancy
+
+The system supports **multiple laboratory clients** using a simple `lab_client_id` field on relevant models. Each laboratory client's data is isolated using query filters.
+
+```python
+# Example: Filter studies by lab client
+Study.objects.filter(lab_client_id=request.user.lab_client_id)
+```
+
+**Note**: Full multi-tenancy with a `Company` model is planned but not yet implemented.
+
+---
+
+## 🏗️ Architecture & Design Patterns
+
+### Django Apps Structure
+
+The backend follows Django's **app-based architecture**:
+
+- **`apps/core/`**: Base models, mixins, utilities (BaseModel, permissions, etc.)
+- **`apps/users/`**: User model, authentication, registration
+- **`apps/studies/`**: Lab studies, practices, determinations, results
+- **`apps/appointments/`**: Appointment scheduling and management
+- **`apps/payments/`**: Invoices, payments, billing
+- **`apps/notifications/`**: Notification system (email, in-app, SMS)
+- **`apps/analytics/`**: Dashboard, reports, metrics
+
+### Key Design Patterns
+
+1. **Base Model Pattern**: All models inherit from `BaseModel` or `LabClientModel` for common fields
+2. **Custom Managers**: Each model has a custom manager for reusable queries
+3. **UUID Primary Keys**: All models use UUIDs instead of auto-increment IDs
+4. **Audit Trail**: All critical models use `django-simple-history` for change tracking
+5. **Permissions**: Role-based access control (RBAC) with custom permission classes
+6. **Serializers**: DRF serializers handle validation and representation
+7. **ViewSets**: DRF ViewSets for RESTful CRUD operations
+
+---
+
+## 📁 Project Structure
+
+```
+labcontrol/
+├── apps/
+│   ├── core/                    # Core utilities and base classes
+│   │   ├── models.py            # BaseModel, UUIDModel, LabClientModel
+│   │   ├── managers.py          # Base managers
+│   │   ├── permissions.py       # Custom permissions (IsAdminUser, etc.)
+│   │   └── utils.py             # Helper functions
+│   │
+│   ├── users/                   # User management & auth
+│   │   ├── models.py            # User (UUID PK, roles, profile)
+│   │   ├── views.py             # Registration, login, profile
+│   │   ├── serializers.py       # UserSerializer, RegisterSerializer
+│   │   ├── permissions.py       # Role-based permissions
+│   │   ├── managers.py          # UserManager
+│   │   ├── auth_urls.py         # Auth endpoints (/auth/login, /auth/user, etc.)
+│   │   ├── urls.py              # User endpoints (/users/, etc.)
+│   │   └── management/commands/
+│   │       ├── create_seed_users.py    # Create dev users
+│   │       └── verify_email.py         # Manually verify email
+│   │
+│   ├── studies/                 # Lab studies & practices
+│   │   ├── models.py            # Practice, Determination, Study, UserDetermination
+│   │   ├── views.py             # Study CRUD, upload/download results
+│   │   ├── serializers.py       # Study, Practice, Determination serializers
+│   │   ├── filters.py           # StudyFilter, PracticeFilter
+│   │   ├── managers.py          # StudyManager, PracticeManager
+│   │   ├── urls.py              # Study endpoints
+│   │   └── management/commands/
+│   │       └── load_practices.py       # Load practice catalog from JSON
+│   │
+│   ├── appointments/            # Appointment management
+│   │   ├── models.py            # Appointment (status, scheduling)
+│   │   ├── views.py             # Appointment CRUD
+│   │   ├── serializers.py       # AppointmentSerializer
+│   │   ├── managers.py          # AppointmentManager
+│   │   └── urls.py
+│   │
+│   ├── payments/                # Billing & payments
+│   │   ├── models.py            # Invoice, Payment
+│   │   ├── views.py             # Invoice/Payment CRUD
+│   │   ├── serializers.py       # InvoiceSerializer, PaymentSerializer
+│   │   ├── managers.py          # InvoiceManager, PaymentManager
+│   │   └── urls.py
+│   │
+│   ├── notifications/           # Notification system
+│   │   ├── models.py            # Notification (in-app, email, SMS)
+│   │   ├── views.py             # Notification CRUD
+│   │   ├── serializers.py       # NotificationSerializer
+│   │   ├── tasks.py             # Celery tasks for sending notifications
+│   │   ├── managers.py          # NotificationManager
+│   │   └── urls.py
+│   │
+│   └── analytics/               # Analytics & reporting
+│       ├── views.py             # Dashboard, trends, revenue
+│       ├── serializers.py       # Analytics serializers
+│       └── urls.py
+│
+├── config/                      # Project configuration
+│   ├── settings/
+│   │   ├── base.py              # Common settings
+│   │   ├── dev.py               # Development settings
+│   │   ├── test.py              # Test settings
+│   │   ├── prod.py              # Production settings
+│   │   └── __init__.py
+│   ├── urls.py                  # Root URL configuration
+│   ├── wsgi.py                  # WSGI config for deployment
+│   ├── asgi.py                  # ASGI config (future WebSocket support)
+│   └── celery.py                # Celery configuration
+│
+├── tests/                       # Test suite (277 tests, 82% coverage)
+│   ├── base.py                  # BaseTestCase with factories
+│   ├── test_users.py
+│   ├── test_studies.py
+│   ├── test_appointments.py
+│   ├── test_payments.py
+│   ├── test_notifications.py
+│   └── test_analytics.py
+│
+├── templates/                   # Email templates
+│   └── emails/
+│       ├── email_verification.html
+│       ├── password_reset.html
+│       └── password_setup.html
+│
+├── manage.py                    # Django management script
+├── Makefile                     # Common commands
+├── requirements.txt             # Python dependencies
+├── Dockerfile                   # Docker image
+├── docker-compose.yml           # Local development
+├── docker-compose.prod.yml      # Production deployment
+└── .env.example                 # Environment variables template
+```
+
+---
+
+## 🗃️ Core Models & Relationships
+
+### Base Models (apps/core/models.py)
+
+All models inherit from base classes that provide common functionality:
+
+```python
+class TimeStampedModel(models.Model):
+    """Provides created_at and updated_at fields"""
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class UUIDModel(models.Model):
+    """Provides uuid field (unique identifier)"""
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+class CreatedByModel(models.Model):
+    """Tracks who created the record"""
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+class LabClientModel(models.Model):
+    """Multi-tenant support"""
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True)
+    lab_client_id = models.IntegerField(null=True, blank=True, db_index=True)
+
+class BaseModel(TimeStampedModel, UUIDModel, CreatedByModel):
+    """Combines all common mixins - most models inherit this"""
+    pass
+```
+
+### User Model (apps/users/models.py)
+
+**Primary Key**: `uuid` (UUIDField)
+
+```python
+class User(AbstractBaseUser, PermissionsMixin):
+    """
+    Custom user model with role-based access control.
+
+    Roles:
+    - admin: Full system access
+    - lab_staff: Lab operations (upload results, manage studies)
+    - doctor: View patient studies, order tests
+    - patient: View own studies and results
+    """
+    # Primary key (UUID)
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Authentication
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=128)
+
+    # Role & permissions
+    role = models.CharField(
+        max_length=20,
+        choices=[
+            ('admin', 'Administrator'),
+            ('lab_staff', 'Laboratory Staff'),
+            ('doctor', 'Doctor'),
+            ('patient', 'Patient'),
+        ],
+        default='patient'
+    )
+
+    # Profile information
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    phone_number = models.CharField(max_length=20, blank=True)
+    dni = models.CharField(max_length=20, blank=True)  # National ID
+    birthday = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=10, blank=True)
+    location = models.CharField(max_length=100, blank=True)
+    direction = models.TextField(blank=True)  # Address
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True)
+
+    # Insurance information
+    mutual_code = models.CharField(max_length=50, blank=True)
+    mutual_name = models.CharField(max_length=100, blank=True)
+    carnet = models.CharField(max_length=50, blank=True)
+
+    # Multi-tenant support
+    lab_client_id = models.IntegerField(null=True, blank=True, db_index=True)
+
+    # Account status
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)  # Django admin access
+    is_verified = models.BooleanField(default=False)  # Email verified
+
+    # Email verification
+    verification_token = models.CharField(max_length=100, blank=True)
+    verification_token_created_at = models.DateTimeField(null=True, blank=True)
+
+    # User preferences
+    language = models.CharField(
+        max_length=2,
+        choices=[('EN', 'English'), ('ES', 'Spanish')],
+        default='ES'
+    )
+
+    # Audit trail
+    created_by = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name']
+```
+
+**Related Models**:
+- `studies.Study` (patient → studies, ordered_by → ordered_studies)
+- `appointments.Appointment` (patient → appointments)
+- `payments.Invoice` (patient → invoices)
+- `notifications.Notification` (user → notifications)
+
+### Practice Model (apps/studies/models.py)
+
+A **Practice** is a type of lab test (e.g., "Complete Blood Count", "Glucose Test").
+
+```python
+class Practice(BaseModel):
+    """
+    Laboratory practice/test definition.
+
+    Defines what tests are available, their cost, turnaround time, etc.
+    """
+    name = models.CharField(max_length=200)  # e.g., "Complete Blood Count"
+    technique = models.CharField(max_length=200, blank=True)  # e.g., "Flow Cytometry"
+    sample_type = models.CharField(max_length=100, blank=True)  # e.g., "Blood"
+    sample_quantity = models.CharField(max_length=100, blank=True)  # e.g., "5ml"
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    delay_days = models.IntegerField(default=0)  # Turnaround time
+    is_active = models.BooleanField(default=True)
+
+    # Many-to-many with Determination (individual measurements)
+    determinations = models.ManyToManyField('Determination', blank=True, related_name='practices')
+```
+
+### Determination Model (apps/studies/models.py)
+
+A **Determination** is an individual measurement within a practice (e.g., "Hemoglobin", "WBC Count").
+
+```python
+class Determination(BaseModel):
+    """
+    Individual lab measurement/test component.
+
+    A Practice can have multiple Determinations.
+    Example: "Complete Blood Count" practice includes determinations like:
+    - Hemoglobin
+    - White Blood Cell Count
+    - Platelet Count
+    """
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=50, unique=True)  # e.g., "HGB"
+    unit = models.CharField(max_length=50, blank=True)  # e.g., "g/dL"
+    reference_range = models.CharField(max_length=100, blank=True)  # e.g., "12-16 g/dL"
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+```
+
+### Study Model (apps/studies/models.py)
+
+A **Study** represents a lab test order for a specific patient.
+
+**Primary Key**: `uuid` (UUIDField)
+
+```python
+class Study(BaseModel, LabClientModel):
+    """
+    Laboratory study/test order for a patient.
+
+    Lifecycle:
+    1. Created (pending)
+    2. Sample collected (in_progress)
+    3. Results uploaded (completed)
+    4. Patient notified
+    """
+    # Relationships
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='studies')
+    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='studies')
+    ordered_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ordered_studies',
+        limit_choices_to={'role': 'doctor'}
+    )
+
+    # Study details
+    protocol_number = models.CharField(max_length=50, unique=True)  # e.g., "2026-001234"
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled'),
+        ],
+        default='pending'
+    )
+
+    # Results
+    results_file = models.FileField(upload_to='study_results/', blank=True)
+    results = models.JSONField(null=True, blank=True)  # Structured results data
+
+    # Dates
+    solicited_date = models.DateField(null=True, blank=True)
+    sample_collected_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    # Notes
+    notes = models.TextField(blank=True)
+
+    # Multi-tenant
+    lab_client_id = models.IntegerField(null=True, blank=True, db_index=True)
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    # Custom manager (see managers.py)
+    objects = StudyManager()
+
+    @property
+    def is_pending(self):
+        return self.status == 'pending'
+
+    @property
+    def is_completed(self):
+        return self.status == 'completed'
+```
+
+**Custom Manager** (apps/studies/managers.py):
+```python
+class StudyManager(models.Manager):
+    def pending(self):
+        return self.filter(status='pending')
+
+    def completed(self):
+        return self.filter(status='completed')
+
+    def for_patient(self, patient):
+        return self.filter(patient=patient)
+
+    def for_lab(self, lab_client_id):
+        return self.filter(lab_client_id=lab_client_id)
+```
+
+### UserDetermination Model (apps/studies/models.py)
+
+Stores **individual result values** for a study.
+
+```python
+class UserDetermination(BaseModel):
+    """
+    Individual result value for a determination within a study.
+
+    Example:
+    Study: "Complete Blood Count for Patient A"
+    - UserDetermination 1: Hemoglobin = "14.5 g/dL"
+    - UserDetermination 2: WBC Count = "7200 /uL"
+    """
+    study = models.ForeignKey(Study, on_delete=models.CASCADE, related_name='determination_results')
+    determination = models.ForeignKey(Determination, on_delete=models.PROTECT, related_name='user_results')
+    value = models.CharField(max_length=200)  # Actual result value
+    is_abnormal = models.BooleanField(default=False)  # Flag if outside reference range
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = [['study', 'determination']]
+```
+
+### Appointment Model (apps/appointments/models.py)
+
+```python
+class Appointment(BaseModel, LabClientModel):
+    """Patient appointment for sample collection or consultation"""
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='appointments')
+    study = models.ForeignKey(Study, on_delete=models.SET_NULL, null=True, blank=True)
+
+    appointment_number = models.CharField(max_length=50, unique=True)
+    scheduled_date = models.DateField()
+    scheduled_time = models.TimeField()
+    duration_minutes = models.IntegerField(default=30)
+
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('scheduled', 'Scheduled'),
+            ('confirmed', 'Confirmed'),
+            ('in_progress', 'In Progress'),
+            ('completed', 'Completed'),
+            ('cancelled', 'Cancelled'),
+            ('no_show', 'No Show'),
+        ],
+        default='scheduled'
+    )
+
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    checked_in_at = models.DateTimeField(null=True, blank=True)
+    checked_out_at = models.DateTimeField(null=True, blank=True)
+
+    reason = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    cancellation_reason = models.TextField(blank=True)
+
+    reminder_sent = models.BooleanField(default=False)
+    reminder_sent_at = models.DateTimeField(null=True, blank=True)
+
+    history = HistoricalRecords()
+```
+
+### Invoice & Payment Models (apps/payments/models.py)
+
+```python
+class Invoice(BaseModel, LabClientModel):
+    """Invoice for medical services"""
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='invoices')
+    study = models.ForeignKey(Study, on_delete=models.SET_NULL, null=True, blank=True)
+
+    invoice_number = models.CharField(max_length=50, unique=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('draft', 'Draft'),
+            ('pending', 'Pending Payment'),
+            ('paid', 'Paid'),
+            ('partially_paid', 'Partially Paid'),
+            ('cancelled', 'Cancelled'),
+            ('refunded', 'Refunded'),
+        ],
+        default='draft'
+    )
+
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    issue_date = models.DateField()
+    due_date = models.DateField()
+    paid_date = models.DateField(null=True, blank=True)
+
+    notes = models.TextField(blank=True)
+    history = HistoricalRecords()
+
+    @property
+    def balance_due(self):
+        return self.total_amount - self.paid_amount
+
+class Payment(BaseModel):
+    """Payment transaction for an invoice"""
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='payments')
+
+    transaction_id = models.CharField(max_length=100, unique=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(
+        max_length=20,
+        choices=[
+            ('cash', 'Cash'),
+            ('credit_card', 'Credit Card'),
+            ('debit_card', 'Debit Card'),
+            ('bank_transfer', 'Bank Transfer'),
+            ('online', 'Online Payment'),
+        ],
+        default='cash'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed'),
+            ('refunded', 'Refunded'),
+        ],
+        default='pending'
+    )
+
+    # Payment gateway integration (e.g., Stripe)
+    gateway = models.CharField(max_length=50, blank=True)
+    gateway_transaction_id = models.CharField(max_length=200, blank=True)
+    gateway_response = models.JSONField(blank=True, null=True)
+
+    completed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    history = HistoricalRecords()
+```
+
+### Notification Model (apps/notifications/models.py)
+
+```python
+class Notification(BaseModel):
+    """System notification for users"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    notification_type = models.CharField(
+        max_length=30,
+        choices=[
+            ('info', 'Information'),
+            ('warning', 'Warning'),
+            ('error', 'Error'),
+            ('success', 'Success'),
+            ('appointment_reminder', 'Appointment Reminder'),
+            ('result_ready', 'Result Ready'),
+            ('payment_due', 'Payment Due'),
+        ],
+        default='info'
+    )
+    channel = models.CharField(
+        max_length=20,
+        choices=[
+            ('in_app', 'In-App'),
+            ('email', 'Email'),
+            ('sms', 'SMS'),
+            ('push', 'Push Notification'),
+        ],
+        default='in_app'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('sent', 'Sent'),
+            ('delivered', 'Delivered'),
+            ('failed', 'Failed'),
+            ('read', 'Read'),
+        ],
+        default='pending'
+    )
+
+    # Related objects (stored as IDs, not FKs to avoid circular dependencies)
+    related_study_id = models.IntegerField(null=True, blank=True)
+    related_appointment_id = models.IntegerField(null=True, blank=True)
+    related_invoice_id = models.IntegerField(null=True, blank=True)
+
+    metadata = models.JSONField(blank=True, null=True)
+
+    sent_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    history = HistoricalRecords()
+
+    @property
+    def is_read(self):
+        return self.read_at is not None
+```
+
+---
+
+## 🔌 API Endpoints
+
+All API endpoints are prefixed with `/api/v1/`.
+
+### Authentication (`/api/v1/auth/`)
+
+Defined in `apps/users/auth_urls.py`:
+
+```python
+POST   /api/v1/auth/register/           # Patient registration (public)
+POST   /api/v1/auth/login/              # Login (returns JWT access + refresh tokens)
+POST   /api/v1/auth/logout/             # Logout (blacklists refresh token)
+POST   /api/v1/auth/token/refresh/      # Refresh access token
+GET    /api/v1/auth/user/               # Get current user profile
+PATCH  /api/v1/auth/user/               # Update current user profile
+POST   /api/v1/auth/password/change/    # Change password (authenticated)
+POST   /api/v1/auth/password/reset/     # Request password reset (public)
+POST   /api/v1/auth/password/reset/confirm/  # Confirm password reset
+POST   /api/v1/auth/verify-email/       # Verify email with token
+```
+
+**Rate Limits**:
+- Login: 5 attempts per 15 minutes per IP
+- Password reset: 3 requests per hour per IP
+- Registration: 5 requests per hour per IP
+
+### Users (`/api/v1/users/`)
+
+Defined in `apps/users/urls.py`:
+
+```python
+GET    /api/v1/users/                    # List all users (admin only)
+POST   /api/v1/users/create-user/        # Create user (admin/staff only)
+GET    /api/v1/users/{uuid}/             # Get user details
+PATCH  /api/v1/users/{uuid}/             # Update user
+DELETE /api/v1/users/{uuid}/             # Delete user (admin only)
+
+# Search endpoints
+GET    /api/v1/users/search-doctors/     # Search doctors (admin/staff)
+GET    /api/v1/users/search-patients/    # Search patients (admin/staff)
+```
+
+### Studies (`/api/v1/studies/`)
+
+Defined in `apps/studies/urls.py`:
+
+```python
+# Study CRUD
+GET    /api/v1/studies/                           # List studies (filtered by role)
+POST   /api/v1/studies/                           # Create study (admin/staff)
+GET    /api/v1/studies/{uuid}/                    # Get study details
+PATCH  /api/v1/studies/{uuid}/                    # Update study
+DELETE /api/v1/studies/{uuid}/                    # Delete study (admin only)
+
+# Result management
+POST   /api/v1/studies/{uuid}/upload_result/      # Upload result file (admin/staff)
+GET    /api/v1/studies/{uuid}/download_result/    # Download result file
+DELETE /api/v1/studies/{uuid}/delete-result/      # Delete result file (admin/staff)
+
+# Filtered lists
+GET    /api/v1/studies/with-results/              # Studies with results (admin/staff)
+GET    /api/v1/studies/available-for-upload/      # Studies ready for result upload
+
+# Practices and Determinations
+GET    /api/v1/studies/practices/                 # List active practices
+POST   /api/v1/studies/practices/                 # Create practice (admin/staff)
+GET    /api/v1/studies/practices/{uuid}/          # Get practice details
+PATCH  /api/v1/studies/practices/{uuid}/          # Update practice
+DELETE /api/v1/studies/practices/{uuid}/          # Delete practice
+
+GET    /api/v1/studies/determinations/            # List determinations
+POST   /api/v1/studies/determinations/            # Create determination (admin/staff)
+
+# User Determinations (individual result values)
+GET    /api/v1/studies/user-determinations/       # List user determinations
+POST   /api/v1/studies/user-determinations/       # Create user determination
+PATCH  /api/v1/studies/user-determinations/{uuid}/  # Update user determination
+
+# Utility
+GET    /api/v1/studies/last-protocol-number/      # Get last protocol number for auto-increment
+```
+
+**Permissions**:
+- Patients: Can only view their own studies
+- Doctors: Can view studies they ordered
+- Lab Staff: Can view/create/update all studies for their lab
+- Admin: Full access
+
+**Filters**:
+```python
+# Available filters on /api/v1/studies/
+?patient={uuid}           # Filter by patient
+?practice={uuid}          # Filter by practice
+?status=pending           # Filter by status
+?ordering=-created_at     # Order by field (prefix '-' for descending)
+?search=protocol          # Search in protocol_number, patient name
+```
+
+### Appointments (`/api/v1/appointments/`)
+
+```python
+GET    /api/v1/appointments/              # List appointments
+POST   /api/v1/appointments/              # Create appointment
+GET    /api/v1/appointments/{uuid}/       # Get appointment
+PATCH  /api/v1/appointments/{uuid}/       # Update appointment
+DELETE /api/v1/appointments/{uuid}/       # Cancel appointment
+```
+
+### Payments (`/api/v1/payments/`)
+
+```python
+GET    /api/v1/payments/invoices/         # List invoices
+POST   /api/v1/payments/invoices/         # Create invoice
+GET    /api/v1/payments/invoices/{uuid}/  # Get invoice
+PATCH  /api/v1/payments/invoices/{uuid}/  # Update invoice
+
+GET    /api/v1/payments/                  # List payments
+POST   /api/v1/payments/                  # Record payment
+GET    /api/v1/payments/{uuid}/           # Get payment
+```
+
+### Notifications (`/api/v1/notifications/`)
+
+```python
+GET    /api/v1/notifications/             # List user's notifications
+GET    /api/v1/notifications/{uuid}/      # Get notification
+PATCH  /api/v1/notifications/{uuid}/      # Mark as read
+DELETE /api/v1/notifications/{uuid}/      # Delete notification
+```
+
+### Analytics (`/api/v1/analytics/`)
+
+```python
+GET    /api/v1/analytics/dashboard/               # Dashboard overview
+GET    /api/v1/analytics/studies/                 # Study statistics
+GET    /api/v1/analytics/studies/trends/          # Study trends over time
+GET    /api/v1/analytics/revenue/                 # Revenue statistics
+GET    /api/v1/analytics/revenue/trends/          # Revenue trends
+GET    /api/v1/analytics/appointments/            # Appointment statistics
+GET    /api/v1/analytics/users/                   # User statistics
+GET    /api/v1/analytics/popular-practices/       # Most popular practices
+GET    /api/v1/analytics/top-revenue-practices/   # Highest revenue practices
+```
+
+---
+
+## 🔐 Authentication & Permissions
+
+### Authentication
+
+Uses **JWT (JSON Web Tokens)** via `djangorestframework-simplejwt`.
+
+**Login Flow**:
+1. POST `/api/v1/auth/login/` with `{ "email": "...", "password": "..." }`
+2. Receive `{ "access": "...", "refresh": "...", "user": {...} }`
+3. Include `Authorization: Bearer <access_token>` in all authenticated requests
+4. When access token expires, POST to `/api/v1/auth/token/refresh/` with `{ "refresh": "..." }`
+
+**Token Lifetimes** (config/settings/base.py):
+- Access token: 1 hour
+- Refresh token: 7 days
+
+**Important**: The User model uses `uuid` as primary key, so JWT tokens contain `user_id` as UUID string.
+
+### Permissions
+
+Custom permission classes in `apps/core/permissions.py` and `apps/users/permissions.py`:
+
+```python
+class IsAdminUser(permissions.BasePermission):
+    """Only admin users can access"""
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+class IsAdminOrLabStaff(permissions.BasePermission):
+    """Admin or lab staff can access"""
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in ['admin', 'lab_staff']
+
+class IsPatientOwner(permissions.BasePermission):
+    """Patient can only access their own resources"""
+    def has_object_permission(self, request, view, obj):
+        if request.user.role in ['admin', 'lab_staff']:
+            return True
+        return obj.patient == request.user
+```
+
+**Usage in Views**:
+```python
+from apps.core.permissions import IsAdminOrLabStaff
+
+class StudyViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminOrLabStaff]
+```
+
+### Email Verification
+
+New patient registrations require email verification:
+
+1. User registers → `is_verified=False`, verification token generated
+2. Email sent with link: `{FRONTEND_URL}/verify-email?token={verification_token}`
+3. Frontend calls POST `/api/v1/auth/verify-email/` with token
+4. Backend sets `is_verified=True`, user can log in
+
+**Manual verification** (for development):
+```bash
+make verify-email EMAIL=user@example.com
+# OR
+python manage.py verify_email user@example.com
+```
+
+---
+
+## ⚙️ Key Patterns & Conventions
+
+### 1. UUID Primary Keys — CRITICAL ⚠️
+
+**All models use UUID primary keys**, not auto-increment IDs.
+
+```python
+# ✅ CORRECT - Use .pk or .uuid
+user.pk
+study.pk
+str(obj.pk)
+Count("pk", filter=Q(...))
+
+# ❌ WRONG - Do NOT use .id (will fail!)
+user.id          # AttributeError: 'User' object has no attribute 'id'
+study.id         # AttributeError
+```
+
+**Why UUIDs?**
+- Security: No enumeration attacks (can't guess `/api/v1/users/2/`)
+- Distributed systems: UUIDs can be generated client-side
+- Database merging: No ID conflicts
+
+**Serializers**:
+```python
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['uuid', 'email', 'first_name', ...]  # Use 'uuid', not 'id'
+```
+
+### 2. Multi-Tenant Filtering
+
+All queries for multi-tenant models should filter by `lab_client_id`:
+
+```python
+# In views/viewsets
+def get_queryset(self):
+    queryset = Study.objects.all()
+
+    # Filter by lab client for non-admin users
+    if not self.request.user.role == 'admin':
+        queryset = queryset.filter(lab_client_id=self.request.user.lab_client_id)
+
+    return queryset
+```
+
+**Models with multi-tenancy**:
+- `User`
+- `Study`
+- `Appointment`
+- `Invoice`
+
+### 3. Custom Managers
+
+All models have custom managers for common queries:
+
+```python
+# apps/studies/managers.py
+class StudyManager(models.Manager):
+    def pending(self):
+        return self.filter(status='pending')
+
+    def completed(self):
+        return self.filter(status='completed')
+
+    def for_patient(self, patient):
+        return self.filter(patient=patient)
+
+    def for_lab(self, lab_client_id):
+        return self.filter(lab_client_id=lab_client_id)
+```
+
+**Usage**:
+```python
+Study.objects.pending()                    # Get all pending studies
+Study.objects.for_patient(user)            # Get studies for a patient
+Study.objects.for_lab(1).completed()       # Chainable
+```
+
+### 4. Audit Trail with django-simple-history
+
+Critical models use `HistoricalRecords` to track all changes:
+
+```python
+from simple_history.models import HistoricalRecords
+
+class Study(BaseModel):
+    # ... fields ...
+    history = HistoricalRecords()
+```
+
+**Query history**:
+```python
+study = Study.objects.get(pk=some_uuid)
+study.history.all()               # All historical records
+study.history.as_of(datetime)     # State at a specific time
+```
+
+**Models with audit trail**:
+- `User`, `Study`, `Appointment`, `Invoice`, `Payment`, `Notification`
+
+### 5. File Uploads
+
+**Media files** are stored in `/app/media/` and served by Nginx in production.
+
+```python
+# models.py
+class User(AbstractBaseUser):
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True)
+
+class Study(BaseModel):
+    results_file = models.FileField(upload_to='study_results/', blank=True)
+```
+
+**Upload endpoint example** (apps/studies/views.py):
+```python
+@action(detail=True, methods=['post'], permission_classes=[IsAdminOrLabStaff])
+def upload_result(self, request, pk=None):
+    study = self.get_object()
+    file = request.FILES.get('file')
+
+    if not file:
+        return Response({'error': 'No file provided'}, status=400)
+
+    study.results_file = file
+    study.status = 'completed'
+    study.completed_at = timezone.now()
+    study.save()
+
+    return Response({'message': 'Result uploaded successfully'})
+```
+
+**Frontend request**:
+```javascript
+const formData = new FormData();
+formData.append('file', file);
+
+await axios.post(`/api/v1/studies/${studyId}/upload_result/`, formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
+```
+
+### 6. Serializer Patterns
+
+**Read-only fields**:
+```python
+class StudySerializer(serializers.ModelSerializer):
+    patient_name = serializers.CharField(source='patient.get_full_name', read_only=True)
+    practice_name = serializers.CharField(source='practice.name', read_only=True)
+
+    class Meta:
+        model = Study
+        fields = ['uuid', 'protocol_number', 'patient', 'patient_name', 'practice', 'practice_name', ...]
+        read_only_fields = ['uuid', 'created_at', 'updated_at']
+```
+
+**Nested serializers**:
+```python
+class StudyDetailSerializer(serializers.ModelSerializer):
+    patient = UserSerializer(read_only=True)
+    practice = PracticeSerializer(read_only=True)
+    determination_results = UserDeterminationSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Study
+        fields = '__all__'
+```
+
+### 7. ViewSet Patterns
+
+**Filtering queryset by user role**:
+```python
+class StudyViewSet(viewsets.ModelViewSet):
+    queryset = Study.objects.all()
+    serializer_class = StudySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if user.role == 'patient':
+            # Patients can only see their own studies
+            return queryset.filter(patient=user)
+        elif user.role == 'doctor':
+            # Doctors can see studies they ordered
+            return queryset.filter(ordered_by=user)
+        elif user.role in ['lab_staff', 'admin']:
+            # Staff can see all studies for their lab
+            if user.role != 'admin':
+                queryset = queryset.filter(lab_client_id=user.lab_client_id)
+            return queryset
+
+        return queryset.none()
+```
+
+**Custom actions**:
+```python
+@action(detail=True, methods=['post'])
+def upload_result(self, request, pk=None):
+    """Upload result file for a study"""
+    # Implementation...
+    pass
+
+@action(detail=False, methods=['get'])
+def pending(self, request):
+    """List all pending studies"""
+    studies = self.get_queryset().filter(status='pending')
+    serializer = self.get_serializer(studies, many=True)
+    return Response(serializer.data)
+```
+
+---
+
+## 🧪 Testing
+
+**Test Suite**: 277 tests, 82% coverage
+
+### BaseTestCase (tests/base.py)
+
+All tests inherit from `BaseTestCase`, which provides factory methods:
+
+```python
+from tests.base import BaseTestCase
+
+class StudyTests(BaseTestCase):
+    def test_create_study(self):
+        # Create test users
+        patient = self.create_patient()
+        doctor = self.create_doctor()
+
+        # Create practice
+        practice = self.create_practice(name="Blood Test", price=100.00)
+
+        # Create study
+        study = self.create_study(patient=patient, practice=practice)
+
+        # Assertions
+        self.assertEqual(study.patient, patient)
+        self.assertEqual(study.status, 'pending')
+```
+
+### Factory Methods
+
+```python
+# User factories
+self.create_user(email='test@example.com', role='patient', **kwargs)
+self.create_admin()                  # Creates admin user
+self.create_lab_staff(lab_client_id=1)  # Creates lab staff
+self.create_doctor()                 # Creates doctor
+self.create_patient()                # Creates patient
+
+# Other factories
+self.create_practice(name='Test', price=100, **kwargs)
+self.create_study(patient, practice, **kwargs)
+self.create_appointment(patient, study, **kwargs)
+self.create_invoice(patient, study, **kwargs)
+self.create_payment(invoice, **kwargs)
+self.create_notification(user, **kwargs)
+
+# Authentication helpers
+client = self.authenticate(user)     # Returns authenticated APIClient
+client, user = self.authenticate_as_patient()
+client, user = self.authenticate_as_admin()
+client, user = self.authenticate_as_lab_staff(lab_client_id=1)
+```
+
+### Running Tests
+
+```bash
+# All tests
+make test
+
+# With coverage
+make test-coverage
+
+# Specific app
+python manage.py test apps.users
+
+# Specific test
+python manage.py test apps.studies.tests.StudyViewSetTests.test_create_study
+
+# Fast (skip migrations)
+make test-fast
+```
+
+### Test Example
+
+```python
+from rest_framework import status
+from tests.base import BaseTestCase
+
+class StudyViewSetTests(BaseTestCase):
+    def test_patient_can_only_see_own_studies(self):
+        # Arrange
+        patient1 = self.create_patient(email='patient1@test.com')
+        patient2 = self.create_patient(email='patient2@test.com')
+        practice = self.create_practice()
+
+        study1 = self.create_study(patient=patient1, practice=practice)
+        study2 = self.create_study(patient=patient2, practice=practice)
+
+        # Act
+        client = self.authenticate(patient1)
+        response = client.get('/api/v1/studies/')
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['uuid'], str(study1.pk))
+```
+
+---
+
+## 💾 Database
+
+### PostgreSQL Configuration
+
+**Database**: PostgreSQL 15 (Alpine)
+
+**Connection**:
+```python
+# .env
+DATABASE_URL=postgresql://labcontrol_user:password@db:5432/labcontrol_db
+```
+
+**Settings** (config/settings/base.py):
+```python
+DATABASES = {
+    'default': env.db('DATABASE_URL'),
+}
+```
+
+### Migrations
+
+**All migrations were deleted and recreated on 2026-02-17.** There is no legacy migration history.
+
+```bash
+# Create migrations
+make makemigrations
+# OR
+python manage.py makemigrations
+
+# Apply migrations
+make migrate
+# OR
+python manage.py migrate
+
+# Show migrations
+make showmigrations
+
+# Create migration for specific app
+python manage.py makemigrations users
+```
+
+**Migration files**: `apps/{app_name}/migrations/0001_initial.py`, `0002_*.py`, etc.
+
+### Database Reset (DESTRUCTIVE!)
+
+```bash
+# WARNING: Destroys all data!
+make db-reset
+```
+
+This will:
+1. Drop the database
+2. Recreate it
+3. Run all migrations
+4. Create seed users
+
+### Common Database Queries
+
+```python
+# Get all studies with results
+Study.objects.exclude(results_file='')
+
+# Get pending studies for a lab
+Study.objects.filter(
+    status='pending',
+    lab_client_id=1
+).order_by('-created_at')
+
+# Get user with all related studies
+user = User.objects.prefetch_related('studies').get(pk=user_uuid)
+
+# Aggregate queries
+from django.db.models import Count, Sum
+Invoice.objects.aggregate(
+    total_revenue=Sum('total_amount'),
+    invoice_count=Count('pk')
+)
+
+# Annotate queries
+from django.db.models import Count
+Practice.objects.annotate(
+    study_count=Count('studies')
+).order_by('-study_count')
+```
+
+---
+
+## ⚡ Celery Tasks
+
+**Celery** is used for asynchronous tasks (emails, notifications, reminders).
+
+### Configuration
+
+**Broker**: Redis
+**Result Backend**: Django DB
+**Config**: `config/celery.py`
+
+```python
+# config/celery.py
+from celery import Celery
+
+app = Celery('labcontrol')
+app.config_from_object('django.conf:settings', namespace='CELERY')
+app.autodiscover_tasks()
+```
+
+### Task Example
+
+```python
+# apps/notifications/tasks.py
+from celery import shared_task
+from django.core.mail import send_mail
+from django.conf import settings
+
+@shared_task
+def send_result_ready_notification(study_uuid):
+    """
+    Send email notification when study results are ready.
+
+    Called from Study.upload_result() view.
+    """
+    from apps.studies.models import Study
+
+    study = Study.objects.get(pk=study_uuid)
+    patient = study.patient
+
+    subject = f"Results Ready: {study.practice.name}"
+    message = f"Dear {patient.first_name}, your lab results are ready. Login to view them."
+
+    send_mail(
+        subject=subject,
+        message=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[patient.email],
+        fail_silently=False,
+    )
+
+    # Create in-app notification
+    from apps.notifications.models import Notification
+    Notification.objects.create(
+        user=patient,
+        title="Results Ready",
+        message=f"Your {study.practice.name} results are ready to view.",
+        notification_type='result_ready',
+        channel='in_app',
+        status='sent',
+        related_study_id=study.pk,
+    )
+```
+
+**Calling tasks**:
+```python
+# In views
+from apps.notifications.tasks import send_result_ready_notification
+
+def upload_result(request, study_id):
+    # ... upload logic ...
+
+    # Trigger async task
+    send_result_ready_notification.delay(study.pk)
+```
+
+### Running Celery
+
+**Development**:
+```bash
+# Worker
+celery -A config worker -l info
+
+# Beat (scheduler)
+celery -A config beat -l info
+```
+
+**Production** (Docker):
+```bash
+# Containers run automatically via docker-compose.prod.yml
+docker logs labcontrol_celery_worker
+docker logs labcontrol_celery_beat
+```
+
+---
+
+## 🛠️ Development Workflow
+
+### Local Development Setup
+
+```bash
+# 1. Clone repository
+git clone https://github.com/sebastiangolijow/LabControl-by-Golijow-Master-Solutions.git
+cd LabControl-by-Golijow-Master-Solutions
+
+# 2. Create .env file
+cp .env.example .env
+# Edit .env with your settings
+
+# 3. Start Docker containers
+make up
+# OR
+docker-compose up -d
+
+# 4. Run migrations
+make migrate
+
+# 5. Create seed users
+make seed-users
+
+# 6. Create superuser (optional)
+make superuser
+```
+
+**Services**:
+- Django: http://localhost:8000
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
+- Celery Worker: Background
+- Celery Beat: Background
+
+### Common Commands
+
+```bash
+# Docker
+make up           # Start all containers
+make down         # Stop all containers
+make restart      # Restart all containers
+make logs         # View logs
+make shell        # Django shell
+
+# Database
+make migrate          # Run migrations
+make makemigrations   # Create migrations
+make showmigrations   # Show migration status
+make db-reset         # Reset database (DESTRUCTIVE!)
+
+# Testing
+make test             # Run all tests
+make test-coverage    # Run tests with coverage report
+make test-verbose     # Run tests with verbose output
+make test-fast        # Run tests without migrations
+
+# Code Quality
+make format           # Format code with black
+make lint             # Lint code with flake8
+make isort            # Sort imports
+make quality          # Run all quality checks (format + lint + isort)
+
+# Utilities
+make seed-users                 # Create seed users
+make superuser                  # Create superuser
+make verify-email EMAIL=x@y.com # Verify user email
+make load_practices             # Load practice catalog
+make throttle-reset             # Clear rate limit cache
+```
+
+### Environment Variables
+
+**Required** (.env):
+```env
+# Django
+DJANGO_SECRET_KEY=your-secret-key-here
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DJANGO_SETTINGS_MODULE=config.settings.dev
+
+# Database
+DATABASE_URL=postgresql://labcontrol_user:password@db:5432/labcontrol_db
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+# Email
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+DEFAULT_FROM_EMAIL=noreply@labcontrol.com
+
+# Frontend
+FRONTEND_URL=http://localhost:5173
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8080
+CSRF_TRUSTED_ORIGINS=http://localhost:8000
+
+# Django Admin URL
+ADMIN_URL=django-admin/  # Default: admin/
+```
+
+### Django Admin
+
+**URL**: http://localhost:8000/django-admin/ (or `/{ADMIN_URL}`)
+
+**Login**: Use superuser credentials or admin seed user:
+- Email: `admin@labcontrol.com`
+- Password: `test1234`
+
+**Registered models**:
+- Users
+- Studies, Practices, Determinations, UserDeterminations
+- Appointments
+- Invoices, Payments
+- Notifications
+
+---
+
+## 📝 Common Tasks
+
+### 1. Add a New Field to User Model
+
+```bash
+# 1. Edit apps/users/models.py
+class User(AbstractBaseUser):
+    # ... existing fields ...
+    new_field = models.CharField(max_length=100, blank=True)
+
+# 2. Create migration
+python manage.py makemigrations users
+
+# 3. Review migration file
+cat apps/users/migrations/0003_user_new_field.py
+
+# 4. Apply migration
+python manage.py migrate
+
+# 5. Update serializer
+# Edit apps/users/serializers.py
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [..., 'new_field']
+
+# 6. Update tests
+# Edit tests/test_users.py
+
+# 7. Run tests
+make test
+```
+
+### 2. Create a New API Endpoint
+
+```python
+# apps/studies/views.py
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+class StudyViewSet(viewsets.ModelViewSet):
+    # ... existing code ...
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAdminOrLabStaff])
+    def statistics(self, request):
+        """Get study statistics"""
+        total_studies = self.get_queryset().count()
+        pending_studies = self.get_queryset().filter(status='pending').count()
+        completed_studies = self.get_queryset().filter(status='completed').count()
+
+        return Response({
+            'total': total_studies,
+            'pending': pending_studies,
+            'completed': completed_studies,
+        })
+```
+
+**URL**: `GET /api/v1/studies/statistics/`
+
+### 3. Add a Celery Task
+
+```python
+# apps/notifications/tasks.py
+from celery import shared_task
+from django.core.mail import send_mail
+
+@shared_task
+def send_appointment_reminder(appointment_uuid):
+    """Send appointment reminder 24 hours before appointment"""
+    from apps.appointments.models import Appointment
+
+    appointment = Appointment.objects.get(pk=appointment_uuid)
+
+    send_mail(
+        subject="Appointment Reminder",
+        message=f"You have an appointment tomorrow at {appointment.scheduled_time}",
+        from_email="noreply@labcontrol.com",
+        recipient_list=[appointment.patient.email],
+    )
+
+    appointment.reminder_sent = True
+    appointment.reminder_sent_at = timezone.now()
+    appointment.save()
+```
+
+**Schedule task** (using Celery Beat):
+```python
+# config/settings/base.py
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'send-appointment-reminders': {
+        'task': 'apps.notifications.tasks.send_appointment_reminder',
+        'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
+    },
+}
+```
+
+### 4. Add Custom Manager Method
+
+```python
+# apps/studies/managers.py
+class StudyManager(models.Manager):
+    # ... existing methods ...
+
+    def overdue(self):
+        """Get studies past their expected completion date"""
+        from django.utils import timezone
+        from datetime import timedelta
+
+        return self.filter(
+            status='pending',
+            created_at__lt=timezone.now() - timedelta(days=7)
+        )
+```
+
+**Usage**:
+```python
+overdue_studies = Study.objects.overdue()
+```
+
+### 5. Add Permission Class
+
+```python
+# apps/core/permissions.py
+from rest_framework import permissions
+
+class CanViewStudyResults(permissions.BasePermission):
+    """
+    Patients can view their own study results.
+    Doctors can view results for studies they ordered.
+    Lab staff and admin can view all results.
+    """
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+
+        if user.role in ['admin', 'lab_staff']:
+            return True
+
+        if user.role == 'doctor':
+            return obj.ordered_by == user
+
+        if user.role == 'patient':
+            return obj.patient == user
+
+        return False
+```
+
+**Usage in ViewSet**:
+```python
+from apps.core.permissions import CanViewStudyResults
+
+class StudyViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, CanViewStudyResults]
+```
+
+---
+
+## 🎓 Best Practices
+
+### 1. Always Use Transactions for Multi-Step Operations
+
+```python
+from django.db import transaction
+
+@transaction.atomic
+def create_study_with_invoice(patient, practice):
+    """Create study and invoice in a single transaction"""
+    study = Study.objects.create(
+        patient=patient,
+        practice=practice,
+        protocol_number=generate_protocol_number(),
+        status='pending',
+    )
+
+    invoice = Invoice.objects.create(
+        patient=patient,
+        study=study,
+        invoice_number=generate_invoice_number(),
+        total_amount=practice.price,
+    )
+
+    return study, invoice
+```
+
+### 2. Use select_related() and prefetch_related() for Performance
+
+```python
+# ❌ BAD - N+1 queries
+studies = Study.objects.all()
+for study in studies:
+    print(study.patient.email)       # Query per iteration
+    print(study.practice.name)       # Query per iteration
+
+# ✅ GOOD - Single query with joins
+studies = Study.objects.select_related('patient', 'practice').all()
+for study in studies:
+    print(study.patient.email)       # No additional query
+    print(study.practice.name)       # No additional query
+
+# ✅ GOOD - For many-to-many or reverse FKs
+practices = Practice.objects.prefetch_related('determinations').all()
+for practice in practices:
+    for determination in practice.determinations.all():  # No additional query
+        print(determination.name)
+```
+
+### 3. Validate Data in Serializers
+
+```python
+class StudySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Study
+        fields = '__all__'
+
+    def validate_protocol_number(self, value):
+        """Ensure protocol number is unique"""
+        if Study.objects.filter(protocol_number=value).exists():
+            raise serializers.ValidationError("Protocol number already exists")
+        return value
+
+    def validate(self, attrs):
+        """Cross-field validation"""
+        if attrs.get('status') == 'completed' and not attrs.get('results_file'):
+            raise serializers.ValidationError({
+                'results_file': 'Results file required for completed studies'
+            })
+        return attrs
+```
+
+### 4. Use Logging
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def upload_result(request, study_id):
+    try:
+        study = Study.objects.get(pk=study_id)
+        # ... upload logic ...
+        logger.info(f"Result uploaded for study {study.protocol_number}")
+        return Response({'success': True})
+    except Study.DoesNotExist:
+        logger.error(f"Study not found: {study_id}")
+        return Response({'error': 'Study not found'}, status=404)
+    except Exception as e:
+        logger.exception(f"Error uploading result for study {study_id}")
+        return Response({'error': str(e)}, status=500)
+```
+
+### 5. Document Your Code
+
+```python
+def calculate_invoice_total(invoice):
+    """
+    Calculate total invoice amount including tax and discounts.
+
+    Args:
+        invoice (Invoice): The invoice to calculate
+
+    Returns:
+        Decimal: The total amount
+
+    Formula:
+        total = (subtotal - discount) + tax
+
+    Example:
+        >>> invoice = Invoice(subtotal=100, tax_amount=21, discount_amount=10)
+        >>> calculate_invoice_total(invoice)
+        Decimal('111.00')
+    """
+    return (invoice.subtotal - invoice.discount_amount) + invoice.tax_amount
+```
+
+---
+
+## 🚀 Production Deployment
+
+See **DEPLOYMENT.md** for complete production deployment guide.
+
+**Quick reference**:
+- Server: Hostinger VPS (72.60.137.226)
+- URL: https://labmolecuar-portal-clientes-staging.com:8443
+- Deployment: Docker Compose
+- Database: PostgreSQL (Docker volume)
+- Static files: Nginx + WhiteNoise
+- Media files: Nginx volume mount
+
+---
+
+## 📞 Getting Help
+
+### Documentation
+- Django: https://docs.djangoproject.com/en/4.2/
+- DRF: https://www.django-rest-framework.org/
+- Celery: https://docs.celeryproject.org/
+- PostgreSQL: https://www.postgresql.org/docs/15/
+
+### Common Issues
+
+**Issue**: `AttributeError: 'User' object has no attribute 'id'`
+**Solution**: Use `.pk` or `.uuid` instead of `.id` (we use UUID primary keys)
+
+**Issue**: Tests failing with database errors
+**Solution**: Ensure `DJANGO_SETTINGS_MODULE=config.settings.test` is set
+
+**Issue**: Migrations out of sync
+**Solution**: Run `make showmigrations` to check status, then `make migrate`
+
+---
+
+**Document Version**: 1.0
+**Last Updated**: March 22, 2026
+**Maintained By**: Development Team

@@ -1,10 +1,18 @@
-# LabControl Platform - Backend API
+# LabControl Platform
 
-Production-grade Django REST API for multi-client medical laboratory management system.
+Production-grade medical laboratory management system with Django REST API backend and Vue.js frontend.
+
+## 📚 Documentation
+
+**For comprehensive documentation, see:**
+- **[BACKEND.md](BACKEND.md)** - Complete backend architecture, API reference, and development guide
+- **[FRONTEND.md](../labcontrol-frontend/FRONTEND.md)** - Frontend architecture, components, and development guide
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contributing guidelines
 
 ## Overview
 
-This is a scalable, secure backend system designed for handling medical studies, appointments, and patient data across multiple laboratory clients. Built with HIPAA compliance and PII protection in mind.
+This is a scalable, secure system designed for handling medical studies, appointments, and patient data across multiple laboratory clients. Built with HIPAA compliance and PII protection in mind.
 
 ### Key Features
 
@@ -450,16 +458,16 @@ sudo chown -R $USER:$USER .
 make migrations-reset
 ```
 
-## Support & Resources
+## 📖 Additional Resources
 
-- Documentation: [Link to docs]
-- Issue Tracker: [Link to issues]
-- Slack Channel: [Link to Slack]
-- API Docs: http://localhost:8000/api/docs/
+- **API Documentation**: http://localhost:8000/api/docs/ (Swagger UI)
+- **Backend Architecture**: [BACKEND.md](BACKEND.md)
+- **Deployment Guide**: [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Security Audit**: [SECURITY_AUDIT_REPORT.md](SECURITY_AUDIT_REPORT.md)
 
 ## License
 
-[Your License Here]
+Proprietary - All Rights Reserved
 
 ## Onboarding Checklist for New Developers
 

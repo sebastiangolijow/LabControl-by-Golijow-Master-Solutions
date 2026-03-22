@@ -1,5 +1,10 @@
 # LabControl Backend - AI Context
 
+> **📖 For complete documentation, see [BACKEND.md](BACKEND.md)**
+>
+> This file provides a quick reference. For comprehensive backend architecture,
+> API reference, development guide, and best practices, refer to BACKEND.md.
+
 **Project**: Medical laboratory management system
 **Framework**: Django 4.2 + Django REST Framework
 **Database**: PostgreSQL (UUID primary keys)
