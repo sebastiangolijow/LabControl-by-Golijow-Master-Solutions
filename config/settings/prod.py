@@ -78,19 +78,18 @@ LOGGING["root"]["level"] = "WARNING"  # noqa
 # Database connection pooling for production
 DATABASES["default"]["CONN_MAX_AGE"] = 600  # noqa
 
-# Cache configuration for production - use Redis
+# Cache configuration for production - use Django's built-in Redis cache
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": env("REDIS_URL"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "CONNECTION_POOL_KWARGS": {
-                "max_connections": 50,
-                "retry_on_timeout": True,
-            },
-        },
         "KEY_PREFIX": "labcontrol",
+        "TIMEOUT": 300,
+        "OPTIONS": {
+            "db": "0",
+            "parser_class": "redis.connection.PythonParser",
+            "pool_class": "redis.BlockingConnectionPool",
+        },
     }
 }
 
