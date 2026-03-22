@@ -97,3 +97,5 @@ credentials.json
 
 # OS
 Thumbs.db
+# Backups with secrets
+backups/**/.env.production.backup

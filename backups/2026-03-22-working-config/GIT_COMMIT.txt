@@ -1,0 +1,1 @@
+e78c0e00461a6927085ff19552de1870a19d1624 fix: use $http_host for all Django proxy locations to preserve port 8443
