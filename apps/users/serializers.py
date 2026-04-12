@@ -350,7 +350,7 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
         """
         import secrets
 
-        role = validated_data.get('role')
+        role = validated_data.get("role")
 
         # Generate a temporary password (will be replaced when user sets their own)
         temp_password = secrets.token_urlsafe(32)
@@ -363,7 +363,7 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
 
         # Only generate verification token for non-doctor roles
         # Doctors don't need to login, so no need to send password setup email
-        if role != 'doctor':
+        if role != "doctor":
             user.generate_verification_token()
 
         # Track who created this user (set in view)
