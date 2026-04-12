@@ -25,7 +25,7 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
 
     try:
         # Update task state to show progress
-        self.update_state(state='PROCESSING', meta={'status': 'Starting import...'})
+        self.update_state(state="PROCESSING", meta={"status": "Starting import..."})
 
         csv_reader = csv.DictReader(io.StringIO(csv_content))
 
@@ -40,14 +40,14 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
             # Update progress every 100 rows
             if total_rows % 100 == 0:
                 self.update_state(
-                    state='PROCESSING',
+                    state="PROCESSING",
                     meta={
-                        'status': f'Processing row {total_rows}...',
-                        'processed': total_rows,
-                        'created': created_count,
-                        'skipped': skipped_count,
-                        'errors': len(errors)
-                    }
+                        "status": f"Processing row {total_rows}...",
+                        "processed": total_rows,
+                        "created": created_count,
+                        "skipped": skipped_count,
+                        "errors": len(errors),
+                    },
                 )
 
             try:
@@ -89,11 +89,15 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
 
             except Exception as e:
                 error_msg = str(e)
-                errors.append({
-                    "row": row_number,
-                    "error": error_msg,
-                    "name": nombre_medico if "nombre_medico" in locals() else "Unknown",
-                })
+                errors.append(
+                    {
+                        "row": row_number,
+                        "error": error_msg,
+                        "name": (
+                            nombre_medico if "nombre_medico" in locals() else "Unknown"
+                        ),
+                    }
+                )
                 logger.error(f"Error importing doctor at row {row_number}: {error_msg}")
 
         # Final result
@@ -102,7 +106,7 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
             "created": created_count,
             "skipped": skipped_count,
             "errors": errors,
-            "total_processed": total_rows
+            "total_processed": total_rows,
         }
 
         logger.info(f"Doctor import completed: {result['message']}")
@@ -111,10 +115,7 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
     except Exception as e:
         error_msg = f"Failed to process CSV file: {str(e)}"
         logger.error(error_msg)
-        self.update_state(
-            state='FAILURE',
-            meta={'error': error_msg}
-        )
+        self.update_state(state="FAILURE", meta={"error": error_msg})
         raise
 
 
