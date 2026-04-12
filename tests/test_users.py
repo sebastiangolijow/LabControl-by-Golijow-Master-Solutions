@@ -383,7 +383,9 @@ class TestDoctorRoleBasedValidation(BaseTestCase):
         }
         response = client.post("/api/v1/users/create-user/", data)
 
-        assert response.status_code == status.HTTP_201_CREATED, f"Failed with: {response.data}"
+        assert (
+            response.status_code == status.HTTP_201_CREATED
+        ), f"Failed with: {response.data}"
         assert "user" in response.data
         user_data = response.data["user"]
         assert user_data["email"] == "doctor@test.com"
@@ -420,7 +422,9 @@ class TestDoctorRoleBasedValidation(BaseTestCase):
         assert user_data["last_name"] == "Gomez"
 
         # Verify doctor was created in database without email
-        doctors = User.objects.filter(first_name="Dr. Maria", last_name="Gomez", role="doctor")
+        doctors = User.objects.filter(
+            first_name="Dr. Maria", last_name="Gomez", role="doctor"
+        )
         assert doctors.count() == 1
         doctor = doctors.first()
         assert doctor.email is None or doctor.email == ""

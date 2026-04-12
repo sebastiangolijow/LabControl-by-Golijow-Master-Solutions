@@ -149,21 +149,23 @@ class CustomRegisterSerializer(RegisterSerializer):
     def get_cleaned_data(self):
         """Return cleaned data including custom fields."""
         data = super().get_cleaned_data()
-        data.update({
-            'first_name': self.validated_data.get('first_name', ''),
-            'last_name': self.validated_data.get('last_name', ''),
-            'phone_number': self.validated_data.get('phone_number', ''),
-            'dni': self.validated_data.get('dni', ''),
-            'birthday': self.validated_data.get('birthday', None),
-            'gender': self.validated_data.get('gender', ''),
-            'location': self.validated_data.get('location', ''),
-            'direction': self.validated_data.get('direction', ''),
-            'mutual_code': self.validated_data.get('mutual_code', None),
-            'mutual_name': self.validated_data.get('mutual_name', ''),
-            'carnet': self.validated_data.get('carnet', ''),
-            'lab_client_id': self.validated_data.get('lab_client_id', None),
-            'role': 'patient',  # Force role to patient for public registration
-        })
+        data.update(
+            {
+                "first_name": self.validated_data.get("first_name", ""),
+                "last_name": self.validated_data.get("last_name", ""),
+                "phone_number": self.validated_data.get("phone_number", ""),
+                "dni": self.validated_data.get("dni", ""),
+                "birthday": self.validated_data.get("birthday", None),
+                "gender": self.validated_data.get("gender", ""),
+                "location": self.validated_data.get("location", ""),
+                "direction": self.validated_data.get("direction", ""),
+                "mutual_code": self.validated_data.get("mutual_code", None),
+                "mutual_name": self.validated_data.get("mutual_name", ""),
+                "carnet": self.validated_data.get("carnet", ""),
+                "lab_client_id": self.validated_data.get("lab_client_id", None),
+                "role": "patient",  # Force role to patient for public registration
+            }
+        )
         return data
 
     def save(self, request):
@@ -171,19 +173,19 @@ class CustomRegisterSerializer(RegisterSerializer):
         from allauth.account.models import EmailAddress
 
         user = super().save(request)
-        user.first_name = self.validated_data.get('first_name', '')
-        user.last_name = self.validated_data.get('last_name', '')
-        user.phone_number = self.validated_data.get('phone_number', '')
-        user.dni = self.validated_data.get('dni', '')
-        user.birthday = self.validated_data.get('birthday', None)
-        user.gender = self.validated_data.get('gender', '')
-        user.location = self.validated_data.get('location', '')
-        user.direction = self.validated_data.get('direction', '')
-        user.mutual_code = self.validated_data.get('mutual_code', None)
-        user.mutual_name = self.validated_data.get('mutual_name', '')
-        user.carnet = self.validated_data.get('carnet', '')
-        user.lab_client_id = self.validated_data.get('lab_client_id', None)
-        user.role = 'patient'
+        user.first_name = self.validated_data.get("first_name", "")
+        user.last_name = self.validated_data.get("last_name", "")
+        user.phone_number = self.validated_data.get("phone_number", "")
+        user.dni = self.validated_data.get("dni", "")
+        user.birthday = self.validated_data.get("birthday", None)
+        user.gender = self.validated_data.get("gender", "")
+        user.location = self.validated_data.get("location", "")
+        user.direction = self.validated_data.get("direction", "")
+        user.mutual_code = self.validated_data.get("mutual_code", None)
+        user.mutual_name = self.validated_data.get("mutual_name", "")
+        user.carnet = self.validated_data.get("carnet", "")
+        user.lab_client_id = self.validated_data.get("lab_client_id", None)
+        user.role = "patient"
         user.save()
         return user
 
@@ -302,13 +304,9 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
 
         # All roles require first_name and last_name
         if not attrs.get("first_name"):
-            raise serializers.ValidationError(
-                {"first_name": "This field is required."}
-            )
+            raise serializers.ValidationError({"first_name": "This field is required."})
         if not attrs.get("last_name"):
-            raise serializers.ValidationError(
-                {"last_name": "This field is required."}
-            )
+            raise serializers.ValidationError({"last_name": "This field is required."})
 
         # Doctor-specific validation (email is optional for doctors)
         if role == "doctor":

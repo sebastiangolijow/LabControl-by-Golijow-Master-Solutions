@@ -41,7 +41,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         unique=True,
         blank=True,
         null=True,
-        help_text=_("Email address - required for patients, admin, and lab staff; optional for doctors")
+        help_text=_(
+            "Email address - required for patients, admin, and lab staff; optional for doctors"
+        ),
     )
 
     # Profile information

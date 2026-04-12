@@ -190,7 +190,9 @@ class Study(BaseModel, LabClientModel):
         _("fecha de atención"),
         null=True,
         blank=True,
-        help_text=_("Date and time when the service was provided (sample collection date)"),
+        help_text=_(
+            "Date and time when the service was provided (sample collection date)"
+        ),
     )
 
     # Results
