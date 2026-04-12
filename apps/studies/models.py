@@ -178,7 +178,7 @@ class Study(BaseModel, LabClientModel):
 
     # Dates
     solicited_date = models.DateField(
-        _("solicited date"),
+        _("fecha de solicitud"),
         null=True,
         blank=True,
         help_text=_("Date the study was requested/ordered by the doctor"),
@@ -186,11 +186,11 @@ class Study(BaseModel, LabClientModel):
 
     # Sample information
     sample_id = models.CharField(_("sample ID"), max_length=50, blank=True)
-    sample_collected_at = models.DateTimeField(
-        _("sample collected at"),
+    service_date = models.DateTimeField(
+        _("fecha de atención"),
         null=True,
         blank=True,
-        help_text=_("Date and time the physical sample was collected from the patient"),
+        help_text=_("Date and time when the service was provided (sample collection date)"),
     )
 
     # Results
@@ -201,7 +201,12 @@ class Study(BaseModel, LabClientModel):
         blank=True,
         null=True,
     )
-    completed_at = models.DateTimeField(_("completed at"), null=True, blank=True)
+    completed_at = models.DateTimeField(
+        _("fecha de entrega"),
+        null=True,
+        blank=True,
+        help_text=_("Date and time when the results were delivered/completed"),
+    )
 
     # Notes
     notes = models.TextField(_("notes"), blank=True)

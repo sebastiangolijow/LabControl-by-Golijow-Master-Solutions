@@ -35,8 +35,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         primary_key=True,
     )
 
-    # Email is the primary identifier
-    email = models.EmailField(_("email address"), unique=True)
+    # Email is the primary identifier (optional for doctors)
+    email = models.EmailField(
+        _("email address"),
+        unique=True,
+        blank=True,
+        null=True,
+        help_text=_("Email address - required for patients, admin, and lab staff; optional for doctors")
+    )
 
     # Profile information
     first_name = models.CharField(_("first name"), max_length=150, blank=True)
@@ -113,6 +119,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text=_("Health insurance card number"),
     )
 
+    # Doctor-specific information
+    matricula = models.CharField(
+        _("matricula"),
+        max_length=50,
+        blank=True,
+        help_text=_("Medical license number (for doctors)"),
+    )
+
     # User role and permissions
     ROLE_CHOICES = [
         ("admin", _("Administrator")),
@@ -172,6 +186,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
     last_login = models.DateTimeField(_("last login"), null=True, blank=True)
     updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+    deleted_at = models.DateTimeField(
+        _("deleted at"),
+        null=True,
+        blank=True,
+        help_text=_("Date when the user was soft-deleted"),
+    )
 
     # Audit: Who created this user account (e.g., admin who created the account)
     created_by = models.ForeignKey(
@@ -305,3 +325,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         if not self.verification_token or not self.verification_token_created_at:
             return False
         return not is_token_expired(self.verification_token_created_at)
+
+    def soft_delete(self):
+        """
+        Soft delete the user by setting deleted_at timestamp and is_active=False.
+
+        This preserves the user record and all related data (studies, appointments, etc.)
+        while preventing login and marking the account as deleted.
+        """
+        self.deleted_at = timezone.now()
+        self.is_active = False
+        self.save(update_fields=["deleted_at", "is_active"])
+
+    def restore(self):
+        """Restore a soft-deleted user."""
+        self.deleted_at = None
+        self.is_active = True
+        self.save(update_fields=["deleted_at", "is_active"])
+
+    @property
+    def is_deleted(self):
+        """Check if the user is soft-deleted."""
+        return self.deleted_at is not None

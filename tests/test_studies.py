@@ -103,7 +103,7 @@ class TestStudyModel(BaseTestCase):
         assert str(study) == expected
 
     def test_study_solicited_date_field(self):
-        """Test that study has solicited_date field distinct from sample_collected_at."""
+        """Test that study has solicited_date field distinct from service_date."""
         patient = self.create_patient()
         practice = self.create_practice()
         solicited = datetime.date(2026, 2, 10)
@@ -113,11 +113,11 @@ class TestStudyModel(BaseTestCase):
             patient=patient,
             practice=practice,
             solicited_date=solicited,
-            sample_collected_at=collected,
+            service_date=collected,
         )
         study.refresh_from_db()
         assert study.solicited_date == solicited
-        assert study.sample_collected_at == collected
+        assert study.service_date == collected
 
     def test_study_custom_manager_pending(self):
         """Test StudyManager.pending() method."""
@@ -312,7 +312,7 @@ class TestStudyCreateAPI(BaseTestCase):
     - If a results_file is included → status = 'completed', completed_at set,
       patient notification triggered.
     - If no results_file → status = 'pending'.
-    - solicited_date and sample_collected_at are independent date fields.
+    - solicited_date and service_date are independent date fields.
     - protocol_number must be unique.
     """
 
@@ -392,7 +392,7 @@ class TestStudyCreateAPI(BaseTestCase):
     # ── Dates ────────────────────────────────────────────────────────────────
 
     def test_create_study_with_solicited_date(self):
-        """solicited_date is stored independently from sample_collected_at."""
+        """solicited_date is stored independently from service_date."""
         payload = self._base_payload(
             solicited_date="2026-02-10",
         )
@@ -404,13 +404,13 @@ class TestStudyCreateAPI(BaseTestCase):
         study_id = response.data["study"]["id"]
         study = Study.objects.get(pk=study_id)
         assert study.solicited_date == datetime.date(2026, 2, 10)
-        assert study.sample_collected_at is None
+        assert study.service_date is None
 
     def test_create_study_with_both_dates(self):
-        """Both solicited_date and sample_collected_at can be set independently."""
+        """Both solicited_date and service_date can be set independently."""
         payload = self._base_payload(
             solicited_date="2026-02-10",
-            sample_collected_at="2026-02-12T09:30:00",
+            service_date="2026-02-12T09:30:00",
         )
         response = self.staff_client.post(
             "/api/v1/studies/", payload, format="multipart"
@@ -420,7 +420,7 @@ class TestStudyCreateAPI(BaseTestCase):
         study_id = response.data["study"]["id"]
         study = Study.objects.get(pk=study_id)
         assert study.solicited_date == datetime.date(2026, 2, 10)
-        assert study.sample_collected_at is not None
+        assert study.service_date is not None
 
     # ── Validations ──────────────────────────────────────────────────────────
 
@@ -665,7 +665,7 @@ class TestStudyUploadEndToEnd(BaseTestCase):
             "practice": str(self.practice.pk),
             "protocol_number": "2026-B001",
             "solicited_date": "2026-02-15",
-            "sample_collected_at": "2026-02-15T08:00:00",
+            "service_date": "2026-02-15T08:00:00",
             "results_file": _make_pdf("resultado_b.pdf"),
             "results": "Colesterol total: 190 mg/dL",
         }

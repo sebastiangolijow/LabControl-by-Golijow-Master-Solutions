@@ -112,11 +112,11 @@ class StudySerializer(serializers.ModelSerializer):
             "status",
             "solicited_date",
             "sample_id",
-            "sample_collected_at",
+            "service_date",  # Renamed from sample_collected_at → fecha de atención
             "results",
             "results_file",
             "determination_results",
-            "completed_at",
+            "completed_at",  # fecha de entrega
             "notes",
             "created_at",
             "updated_at",
@@ -153,7 +153,7 @@ class StudyCreateSerializer(serializers.ModelSerializer):
             "ordered_by",
             "protocol_number",
             "solicited_date",
-            "sample_collected_at",
+            "service_date",  # Renamed from sample_collected_at
             "results_file",
             "results",
             "notes",

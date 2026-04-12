@@ -365,3 +365,318 @@ class TestUserAPI(BaseTestCase):
         # Doctor should NOT see themselves or other doctors/staff
         assert doctor.email not in returned_emails
         assert other_doctor.email not in returned_emails
+
+
+class TestDoctorRoleBasedValidation(BaseTestCase):
+    """Test cases for doctor-specific role-based validation."""
+
+    def test_create_doctor_with_email_via_api(self):
+        """Test creating a doctor with email via admin API."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "email": "doctor@test.com",
+            "role": "doctor",
+            "first_name": "Dr. Juan",
+            "last_name": "Perez",
+            "matricula": "MP12345",
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_201_CREATED, f"Failed with: {response.data}"
+        assert "user" in response.data
+        user_data = response.data["user"]
+        assert user_data["email"] == "doctor@test.com"
+        assert user_data["role"] == "doctor"
+        assert user_data["matricula"] == "MP12345"
+        assert user_data["first_name"] == "Dr. Juan"
+        assert user_data["last_name"] == "Perez"
+
+        # Verify doctor was created in database
+        doctor = User.objects.get(email="doctor@test.com")
+        assert doctor.role == "doctor"
+        assert doctor.matricula == "MP12345"
+        assert doctor.is_doctor is True
+
+    def test_create_doctor_without_email_via_api(self):
+        """Test creating a doctor without email via admin API (email is optional for doctors)."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "role": "doctor",
+            "first_name": "Dr. Maria",
+            "last_name": "Gomez",
+            "matricula": "MG54321",
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert "user" in response.data
+        user_data = response.data["user"]
+        assert user_data["email"] is None or user_data["email"] == ""
+        assert user_data["role"] == "doctor"
+        assert user_data["matricula"] == "MG54321"
+        assert user_data["first_name"] == "Dr. Maria"
+        assert user_data["last_name"] == "Gomez"
+
+        # Verify doctor was created in database without email
+        doctors = User.objects.filter(first_name="Dr. Maria", last_name="Gomez", role="doctor")
+        assert doctors.count() == 1
+        doctor = doctors.first()
+        assert doctor.email is None or doctor.email == ""
+        assert doctor.matricula == "MG54321"
+
+    def test_create_doctor_without_matricula_fails(self):
+        """Test that creating a doctor without matricula fails validation."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "email": "doctor_no_matricula@test.com",
+            "role": "doctor",
+            "first_name": "Dr. Roberto",
+            "last_name": "Sanchez",
+            # Missing matricula
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "matricula" in response.data
+        assert "required" in str(response.data["matricula"]).lower()
+
+        # Verify doctor was NOT created
+        assert not User.objects.filter(email="doctor_no_matricula@test.com").exists()
+
+    def test_create_doctor_without_first_name_fails(self):
+        """Test that creating a doctor without first_name fails validation."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "role": "doctor",
+            # Missing first_name
+            "last_name": "Lopez",
+            "matricula": "ML11111",
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "first_name" in response.data
+
+    def test_create_doctor_without_last_name_fails(self):
+        """Test that creating a doctor without last_name fails validation."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "role": "doctor",
+            "first_name": "Dr. Carlos",
+            # Missing last_name
+            "matricula": "MC22222",
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "last_name" in response.data
+
+    def test_create_patient_requires_email(self):
+        """Test that creating a patient requires email (unlike doctors)."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "role": "patient",
+            "first_name": "Ana",
+            "last_name": "Martinez",
+            "phone_number": "123456789",
+            "dni": "12345678",
+            "birthday": "1990-01-01",
+            # Missing email
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "email" in response.data
+        assert "required" in str(response.data["email"]).lower()
+
+    def test_create_admin_requires_email(self):
+        """Test that creating an admin requires email (unlike doctors)."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "role": "admin",
+            "first_name": "Admin",
+            "last_name": "User",
+            # Missing email
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "email" in response.data
+        assert "required" in str(response.data["email"]).lower()
+
+    def test_create_lab_staff_requires_email(self):
+        """Test that creating lab staff requires email (unlike doctors)."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "role": "lab_staff",
+            "first_name": "Lab",
+            "last_name": "Staff",
+            # Missing email
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "email" in response.data
+        assert "required" in str(response.data["email"]).lower()
+
+    def test_create_patient_with_full_profile(self):
+        """Test creating a patient with full profile (all required fields)."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "email": "patient@test.com",
+            "role": "patient",
+            "first_name": "Carlos",
+            "last_name": "Lopez",
+            "phone_number": "987654321",
+            "dni": "87654321",
+            "birthday": "1985-05-15",
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert "user" in response.data
+        user_data = response.data["user"]
+        assert user_data["email"] == "patient@test.com"
+        assert user_data["role"] == "patient"
+        assert user_data["phone_number"] == "987654321"
+        assert user_data["dni"] == "87654321"
+        assert user_data["birthday"] == "1985-05-15"
+
+    def test_create_patient_missing_phone_fails(self):
+        """Test that creating a patient without phone_number fails."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "email": "patient_no_phone@test.com",
+            "role": "patient",
+            "first_name": "Test",
+            "last_name": "Patient",
+            "dni": "11111111",
+            "birthday": "1990-01-01",
+            # Missing phone_number
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "phone_number" in response.data
+
+    def test_create_patient_missing_dni_fails(self):
+        """Test that creating a patient without DNI fails."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "email": "patient_no_dni@test.com",
+            "role": "patient",
+            "first_name": "Test",
+            "last_name": "Patient",
+            "phone_number": "123456789",
+            "birthday": "1990-01-01",
+            # Missing dni
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "dni" in response.data
+
+    def test_create_patient_missing_birthday_fails(self):
+        """Test that creating a patient without birthday fails."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "email": "patient_no_birthday@test.com",
+            "role": "patient",
+            "first_name": "Test",
+            "last_name": "Patient",
+            "phone_number": "123456789",
+            "dni": "22222222",
+            # Missing birthday
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "birthday" in response.data
+
+    def test_doctor_optional_fields_allowed(self):
+        """Test that doctors can be created without optional fields (dni, phone, birthday)."""
+        client, admin = self.authenticate_as_admin()
+
+        data = {
+            "role": "doctor",
+            "first_name": "Dr. Simple",
+            "last_name": "Doctor",
+            "matricula": "SD99999",
+            # No email, dni, phone_number, birthday, address, insurance - all optional for doctors
+        }
+        response = client.post("/api/v1/users/create-user/", data)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert "user" in response.data
+        user_data = response.data["user"]
+        assert user_data["role"] == "doctor"
+        assert user_data["matricula"] == "SD99999"
+
+        # Verify optional fields are None/empty
+        doctor = User.objects.get(matricula="SD99999")
+        assert doctor.email is None or doctor.email == ""
+        assert doctor.dni == ""
+        assert doctor.phone_number == ""
+        assert doctor.birthday is None
+
+    def test_matricula_field_in_doctor_response(self):
+        """Test that matricula field is included in API responses for doctors."""
+        client, admin = self.authenticate_as_admin()
+
+        # Create doctor
+        data = {
+            "role": "doctor",
+            "first_name": "Dr. Test",
+            "last_name": "Matricula",
+            "matricula": "TM77777",
+        }
+        create_response = client.post("/api/v1/users/create-user/", data)
+        assert create_response.status_code == status.HTTP_201_CREATED
+        assert "user" in create_response.data
+
+        # Get doctor details
+        doctor_id = create_response.data["user"]["id"]
+        get_response = client.get(f"/api/v1/users/{doctor_id}/")
+        assert get_response.status_code == status.HTTP_200_OK
+        assert "matricula" in get_response.data
+        assert get_response.data["matricula"] == "TM77777"
+
+    def test_multiple_doctors_without_email(self):
+        """Test that multiple doctors can be created without email (NULL emails allowed)."""
+        client, admin = self.authenticate_as_admin()
+
+        # Create first doctor without email
+        data1 = {
+            "role": "doctor",
+            "first_name": "Dr. First",
+            "last_name": "NoEmail",
+            "matricula": "FNE001",
+        }
+        response1 = client.post("/api/v1/users/create-user/", data1)
+        assert response1.status_code == status.HTTP_201_CREATED
+
+        # Create second doctor without email
+        data2 = {
+            "role": "doctor",
+            "first_name": "Dr. Second",
+            "last_name": "NoEmail",
+            "matricula": "SNE002",
+        }
+        response2 = client.post("/api/v1/users/create-user/", data2)
+        assert response2.status_code == status.HTTP_201_CREATED
+
+        # Verify both doctors exist
+        doctors = User.objects.filter(role="doctor", last_name="NoEmail")
+        assert doctors.count() == 2

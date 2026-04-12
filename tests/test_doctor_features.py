@@ -215,6 +215,7 @@ class TestAdminUserCreationAPI(BaseTestCase):
             "role": "doctor",
             "first_name": "Jane",
             "last_name": "Doe",
+            "matricula": "MD12345",  # Required for doctors
             "phone_number": "+1234567890",
             "dni": "12345678",
             "birthday": "1985-06-15",
@@ -231,6 +232,7 @@ class TestAdminUserCreationAPI(BaseTestCase):
         user = User.objects.get(email="newdoctor@test.com")
         assert user.role == "doctor"
         assert user.first_name == "Jane"
+        assert user.matricula == "MD12345"
 
     def test_admin_can_create_patient(self):
         """Test that admin can create a patient user."""
@@ -309,6 +311,7 @@ class TestAdminUserCreationAPI(BaseTestCase):
             "role": "doctor",
             "first_name": "Complete",
             "last_name": "Profile",
+            "matricula": "CP99999",  # Required for doctors
             "phone_number": "+1234567890",
             "dni": "99887766",
             "birthday": "1975-09-30",
@@ -330,6 +333,7 @@ class TestAdminUserCreationAPI(BaseTestCase):
         assert user.mutual_code == 12345
         assert user.mutual_name == "Health Insurance Co"
         assert user.carnet == "ABC123456"
+        assert user.matricula == "CP99999"
 
 
 class TestDoctorSearchAPI(BaseTestCase):

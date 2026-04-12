@@ -99,14 +99,16 @@ class UserManager(BaseUserManager):
         """Get users for a specific lab."""
         return self.get_queryset().for_lab(lab_client_id)
 
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(self, email=None, password=None, **extra_fields):
         """
         Create and save a regular User with the given email and password.
-        """
-        if not email:
-            raise ValueError(_("The Email field must be set"))
 
-        email = self.normalize_email(email)
+        Email is optional for doctor role, but required for all other roles.
+        The role-based validation is handled in the serializer.
+        """
+        if email:
+            email = self.normalize_email(email)
+
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)

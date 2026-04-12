@@ -218,6 +218,7 @@ REST_AUTH = {
     "JWT_AUTH_HTTPONLY": False,  # Allow JavaScript to read tokens
     "JWT_AUTH_SAMESITE": "Lax",
     "USER_DETAILS_SERIALIZER": "apps.users.serializers.UserSerializer",
+    "REGISTER_SERIALIZER": "apps.users.serializers.CustomRegisterSerializer",
 }
 
 # Simple JWT Configuration
