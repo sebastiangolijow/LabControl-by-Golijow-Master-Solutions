@@ -589,7 +589,9 @@ class ImportDoctorsView(APIView):
             skipped_count = 0
             errors = []
 
-            for row_number, row in enumerate(csv_reader, start=2):  # Start at 2 (header is row 1)
+            for row_number, row in enumerate(
+                csv_reader, start=2
+            ):  # Start at 2 (header is row 1)
                 try:
                     # Extract data from row
                     nombre_medico = row.get("NOMBRE_MEDICO", "").strip()
@@ -642,7 +644,11 @@ class ImportDoctorsView(APIView):
                         {
                             "row": row_number,
                             "error": str(e),
-                            "name": nombre_medico if "nombre_medico" in locals() else "Unknown",
+                            "name": (
+                                nombre_medico
+                                if "nombre_medico" in locals()
+                                else "Unknown"
+                            ),
                         }
                     )
 
