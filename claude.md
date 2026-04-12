@@ -139,6 +139,8 @@ GET    /api/v1/users/search-doctors/    # Admin/lab_staff
 GET    /api/v1/users/search-patients/   # Admin/lab_staff
 GET    /api/v1/users/                   # Admin only
 GET/PATCH/DELETE /api/v1/users/{id}/
+POST   /api/v1/users/import-doctors/    # Import doctors from CSV (async)
+GET    /api/v1/users/import-doctors/status/{task_id}/  # Check import status
 ```
 
 ### Studies
@@ -259,9 +261,168 @@ EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 ```
 
+## Doctor Import Feature
+
+### Overview
+Bulk import of doctors from CSV file using asynchronous Celery task (added 2026-04-12).
+
+### CSV Format
+```csv
+NOMBRE_MEDICO,MATRICULA_O_ID
+"Perez, Juan",12345
+"Maria Rodriguez",MP67890
+```
+
+### Name Parsing Logic
+The system handles multiple name formats:
+- **"Last, First"** → first_name="First", last_name="Last"
+- **"First Last"** → first_name="First", last_name="Last"
+- **"Single"** → first_name="Single", last_name=""
+
+### Import Flow
+1. **Frontend**: User uploads CSV → POST `/api/v1/users/import-doctors/`
+2. **Backend**:
+   - Validates file is CSV
+   - Reads CSV content into string
+   - Starts Celery task `import_doctors_task.delay(csv_content, lab_client_id)`
+   - Returns `{ task_id: "...", message: "..." }` with 202 status
+3. **Frontend**: Polls GET `/api/v1/users/import-doctors/status/{task_id}/` every 2 seconds
+4. **Task**:
+   - Parses CSV row by row
+   - Updates progress every 100 rows
+   - Creates doctors with:
+     - `role='doctor'`
+     - `is_active=True`
+     - `is_verified=True` (no email verification required)
+     - `email=None` (doctors don't need email)
+     - `matricula` from CSV
+   - Skips duplicates (checks existing matricula)
+5. **Completion**: Returns `{ created: N, skipped: M, errors: [...] }`
+
+### Key Design Decisions
+
+1. **Doctors Don't Require Email**
+   - Matricula is the unique identifier for doctors
+   - Email is optional (`blank=True, null=True` in User model)
+   - Doctors are auto-verified (`is_verified=True`)
+   - No password setup email sent
+
+2. **Async Processing with Celery**
+   - Large CSV files (1000+ rows) need async processing
+   - Celery task runs in background
+   - Frontend polls for status every 2 seconds
+   - Task updates progress every 100 rows
+
+3. **Error Handling**
+   - Skip rows with missing NOMBRE_MEDICO or MATRICULA_O_ID
+   - Skip duplicate matriculas (idempotent)
+   - Collect errors with row number for user feedback
+   - Task completes even with errors
+
+4. **Celery Worker Restart Required**
+   - When adding new Celery tasks, worker must be restarted
+   - `docker-compose restart celery_worker`
+   - Worker loads tasks on startup, doesn't hot-reload
+
+### Files Modified
+- **Backend**:
+  - `apps/users/views.py` - ImportDoctorsView, ImportDoctorsStatusView
+  - `apps/users/tasks.py` - import_doctors_task, _parse_name helper
+  - `apps/users/urls.py` - Added import endpoints
+- **Frontend**:
+  - `src/api/users.js` - importDoctors(), getImportStatus()
+  - `src/views/admin/PatientsView.vue` - Import button, modal, polling
+  - `src/i18n/es.yaml` - Import translations
+
+### Testing Locally
+```bash
+# 1. Ensure Celery worker is running
+docker-compose ps | grep celery_worker
+
+# 2. If worker was started before task was added, restart it
+docker-compose restart celery_worker
+
+# 3. Verify task is registered
+docker logs labcontrol_celery_worker | grep "import_doctors_task"
+
+# 4. Test import via UI or API
+curl -X POST http://localhost:8000/api/v1/users/import-doctors/ \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@doctors.csv"
+```
+
+## LabWin Sync Feature
+
+### Overview
+Nightly automated sync of lab results from LabWin Firebird database to LabControl (added 2026-04-12).
+
+### Architecture
+New Django app: `apps/labwin_sync/`
+- **Connector abstraction**: Swappable mock/real Firebird connector
+- **Mock connector**: In-memory sample data for dev/tests (no Firebird dependency)
+- **Real connector**: Uses `firebirdsql` (pure Python) to connect to LabWin Firebird 2.x
+- **Data mappers**: Transform LabWin rows to LabControl model fields
+- **SyncLog/SyncedRecord models**: Track sync runs and map records for deduplication
+
+### LabWin Database (Firebird 2.x)
+Key tables: `PACIENTES` (patient orders), `DETERS` (practices/results per order),
+`MEDICOS` (doctors), `NOMEN` (practice definitions).
+
+Results stored as pipe-delimited strings in `DETERS.RESULT_FLD`:
+- Simple: `"92"` (glucose)
+- Multi-value: `"79|4790|137|39|242000"` (hemogram)
+
+### Data Mapping
+| LabWin | LabControl | Matching Key |
+|--------|-----------|--------------|
+| PACIENTES | User (role=patient) | `dni` = `HCLIN_FLD` |
+| MEDICOS | User (role=doctor) | `matricula` = `MATNAC_FLD` |
+| NOMEN | Practice | `code` = `ABREV_FLD` |
+| DETERS | Study | `protocol_number` = `"LW-{NUMERO}-{ABREV}"` |
+
+### Sync Flow
+1. Celery Beat triggers `sync_labwin_results` task nightly at 2 AM
+2. Task reads cursor from last successful SyncLog
+3. Connects to LabWin via connector factory (mock or real)
+4. Fetches validated DETERS in batches of 500
+5. Creates/updates patients, doctors, practices, studies (idempotent)
+6. Stores raw RESULT_FLD in Study.results
+7. Updates SyncLog with counts and cursor
+
+### Configuration
+```env
+LABWIN_USE_MOCK=True          # Set False for production
+LABWIN_FDB_HOST=localhost     # LabWin Firebird host
+LABWIN_FDB_PORT=3050
+LABWIN_FDB_DATABASE=          # Path to .fdb file on Firebird server
+LABWIN_FDB_USER=SYSDBA
+LABWIN_FDB_PASSWORD=masterkey
+LABWIN_SYNC_BATCH_SIZE=500
+LABWIN_DEFAULT_LAB_CLIENT_ID=1
+```
+
+### Management Command
+```bash
+python manage.py sync_labwin              # Incremental sync
+python manage.py sync_labwin --full       # Full sync (ignore cursor)
+python manage.py sync_labwin --use-celery # Run via Celery worker
+```
+
+### Key Files
+- `apps/labwin_sync/tasks.py` - sync_labwin_results Celery task
+- `apps/labwin_sync/connectors/` - Connector abstraction (base, firebird, mock)
+- `apps/labwin_sync/mappers.py` - Data mapping logic
+- `apps/labwin_sync/models.py` - SyncLog, SyncedRecord
+- `apps/studies/models.py` - Practice.code field added for LabWin ABREV_FLD
+
+### Future Phases
+- **Phase 2**: Replace mock with real Firebird credentials from lab
+- **Phase 3**: Parse pipe-delimited RESULT_FLD into UserDetermination records
+  (requires RESULTS template table from LabWin)
+
 ## Known Issues
 
-**None** - All features working, 277/277 tests passing.
+**None** - All features working, 373/373 tests passing.
 
 ---
 *AI Context File — update after major changes*

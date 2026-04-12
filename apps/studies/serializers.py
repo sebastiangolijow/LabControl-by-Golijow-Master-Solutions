@@ -46,6 +46,7 @@ class PracticeSerializer(serializers.ModelSerializer):
             "id",
             "uuid",
             "name",
+            "code",
             "technique",
             "sample_type",
             "sample_quantity",

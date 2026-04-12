@@ -48,6 +48,7 @@ urlpatterns = [
                 path("payments/", include("apps.payments.urls")),
                 path("notifications/", include("apps.notifications.urls")),
                 path("analytics/", include("apps.analytics.urls")),
+                path("labwin-sync/", include("apps.labwin_sync.urls")),
             ]
         ),
     ),

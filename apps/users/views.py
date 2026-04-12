@@ -3,7 +3,8 @@
 import csv
 import io
 
-from django.db.models import Q
+from django.db.models import Q, Value
+from django.db.models.functions import Concat
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -176,10 +177,13 @@ class UserViewSet(viewsets.ModelViewSet):
         # Apply search filter if provided
         search_query = request.query_params.get("search", None)
         if search_query:
-            queryset = queryset.filter(
+            queryset = queryset.annotate(
+                full_name=Concat("first_name", Value(" "), "last_name")
+            ).filter(
                 Q(email__icontains=search_query)
                 | Q(first_name__icontains=search_query)
                 | Q(last_name__icontains=search_query)
+                | Q(full_name__icontains=search_query)
                 | Q(phone_number__icontains=search_query)
             )
 
@@ -291,10 +295,13 @@ class UserViewSet(viewsets.ModelViewSet):
         # Apply search filter if provided
         search_query = request.query_params.get("search", None)
         if search_query:
-            queryset = queryset.filter(
+            queryset = queryset.annotate(
+                full_name=Concat("first_name", Value(" "), "last_name")
+            ).filter(
                 Q(email__icontains=search_query)
                 | Q(first_name__icontains=search_query)
                 | Q(last_name__icontains=search_query)
+                | Q(full_name__icontains=search_query)
                 | Q(phone_number__icontains=search_query)
             )
 

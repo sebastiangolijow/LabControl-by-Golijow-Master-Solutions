@@ -232,12 +232,12 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         """String representation of the user."""
-        return self.email
+        return self.email or self.get_full_name() or str(self.pk)
 
     def get_full_name(self):
         """Return the user's full name."""
         full_name = f"{self.first_name} {self.last_name}".strip()
-        return full_name or self.email
+        return full_name or self.email or ""
 
     def get_short_name(self):
         """Return the user's short name (first name)."""

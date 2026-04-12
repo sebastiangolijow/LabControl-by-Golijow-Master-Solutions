@@ -1,6 +1,6 @@
 # LabControl Backend - Agent Context
 
-**Last Updated**: March 22, 2026
+**Last Updated**: April 12, 2026
 **Python**: 3.11
 **Django**: 4.2
 **Database**: PostgreSQL 15 with UUID primary keys
@@ -21,8 +21,9 @@
 8. [Testing](#testing)
 9. [Database](#database)
 10. [Celery Tasks](#celery-tasks)
-11. [Development Workflow](#development-workflow)
-12. [Common Tasks](#common-tasks)
+11. [LabWin Sync](#labwin-sync)
+12. [Development Workflow](#development-workflow)
+13. [Common Tasks](#common-tasks)
 
 ---
 
@@ -148,7 +149,7 @@ labcontrol/
 │   ├── asgi.py                  # ASGI config (future WebSocket support)
 │   └── celery.py                # Celery configuration
 │
-├── tests/                       # Test suite (277 tests, 82% coverage)
+├── tests/                       # Test suite (373 tests, 82% coverage)
 │   ├── base.py                  # BaseTestCase with factories
 │   ├── test_users.py
 │   ├── test_studies.py
@@ -669,7 +670,96 @@ DELETE /api/v1/users/{uuid}/             # Delete user (admin only)
 # Search endpoints
 GET    /api/v1/users/search-doctors/     # Search doctors (admin/staff)
 GET    /api/v1/users/search-patients/    # Search patients (admin/staff)
+
+# Bulk import (asynchronous via Celery)
+POST   /api/v1/users/import-doctors/     # Upload CSV to import doctors (admin/staff)
+GET    /api/v1/users/import-doctors/status/{task_id}/  # Check import status
 ```
+
+#### Doctor CSV Import Feature (Added 2026-04-12)
+
+Bulk import doctors from CSV file using Celery for async processing.
+
+**CSV Format**:
+```csv
+NOMBRE_MEDICO,MATRICULA_O_ID
+"Perez, Juan",12345
+"Maria Rodriguez",MP67890
+"Single Name",ABC123
+```
+
+**Import Workflow**:
+
+1. **Upload CSV** (`POST /api/v1/users/import-doctors/`):
+   - Permission: Admin or Lab Staff only
+   - File validation: Must be `.csv` file
+   - Request: `multipart/form-data` with `file` field
+   - Response: `{ "task_id": "uuid", "message": "..." }` (202 Accepted)
+
+2. **Check Status** (`GET /api/v1/users/import-doctors/status/{task_id}/`):
+   - Poll every 2 seconds from frontend
+   - Returns task state and progress:
+     - `PENDING`: Task queued
+     - `PROCESSING`: Task running (includes progress metadata)
+     - `SUCCESS`: Task completed (includes result summary)
+     - `FAILURE`: Task failed (includes error message)
+
+**Task Implementation** (`apps/users/tasks.py`):
+
+```python
+@shared_task(bind=True)
+def import_doctors_task(self, csv_content, lab_client_id=None):
+    """
+    Import doctors from CSV asynchronously.
+
+    - Parses CSV row by row
+    - Skips empty rows
+    - Skips duplicates (checks existing matricula)
+    - Updates progress every 100 rows
+    - Creates doctors with is_verified=True (no email required)
+    - Returns summary: { created, skipped, errors }
+    """
+```
+
+**Name Parsing** (`_parse_name` helper):
+- **"Last, First"** format → `first_name="First"`, `last_name="Last"`
+- **"First Last"** format → `first_name="First"`, `last_name="Last"`
+- **"Single"** format → `first_name="Single"`, `last_name=""`
+
+**Doctor Creation**:
+```python
+User.objects.create_user(
+    first_name=first_name,
+    last_name=last_name,
+    matricula=matricula,  # From CSV
+    role="doctor",
+    is_active=True,
+    is_verified=True,     # Auto-verified, no email needed
+    email=None,           # Optional for doctors
+)
+```
+
+**Key Design Decisions**:
+1. **Email Not Required**: Doctors use `matricula` as unique identifier
+2. **Auto-Verified**: Doctors don't need email verification (`is_verified=True`)
+3. **Idempotent**: Skips existing matriculas instead of erroring
+4. **Async Processing**: Handles large CSV files (1000+ doctors) without timeouts
+5. **Progress Updates**: Frontend shows real-time progress via polling
+
+**Frontend Integration** (`src/views/admin/PatientsView.vue`):
+- Import button triggers file upload
+- Modal shows progress spinner while processing
+- Polls status endpoint every 2 seconds
+- Displays results: Created, Skipped, Errors
+- Refreshes user list on completion
+
+**Celery Configuration**:
+- **CRITICAL**: New Celery tasks require worker restart!
+  ```bash
+  docker-compose restart celery_worker
+  ```
+- Task registers automatically via `autodiscover_tasks()`
+- Verify with: `docker logs labcontrol_celery_worker | grep import_doctors_task`
 
 ### Studies (`/api/v1/studies/`)
 
@@ -1059,7 +1149,7 @@ def pending(self, request):
 
 ## 🧪 Testing
 
-**Test Suite**: 277 tests, 82% coverage
+**Test Suite**: 373 tests, 82% coverage
 
 ### BaseTestCase (tests/base.py)
 
@@ -1336,6 +1426,116 @@ celery -A config beat -l info
 docker logs labcontrol_celery_worker
 docker logs labcontrol_celery_beat
 ```
+
+---
+
+## 🔄 LabWin Sync
+
+Automated nightly sync of lab results from the LabWin Firebird 2.x database to LabControl.
+
+### App Structure
+
+```
+apps/labwin_sync/
+├── models.py           # SyncLog, SyncedRecord
+├── tasks.py            # sync_labwin_results Celery task
+├── mappers.py          # LabWin row → Django model field mapping
+├── admin.py            # SyncLog/SyncedRecord admin views
+├── connectors/
+│   ├── __init__.py     # get_connector() factory
+│   ├── base.py         # Abstract connector interface
+│   ├── firebird.py     # Real Firebird connector (firebirdsql)
+│   └── mock.py         # Mock connector with sample data (dev/tests)
+└── management/commands/
+    └── sync_labwin.py  # Manual sync trigger
+```
+
+### LabWin Database Tables
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| PACIENTES | Patient orders (one row per visit) | `NUMERO_FLD` (order ID), `NOMBRE_FLD`, `HCLIN_FLD` (DNI), `SEXO_FLD`, `FNACIM_FLD` |
+| DETERS | Practices/results per order (887K records) | `NUMERO_FLD` (→PACIENTES), `ABREV_FLD` (practice code), `RESULT_FLD`, `VALIDADO_FLD` |
+| MEDICOS | Doctor definitions | `NUMERO_FLD`, `NOMBRE_FLD`, `MATNAC_FLD` (matricula) |
+| NOMEN | Practice definitions | `ABREV_FLD`, `NOMBRE_FLD`, `DIASTARDA_FLD` (turnaround days) |
+
+### Data Mapping
+
+| LabWin | LabControl | Matching Key |
+|--------|-----------|--------------|
+| PACIENTES | User (role=patient) | `dni` = `HCLIN_FLD` |
+| MEDICOS | User (role=doctor) | `matricula` = `MATNAC_FLD` |
+| NOMEN | Practice | `code` = `ABREV_FLD` |
+| DETERS | Study | `protocol_number` = `"LW-{NUMERO}-{ABREV}"` |
+
+### Sync Models
+
+**SyncLog** — Tracks each sync run:
+- `status`: started / completed / failed / partial
+- Counters: `patients_created`, `patients_updated`, `doctors_created`, `studies_created`, `studies_updated`
+- Cursor: `last_synced_numero` (BigIntegerField), `last_synced_fecha` (CharField)
+- `errors` (JSONField), `error_count`
+
+**SyncedRecord** — Maps LabWin records to LabControl objects for deduplication:
+- `source_table` + `source_key` + `lab_client_id` (unique together)
+- `target_model`, `target_uuid`
+
+### Sync Flow
+
+1. Celery Beat triggers `sync_labwin_results` nightly at 2 AM
+2. Task reads cursor from last successful SyncLog
+3. Connects to LabWin via connector factory (mock or real based on `LABWIN_USE_MOCK`)
+4. Fetches validated DETERS in batches of 500
+5. For each batch: fetches PACIENTES, MEDICOS, NOMEN for referenced IDs
+6. Creates/updates patients, doctors, practices, studies (idempotent)
+7. Updates SyncLog with counts and cursor
+
+### Connector Abstraction
+
+```python
+from apps.labwin_sync.connectors import get_connector
+
+with get_connector() as connector:
+    for batch in connector.fetch_validated_deters(since_fecha="20251028"):
+        pacientes = connector.fetch_pacientes([row["NUMERO_FLD"] for row in batch])
+        # ... process batch
+```
+
+**Mock connector**: In-memory sample data, no Firebird dependency. Used in tests and dev.
+**Firebird connector**: Uses `firebirdsql` pure Python driver. Connection params from Django settings.
+
+### Configuration
+
+```env
+LABWIN_USE_MOCK=True              # Set False for production
+LABWIN_FDB_HOST=localhost
+LABWIN_FDB_PORT=3050
+LABWIN_FDB_DATABASE=              # Path to .fdb file on Firebird server
+LABWIN_FDB_USER=SYSDBA
+LABWIN_FDB_PASSWORD=masterkey
+LABWIN_SYNC_BATCH_SIZE=500
+LABWIN_DEFAULT_LAB_CLIENT_ID=1
+```
+
+### Management Command
+
+```bash
+python manage.py sync_labwin              # Incremental sync (from last cursor)
+python manage.py sync_labwin --full       # Full sync (ignore cursor)
+python manage.py sync_labwin --use-celery # Run via Celery worker
+```
+
+### Idempotency
+
+Three layers prevent duplicate records:
+1. **SyncedRecord**: Maps `(source_table, source_key, lab_client_id)` → target UUID
+2. **Natural key matching**: DNI for patients, matricula for doctors, code for practices
+3. **Unique constraints**: `protocol_number` on Study
+
+### Future Phases
+
+- **Phase 2**: Replace mock with real Firebird credentials from lab
+- **Phase 3**: Parse pipe-delimited `RESULT_FLD` into UserDetermination records (requires RESULTS template table from LabWin)
 
 ---
 
@@ -1777,6 +1977,6 @@ See **DEPLOYMENT.md** for complete production deployment guide.
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: March 22, 2026
+**Document Version**: 1.1
+**Last Updated**: April 12, 2026
 **Maintained By**: Development Team

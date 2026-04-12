@@ -54,6 +54,13 @@ class Practice(BaseModel):
     """
 
     name = models.CharField(_("name"), max_length=200)
+    code = models.CharField(
+        _("code"),
+        max_length=20,
+        blank=True,
+        db_index=True,
+        help_text=_("Short code/abbreviation (e.g. LabWin ABREV_FLD)"),
+    )
     technique = models.CharField(
         _("technique"),
         max_length=200,

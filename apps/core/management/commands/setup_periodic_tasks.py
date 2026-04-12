@@ -71,6 +71,35 @@ class Command(BaseCommand):
                 self.style.WARNING("○ Already exists: Cleanup Old Notifications")
             )
 
+        # Nightly LabWin sync at 2 AM
+        nightly_2am, _ = CrontabSchedule.objects.get_or_create(
+            minute="0",
+            hour="2",
+            day_of_week="*",
+            day_of_month="*",
+            month_of_year="*",
+        )
+
+        task3, created3 = PeriodicTask.objects.get_or_create(
+            name="Sync LabWin Results",
+            defaults={
+                "task": "apps.labwin_sync.tasks.sync_labwin_results",
+                "crontab": nightly_2am,
+                "enabled": True,
+                "kwargs": json.dumps({"lab_client_id": 1}),
+            },
+        )
+        if created3:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "✓ Created: Sync LabWin Results (Nightly 2 AM)"
+                )
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING("○ Already exists: Sync LabWin Results")
+            )
+
         self.stdout.write(self.style.SUCCESS("\n✓ Periodic tasks setup complete!"))
         self.stdout.write(
             "\nYou can manage these tasks in Django Admin -> Periodic Tasks"

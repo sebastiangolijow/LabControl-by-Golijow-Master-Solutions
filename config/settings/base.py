@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "apps.payments",
     "apps.notifications",
     "apps.analytics",
+    "apps.labwin_sync",
 ]
 
 MIDDLEWARE = [
@@ -267,6 +268,18 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_CACHE_BACKEND = "django-cache"
+
+# LabWin Firebird Sync Configuration
+LABWIN_USE_MOCK = env.bool("LABWIN_USE_MOCK", default=True)
+LABWIN_FDB_HOST = env("LABWIN_FDB_HOST", default="localhost")
+LABWIN_FDB_PORT = env.int("LABWIN_FDB_PORT", default=3050)
+LABWIN_FDB_DATABASE = env("LABWIN_FDB_DATABASE", default="")
+LABWIN_FDB_USER = env("LABWIN_FDB_USER", default="SYSDBA")
+LABWIN_FDB_PASSWORD = env("LABWIN_FDB_PASSWORD", default="masterkey")
+LABWIN_FDB_CHARSET = env("LABWIN_FDB_CHARSET", default="UTF8")
+LABWIN_SYNC_BATCH_SIZE = env.int("LABWIN_SYNC_BATCH_SIZE", default=500)
+LABWIN_DEFAULT_LAB_CLIENT_ID = env.int("LABWIN_DEFAULT_LAB_CLIENT_ID", default=1)
+LABWIN_MOCK_FDB_PATH = env("LABWIN_MOCK_FDB_PATH", default="")
 
 # Redis Cache Configuration
 CACHES = {
