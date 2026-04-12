@@ -253,13 +253,14 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for admin-created users (admin, doctor, patient).
 
-    Users created by admins will receive an email to set their password.
-    No password field is required here.
+    Password setup emails:
+    - Doctors: No email sent (they won't be logging in)
+    - Other roles: Email sent with link to set their password
 
     Role-based validation:
-    - Doctors: Only require first_name, last_name, email, matricula
-    - Patients: Require full profile (first_name, last_name, phone_number, dni, birthday)
-    - Admin/Lab staff: Require basic fields (first_name, last_name)
+    - Doctors: Only require first_name, last_name, matricula (email optional)
+    - Patients: Require full profile (first_name, last_name, email, phone_number, dni, birthday)
+    - Admin/Lab staff: Require basic fields (first_name, last_name, email)
     """
 
     class Meta:
@@ -344,9 +345,12 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
         """
         Create user without password.
 
-        User will receive an email with a link to set their password.
+        For non-doctor roles: User will receive an email with a link to set their password.
+        For doctors: No email is sent since they won't be logging in.
         """
         import secrets
+
+        role = validated_data.get('role')
 
         # Generate a temporary password (will be replaced when user sets their own)
         temp_password = secrets.token_urlsafe(32)
@@ -357,8 +361,10 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
         user.is_active = True  # User can login after setting password
         user.save()
 
-        # Generate verification token for password setup
-        user.generate_verification_token()
+        # Only generate verification token for non-doctor roles
+        # Doctors don't need to login, so no need to send password setup email
+        if role != 'doctor':
+            user.generate_verification_token()
 
         # Track who created this user (set in view)
         if "created_by" in self.context:
