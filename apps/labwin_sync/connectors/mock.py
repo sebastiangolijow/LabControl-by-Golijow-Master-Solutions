@@ -241,7 +241,9 @@ class MockLabWinConnector(LabWinConnector):
         self._connected = False
         logger.info("MockLabWinConnector disconnected")
 
-    def fetch_validated_deters(self, since_fecha=None, since_numero=None, batch_size=500):
+    def fetch_validated_deters(
+        self, since_fecha=None, since_numero=None, batch_size=500
+    ):
         # Only return validated rows, matching real Firebird connector behavior
         data = [row for row in SAMPLE_DETERS if row.get("VALIDADO_FLD") == "1"]
 
@@ -250,7 +252,9 @@ class MockLabWinConnector(LabWinConnector):
                 row
                 for row in data
                 if (row["FECHA_FLD"] > since_fecha)
-                or (row["FECHA_FLD"] == since_fecha and row["NUMERO_FLD"] > since_numero)
+                or (
+                    row["FECHA_FLD"] == since_fecha and row["NUMERO_FLD"] > since_numero
+                )
             ]
 
         # Yield in batches
@@ -266,9 +270,7 @@ class MockLabWinConnector(LabWinConnector):
 
     def fetch_medicos(self, numero_fld_list):
         return {
-            num: SAMPLE_MEDICOS[num]
-            for num in numero_fld_list
-            if num in SAMPLE_MEDICOS
+            num: SAMPLE_MEDICOS[num] for num in numero_fld_list if num in SAMPLE_MEDICOS
         }
 
     def fetch_nomen(self, abrev_fld_list):

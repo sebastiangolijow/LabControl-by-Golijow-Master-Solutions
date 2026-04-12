@@ -19,7 +19,9 @@ class LabWinConnector(ABC):
         """Close the connection to the LabWin database."""
 
     @abstractmethod
-    def fetch_validated_deters(self, since_fecha=None, since_numero=None, batch_size=500):
+    def fetch_validated_deters(
+        self, since_fecha=None, since_numero=None, batch_size=500
+    ):
         """Fetch validated DETERS rows since the given cursor.
 
         Args:

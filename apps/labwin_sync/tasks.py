@@ -138,7 +138,9 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         practice_cache[abrev] = practice_pk
                     except Exception as e:
                         logger.error("Error creating practice %s: %s", abrev, e)
-                        errors.append({"type": "practice", "key": abrev, "error": str(e)})
+                        errors.append(
+                            {"type": "practice", "key": abrev, "error": str(e)}
+                        )
 
                 # Process doctors
                 for num, medico_row in medicos.items():
@@ -151,7 +153,9 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         doctor_cache[num] = doctor_pk
                     except Exception as e:
                         logger.error("Error creating doctor %s: %s", num, e)
-                        errors.append({"type": "doctor", "key": str(num), "error": str(e)})
+                        errors.append(
+                            {"type": "doctor", "key": str(num), "error": str(e)}
+                        )
 
                 # Process each DETERS row
                 for row in batch:
@@ -170,11 +174,13 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                 patient_cache[numero] = patient_pk
                             else:
                                 # No patient data available, skip
-                                errors.append({
-                                    "type": "study",
-                                    "key": f"{numero}:{abrev}",
-                                    "error": "No PACIENTES data for this NUMERO_FLD",
-                                })
+                                errors.append(
+                                    {
+                                        "type": "study",
+                                        "key": f"{numero}:{abrev}",
+                                        "error": "No PACIENTES data for this NUMERO_FLD",
+                                    }
+                                )
                                 continue
 
                         patient_pk = patient_cache.get(numero)
@@ -199,8 +205,13 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
 
                         # Create/update study
                         _get_or_create_study(
-                            row, patient_pk, practice_pk, doctor_pk,
-                            lab_client_id, sync_log, counters,
+                            row,
+                            patient_pk,
+                            practice_pk,
+                            doctor_pk,
+                            lab_client_id,
+                            sync_log,
+                            counters,
                         )
 
                         # Track cursor
@@ -216,11 +227,13 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         logger.error(
                             "Error processing DETERS %s:%s: %s", numero, abrev, e
                         )
-                        errors.append({
-                            "type": "study",
-                            "key": f"{numero}:{abrev}",
-                            "error": str(e),
-                        })
+                        errors.append(
+                            {
+                                "type": "study",
+                                "key": f"{numero}:{abrev}",
+                                "error": str(e),
+                            }
+                        )
 
                 # Update progress (skip if no task_id, e.g. synchronous call)
                 if task_id:
@@ -310,8 +323,12 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
         ).first()
         if user:
             _ensure_synced_record(
-                "PACIENTES", source_key, "User", user.pk,
-                lab_client_id, sync_log,
+                "PACIENTES",
+                source_key,
+                "User",
+                user.pk,
+                lab_client_id,
+                sync_log,
             )
             counters["patients_updated"] += 1
             return user.pk
@@ -336,8 +353,12 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
             lab_client_id=lab_client_id,
         )
         _ensure_synced_record(
-            "PACIENTES", source_key, "User", user.pk,
-            lab_client_id, sync_log,
+            "PACIENTES",
+            source_key,
+            "User",
+            user.pk,
+            lab_client_id,
+            sync_log,
         )
         counters["patients_created"] += 1
         return user.pk
@@ -368,8 +389,12 @@ def _get_or_create_doctor(medico_row, lab_client_id, sync_log, counters):
         user = User.objects.filter(matricula=matricula, role="doctor").first()
         if user:
             _ensure_synced_record(
-                "MEDICOS", source_key, "User", user.pk,
-                lab_client_id, sync_log,
+                "MEDICOS",
+                source_key,
+                "User",
+                user.pk,
+                lab_client_id,
+                sync_log,
             )
             return user.pk
 
@@ -387,8 +412,12 @@ def _get_or_create_doctor(medico_row, lab_client_id, sync_log, counters):
             lab_client_id=lab_client_id,
         )
         _ensure_synced_record(
-            "MEDICOS", source_key, "User", user.pk,
-            lab_client_id, sync_log,
+            "MEDICOS",
+            source_key,
+            "User",
+            user.pk,
+            lab_client_id,
+            sync_log,
         )
         counters["doctors_created"] += 1
         return user.pk
@@ -415,8 +444,12 @@ def _get_or_create_practice(nomen_row, lab_client_id, sync_log, counters):
             is_active=True,
         )
         _ensure_synced_record(
-            "NOMEN", abrev, "Practice", practice.pk,
-            lab_client_id, sync_log,
+            "NOMEN",
+            abrev,
+            "Practice",
+            practice.pk,
+            lab_client_id,
+            sync_log,
         )
         counters["practices_created"] += 1
         return practice.pk
@@ -437,16 +470,25 @@ def _create_minimal_practice(abrev, lab_client_id, sync_log, counters):
             is_active=True,
         )
         _ensure_synced_record(
-            "NOMEN", abrev, "Practice", practice.pk,
-            lab_client_id, sync_log,
+            "NOMEN",
+            abrev,
+            "Practice",
+            practice.pk,
+            lab_client_id,
+            sync_log,
         )
         counters["practices_created"] += 1
         return practice.pk
 
 
 def _get_or_create_study(
-    deters_row, patient_pk, practice_pk, doctor_pk,
-    lab_client_id, sync_log, counters,
+    deters_row,
+    patient_pk,
+    practice_pk,
+    doctor_pk,
+    lab_client_id,
+    sync_log,
+    counters,
 ):
     """Get or create a Study from a DETERS row. Returns Study pk."""
     from apps.studies.models import Study
@@ -484,15 +526,20 @@ def _get_or_create_study(
         study.save()
 
         _ensure_synced_record(
-            "DETERS", source_key, "Study", study.pk,
-            lab_client_id, sync_log,
+            "DETERS",
+            source_key,
+            "Study",
+            study.pk,
+            lab_client_id,
+            sync_log,
         )
         counters["studies_created"] += 1
         return study.pk
 
 
-def _ensure_synced_record(source_table, source_key, target_model, target_uuid,
-                          lab_client_id, sync_log):
+def _ensure_synced_record(
+    source_table, source_key, target_model, target_uuid, lab_client_id, sync_log
+):
     """Create or update a SyncedRecord for deduplication tracking."""
     SyncedRecord.objects.update_or_create(
         source_table=source_table,

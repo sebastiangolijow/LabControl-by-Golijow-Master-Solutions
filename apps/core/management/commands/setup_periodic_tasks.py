@@ -91,9 +91,7 @@ class Command(BaseCommand):
         )
         if created3:
             self.stdout.write(
-                self.style.SUCCESS(
-                    "✓ Created: Sync LabWin Results (Nightly 2 AM)"
-                )
+                self.style.SUCCESS("✓ Created: Sync LabWin Results (Nightly 2 AM)")
             )
         else:
             self.stdout.write(

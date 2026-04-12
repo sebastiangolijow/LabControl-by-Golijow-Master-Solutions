@@ -60,30 +60,61 @@ NOMEN_QUERY = """
 """
 
 DETERS_COLUMNS = [
-    "NUMERO_FLD", "ABREV_FLD", "RESULT_FLD", "RESULTREP_FLD",
-    "VALIDADO_FLD", "FECHA_FLD", "HORA_FLD", "ORDEN_FLD", "OPERADOR_FLD", "SUCURSAL_FLD",
+    "NUMERO_FLD",
+    "ABREV_FLD",
+    "RESULT_FLD",
+    "RESULTREP_FLD",
+    "VALIDADO_FLD",
+    "FECHA_FLD",
+    "HORA_FLD",
+    "ORDEN_FLD",
+    "OPERADOR_FLD",
+    "SUCURSAL_FLD",
 ]
 
 PACIENTES_COLUMNS = [
-    "NUMERO_FLD", "NOMBRE_FLD", "HCLIN_FLD", "SEXO_FLD", "FNACIM_FLD",
-    "MUTUAL_FLD", "MEDICO_FLD", "NUMMEDICO_FLD", "CARNET_FLD",
-    "TELEFONO_FLD", "CELULAR_FLD", "DIRECCION_FLD", "LOCALIDAD_FLD", "EMAIL_FLD",
+    "NUMERO_FLD",
+    "NOMBRE_FLD",
+    "HCLIN_FLD",
+    "SEXO_FLD",
+    "FNACIM_FLD",
+    "MUTUAL_FLD",
+    "MEDICO_FLD",
+    "NUMMEDICO_FLD",
+    "CARNET_FLD",
+    "TELEFONO_FLD",
+    "CELULAR_FLD",
+    "DIRECCION_FLD",
+    "LOCALIDAD_FLD",
+    "EMAIL_FLD",
 ]
 
 MEDICOS_COLUMNS = [
-    "NUMERO_FLD", "NOMBRE_FLD", "MATNAC_FLD", "MATPROV_FLD", "ESPECIALIDAD_FLD",
-    "TELEFONO_FLD", "EMAIL_FLD",
+    "NUMERO_FLD",
+    "NOMBRE_FLD",
+    "MATNAC_FLD",
+    "MATPROV_FLD",
+    "ESPECIALIDAD_FLD",
+    "TELEFONO_FLD",
+    "EMAIL_FLD",
 ]
 
 NOMEN_COLUMNS = [
-    "ABREV_FLD", "NOMBRE_FLD", "SECCION_FLD", "DIASTARDA_FLD", "MATERIAL_FLD",
+    "ABREV_FLD",
+    "NOMBRE_FLD",
+    "SECCION_FLD",
+    "DIASTARDA_FLD",
+    "MATERIAL_FLD",
 ]
 
 
 def _rows_to_dicts(rows, columns):
     """Convert list of tuples to list of dicts using column names."""
     return [
-        {col: (val.strip() if isinstance(val, str) else val) for col, val in zip(columns, row)}
+        {
+            col: (val.strip() if isinstance(val, str) else val)
+            for col, val in zip(columns, row)
+        }
         for row in rows
     ]
 
@@ -105,7 +136,9 @@ class FirebirdLabWinConnector(LabWinConnector):
             password=settings.LABWIN_FDB_PASSWORD,
             charset=settings.LABWIN_FDB_CHARSET,
         )
-        logger.info("Connected to LabWin Firebird database at %s", settings.LABWIN_FDB_HOST)
+        logger.info(
+            "Connected to LabWin Firebird database at %s", settings.LABWIN_FDB_HOST
+        )
 
     def disconnect(self):
         if self.connection:
@@ -113,7 +146,9 @@ class FirebirdLabWinConnector(LabWinConnector):
             self.connection = None
             logger.info("Disconnected from LabWin Firebird database")
 
-    def fetch_validated_deters(self, since_fecha=None, since_numero=None, batch_size=500):
+    def fetch_validated_deters(
+        self, since_fecha=None, since_numero=None, batch_size=500
+    ):
         cursor = self.connection.cursor()
         try:
             if since_fecha and since_numero is not None:

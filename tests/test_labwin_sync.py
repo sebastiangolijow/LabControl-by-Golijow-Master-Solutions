@@ -15,11 +15,11 @@ from django.test import override_settings
 
 from apps.labwin_sync.connectors import get_connector
 from apps.labwin_sync.connectors.mock import (
-    MockLabWinConnector,
     SAMPLE_DETERS,
     SAMPLE_MEDICOS,
     SAMPLE_NOMEN,
     SAMPLE_PACIENTES,
+    MockLabWinConnector,
 )
 from apps.labwin_sync.mappers import (
     map_doctor,
@@ -35,7 +35,6 @@ from apps.labwin_sync.tasks import sync_labwin_results
 from apps.studies.models import Practice, Study
 from apps.users.models import User
 from tests.base import BaseTestCase
-
 
 # ======================
 # Mapper Tests
@@ -372,9 +371,7 @@ class SyncTaskTests(BaseTestCase):
         """Incremental sync only processes records after the cursor."""
         # First full sync
         sync_labwin_results(lab_client_id=1, full_sync=True)
-        first_count = Study.objects.filter(
-            protocol_number__startswith="LW-"
-        ).count()
+        first_count = Study.objects.filter(protocol_number__startswith="LW-").count()
 
         # Second incremental sync (no new data in mock)
         result = sync_labwin_results(lab_client_id=1, full_sync=False)
@@ -430,9 +427,7 @@ class SyncTaskTests(BaseTestCase):
         sync_labwin_results(lab_client_id=1, full_sync=True)
 
         # Should not have created a duplicate doctor with this matricula
-        doctors_with_mat = User.objects.filter(
-            matricula="MN12345", role="doctor"
-        )
+        doctors_with_mat = User.objects.filter(matricula="MN12345", role="doctor")
         self.assertEqual(doctors_with_mat.count(), 1)
         self.assertEqual(doctors_with_mat.first().pk, existing.pk)
 
@@ -443,7 +438,9 @@ class SyncTaskTests(BaseTestCase):
         sync_labwin_results(lab_client_id=1, full_sync=True)
 
         patients_with_dni = User.objects.filter(
-            dni="30123456", role="patient", lab_client_id=1,
+            dni="30123456",
+            role="patient",
+            lab_client_id=1,
         )
         self.assertEqual(patients_with_dni.count(), 1)
 
