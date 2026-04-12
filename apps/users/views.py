@@ -549,7 +549,7 @@ class SetPasswordView(generics.GenericAPIView):
 
 class ImportDoctorsView(APIView):
     """
-    Import doctors from CSV file (admin and lab staff only).
+    Import doctors from CSV file asynchronously (admin and lab staff only).
 
     Expects CSV file with columns: NOMBRE_MEDICO, MATRICULA_O_ID
     Name formats supported:
@@ -557,13 +557,13 @@ class ImportDoctorsView(APIView):
     - "First Last" (e.g., "Juan Perez")
     - Single name (e.g., "ABACO SA") - treated as first_name only
 
-    Returns summary with counts of created, skipped (duplicates), and errors.
+    Returns task_id to track import progress.
     """
 
     permission_classes = [IsAdminOrLabManager]
 
     def post(self, request):
-        """Import doctors from uploaded CSV file."""
+        """Queue import task and return task ID."""
         # Validate file upload
         if "file" not in request.FILES:
             return Response(
@@ -581,120 +581,79 @@ class ImportDoctorsView(APIView):
             )
 
         try:
-            # Decode and read CSV
-            csv_data = csv_file.read().decode("utf-8")
-            csv_reader = csv.DictReader(io.StringIO(csv_data))
+            # Read and decode CSV content
+            csv_content = csv_file.read().decode("utf-8")
 
-            created_count = 0
-            skipped_count = 0
-            errors = []
+            # Determine lab_client_id for task
+            lab_client_id = None
+            if request.user.role == "lab_staff" and request.user.lab_client_id:
+                lab_client_id = request.user.lab_client_id
 
-            for row_number, row in enumerate(
-                csv_reader, start=2
-            ):  # Start at 2 (header is row 1)
-                try:
-                    # Extract data from row
-                    nombre_medico = row.get("NOMBRE_MEDICO", "").strip()
-                    matricula_raw = row.get("MATRICULA_O_ID", "").strip()
+            # Queue the task
+            from apps.users.tasks import import_doctors_task
 
-                    # Skip empty rows
-                    if not nombre_medico or not matricula_raw:
-                        continue
-
-                    # Parse matricula
-                    try:
-                        matricula = str(matricula_raw)
-                    except (ValueError, TypeError):
-                        errors.append(
-                            {
-                                "row": row_number,
-                                "error": f"Invalid matricula format: {matricula_raw}",
-                                "name": nombre_medico,
-                            }
-                        )
-                        continue
-
-                    # Check if doctor with this matricula already exists
-                    if User.objects.filter(matricula=matricula).exists():
-                        skipped_count += 1
-                        continue
-
-                    # Parse name into first_name and last_name
-                    first_name, last_name = self._parse_name(nombre_medico)
-
-                    # Create doctor user
-                    user = User.objects.create_user(
-                        first_name=first_name,
-                        last_name=last_name,
-                        matricula=matricula,
-                        role="doctor",
-                        is_active=True,
-                        is_verified=True,
-                    )
-
-                    # Set lab_client_id if lab staff is importing
-                    if request.user.role == "lab_staff" and request.user.lab_client_id:
-                        user.lab_client_id = request.user.lab_client_id
-                        user.save(update_fields=["lab_client_id"])
-
-                    created_count += 1
-
-                except Exception as e:
-                    errors.append(
-                        {
-                            "row": row_number,
-                            "error": str(e),
-                            "name": (
-                                nombre_medico
-                                if "nombre_medico" in locals()
-                                else "Unknown"
-                            ),
-                        }
-                    )
+            task = import_doctors_task.delay(csv_content, lab_client_id)
 
             return Response(
                 {
-                    "message": f"Import completed. Created: {created_count}, Skipped: {skipped_count}, Errors: {len(errors)}",
-                    "created": created_count,
-                    "skipped": skipped_count,
-                    "errors": errors,
+                    "message": "Import task queued successfully. Use the task_id to check progress.",
+                    "task_id": task.id,
                 },
-                status=status.HTTP_200_OK,
+                status=status.HTTP_202_ACCEPTED,
             )
 
         except Exception as e:
             return Response(
-                {"error": f"Failed to process CSV file: {str(e)}"},
+                {"error": f"Failed to queue import task: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    def _parse_name(self, full_name):
-        """
-        Parse full name into first_name and last_name.
 
-        Formats handled:
-        - "Last, First" -> first_name="First", last_name="Last"
-        - "First Last" -> first_name="First", last_name="Last"
-        - "Single" -> first_name="Single", last_name=""
+class ImportDoctorsStatusView(APIView):
+    """
+    Check the status of a doctor import task.
 
-        Returns:
-            tuple: (first_name, last_name)
-        """
-        full_name = full_name.strip()
+    Returns task state and progress information.
+    """
 
-        # Check if comma-separated (Last, First format)
-        if "," in full_name:
-            parts = full_name.split(",", 1)
-            last_name = parts[0].strip()
-            first_name = parts[1].strip() if len(parts) > 1 else ""
-            return first_name, last_name
+    permission_classes = [IsAdminOrLabManager]
 
-        # Check if space-separated
-        if " " in full_name:
-            parts = full_name.split(None, 1)  # Split on whitespace, max 1 split
-            first_name = parts[0].strip()
-            last_name = parts[1].strip() if len(parts) > 1 else ""
-            return first_name, last_name
+    def get(self, request, task_id):
+        """Get status of import task."""
+        from celery.result import AsyncResult
 
-        # Single name only
-        return full_name, ""
+        task = AsyncResult(task_id)
+
+        if task.state == "PENDING":
+            response = {
+                "state": task.state,
+                "status": "Task is waiting to be processed...",
+            }
+        elif task.state == "PROCESSING":
+            response = {
+                "state": task.state,
+                "status": task.info.get("status", "Processing..."),
+                "processed": task.info.get("processed", 0),
+                "created": task.info.get("created", 0),
+                "skipped": task.info.get("skipped", 0),
+                "errors": task.info.get("errors", 0),
+            }
+        elif task.state == "SUCCESS":
+            response = {
+                "state": task.state,
+                "status": "Import completed successfully",
+                "result": task.info,
+            }
+        elif task.state == "FAILURE":
+            response = {
+                "state": task.state,
+                "status": "Import failed",
+                "error": str(task.info),
+            }
+        else:
+            response = {
+                "state": task.state,
+                "status": str(task.info),
+            }
+
+        return Response(response)

@@ -4,6 +4,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    ImportDoctorsStatusView,
     ImportDoctorsView,
     PatientRegistrationView,
     ResendVerificationEmailView,
@@ -27,5 +28,10 @@ urlpatterns = [
         name="resend-verification",
     ),
     path("import-doctors/", ImportDoctorsView.as_view(), name="import-doctors"),
+    path(
+        "import-doctors/status/<str:task_id>/",
+        ImportDoctorsStatusView.as_view(),
+        name="import-doctors-status",
+    ),
     path("", include(router.urls)),
 ]
