@@ -132,6 +132,19 @@ labcontrol/
 │   │   ├── managers.py          # NotificationManager
 │   │   └── urls.py
 │   │
+│   ├── labwin_sync/             # LabWin Firebird sync
+│   │   ├── models.py            # SyncLog, SyncedRecord
+│   │   ├── tasks.py             # sync_labwin_results Celery task
+│   │   ├── mappers.py           # LabWin row → Django model mapping
+│   │   ├── admin.py             # SyncLog/SyncedRecord admin views
+│   │   ├── connectors/
+│   │   │   ├── __init__.py      # get_connector() factory
+│   │   │   ├── base.py          # Abstract connector interface
+│   │   │   ├── firebird.py      # Real Firebird connector (firebirdsql)
+│   │   │   └── mock.py          # Mock connector with sample data
+│   │   └── management/commands/
+│   │       └── sync_labwin.py   # Manual sync trigger
+│   │
 │   └── analytics/               # Analytics & reporting
 │       ├── views.py             # Dashboard, trends, revenue
 │       ├── serializers.py       # Analytics serializers
@@ -149,14 +162,15 @@ labcontrol/
 │   ├── asgi.py                  # ASGI config (future WebSocket support)
 │   └── celery.py                # Celery configuration
 │
-├── tests/                       # Test suite (373 tests, 82% coverage)
+├── tests/                       # Test suite (374 tests, 82% coverage)
 │   ├── base.py                  # BaseTestCase with factories
 │   ├── test_users.py
 │   ├── test_studies.py
 │   ├── test_appointments.py
 │   ├── test_payments.py
 │   ├── test_notifications.py
-│   └── test_analytics.py
+│   ├── test_analytics.py
+│   └── test_labwin_sync.py
 │
 ├── templates/                   # Email templates
 │   └── emails/
@@ -302,6 +316,7 @@ class Practice(BaseModel):
     Defines what tests are available, their cost, turnaround time, etc.
     """
     name = models.CharField(max_length=200)  # e.g., "Complete Blood Count"
+    code = models.CharField(max_length=20, blank=True, db_index=True)  # LabWin ABREV_FLD (e.g., "HEMC")
     technique = models.CharField(max_length=200, blank=True)  # e.g., "Flow Cytometry"
     sample_type = models.CharField(max_length=100, blank=True)  # e.g., "Blood"
     sample_quantity = models.CharField(max_length=100, blank=True)  # e.g., "5ml"
@@ -1149,7 +1164,7 @@ def pending(self, request):
 
 ## 🧪 Testing
 
-**Test Suite**: 373 tests, 82% coverage
+**Test Suite**: 374 tests, 82% coverage
 
 ### BaseTestCase (tests/base.py)
 
@@ -1947,12 +1962,21 @@ def calculate_invoice_total(invoice):
 See **DEPLOYMENT.md** for complete production deployment guide.
 
 **Quick reference**:
-- Server: Hostinger VPS (72.60.137.226)
+- Server: Hostinger VPS (72.60.137.226), user: `deploy`
 - URL: https://labmolecuar-portal-clientes-staging.com:8443
-- Deployment: Docker Compose
+- App location: `/opt/labcontrol/`
+- Deployment: Docker Compose (`docker-compose.prod.yml`)
+- Containers: web, nginx, db, redis, celery_worker, celery_beat
 - Database: PostgreSQL (Docker volume)
 - Static files: Nginx + WhiteNoise
 - Media files: Nginx volume mount
+- Backup: `/opt/labcontrol/backups/2026-03-22-working-config/`
+
+**Critical deployment notes**:
+- **NEVER rsync `.env.production`** — it overwrites server credentials with local template values
+- **Rebuild ALL celery images** when adding new Celery tasks — celery_worker and celery_beat use separate Docker images that must be rebuilt independently
+- After rebuilding, recreate containers: `docker compose -f docker-compose.prod.yml up -d --force-recreate celery_worker celery_beat`
+- `firebirdsql` requires v1.4.5+ (v1.3.0 has a circular import bug that fails during Docker build)
 
 ---
 
@@ -1974,6 +1998,15 @@ See **DEPLOYMENT.md** for complete production deployment guide.
 
 **Issue**: Migrations out of sync
 **Solution**: Run `make showmigrations` to check status, then `make migrate`
+
+**Issue**: `firebirdsql` circular import during Docker build
+**Solution**: Use `firebirdsql>=1.4.5` (v1.3.0 has a known circular import bug)
+
+**Issue**: Celery tasks not registered after deployment
+**Solution**: Rebuild celery Docker images (`docker compose -f docker-compose.prod.yml build celery_worker celery_beat`) and recreate containers. The worker loads tasks on startup from the image.
+
+**Issue**: `.env.production` overwritten during rsync deploy
+**Solution**: Exclude `.env.production` from rsync. If overwritten, restore from backup: `cp /opt/labcontrol/backups/2026-03-22-working-config/.env.production.backup /opt/labcontrol/.env.production`
 
 ---
 

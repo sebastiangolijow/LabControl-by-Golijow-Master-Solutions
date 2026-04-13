@@ -25,12 +25,18 @@ apps/
 │       ├── verify_email.py       # Verify single user email
 │       └── create_seed_users.py  # Create admin/doctor/patient seed users
 ├── studies/        # Lab studies, practices, determinations
-│   ├── models.py   # Practice, Determination, Study, UserDetermination
+│   ├── models.py   # Practice (with code field), Determination, Study, UserDetermination
 │   ├── views.py    # Study CRUD, upload/download results
-│   ├── serializers.py
+│   ├── serializers.py  # PracticeSerializer includes determinations_detail
 │   ├── filters.py
 │   ├── managers.py
 │   └── management/commands/load_practices.py
+├── labwin_sync/    # LabWin Firebird sync
+│   ├── models.py   # SyncLog, SyncedRecord
+│   ├── tasks.py    # sync_labwin_results Celery task
+│   ├── mappers.py  # LabWin → Django field mapping
+│   ├── connectors/ # base, firebird, mock
+│   └── management/commands/sync_labwin.py
 ├── appointments/   # Appointment scheduling
 ├── payments/       # Payment processing
 ├── notifications/  # Notifications (email/in-app, Celery tasks)
@@ -42,7 +48,9 @@ config/
 ├── celery.py
 └── urls.py
 
-tests/              # 277 tests, 82% coverage
+apps/labwin_sync/   # LabWin Firebird sync (connectors, mappers, models, tasks)
+
+tests/              # 374 tests, 82% coverage
 ```
 
 ## Models
@@ -67,6 +75,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 ```python
 class Practice(BaseModel):
     name, technique, sample_type, sample_quantity
+    code = CharField(max_length=20, blank=True, db_index=True)  # LabWin ABREV_FLD
     price = DecimalField()
     delay_days = IntegerField()
     is_active = BooleanField()
@@ -158,6 +167,13 @@ GET    /api/v1/studies/determinations/           # List determinations
 GET/POST/PATCH /api/v1/studies/user-determinations/  # Study result values
 ```
 
+### LabWin Sync
+```
+POST   /api/v1/labwin-sync/trigger/         # Trigger manual sync (admin only)
+GET    /api/v1/labwin-sync/status/           # Get last sync status
+GET    /api/v1/labwin-sync/logs/             # List sync logs
+```
+
 ### Analytics
 ```
 GET    /api/v1/analytics/dashboard/
@@ -242,12 +258,13 @@ make migrate / makemigrations / showmigrations
 make seed-users          # Create dev seed users
 make superuser           # Interactive superuser
 make verify-email EMAIL=x@y.com
-make test                # 277 tests (DJANGO_SETTINGS_MODULE=config.settings.test)
+make test                # 374 tests (DJANGO_SETTINGS_MODULE=config.settings.test)
 make test-coverage / test-verbose / test-fast
 make throttle-reset      # Clear rate limit cache
 make load_practices      # Load practice catalogue from JSON
 make db-reset            # Drop + recreate DB (destroys data)
 make format / lint / isort / quality
+make sync-labwin         # Trigger LabWin sync manually
 ```
 
 ## Environment
@@ -420,9 +437,41 @@ python manage.py sync_labwin --use-celery # Run via Celery worker
 - **Phase 3**: Parse pipe-delimited RESULT_FLD into UserDetermination records
   (requires RESULTS template table from LabWin)
 
+## Deployment (Staging)
+
+**Server**: Hostinger VPS `72.60.137.226`, port `8443` (HTTPS)
+**Domain**: `labmolecuar-portal-clientes-staging.com`
+**App Location**: `/opt/labcontrol/`
+**User**: `deploy@72.60.137.226`
+**Containers**: web, nginx, db, redis, celery_worker, celery_beat
+
+### Deploy Backend
+```bash
+# Rsync code (EXCLUDE .env.production to avoid overwriting server secrets)
+rsync -avz --exclude='.env.production' --exclude='__pycache__' . deploy@72.60.137.226:/opt/labcontrol/
+
+# Build & restart on server
+ssh deploy@72.60.137.226 "cd /opt/labcontrol && \
+  docker compose -f docker-compose.prod.yml build web celery_worker celery_beat && \
+  docker compose -f docker-compose.prod.yml up -d --force-recreate web celery_worker celery_beat && \
+  docker compose -f docker-compose.prod.yml exec web python manage.py migrate"
+```
+
+### Deploy Frontend
+```bash
+cd ../labcontrol-frontend && npm run build
+scp -r dist/* deploy@72.60.137.226:/opt/labcontrol/frontend/dist/
+ssh deploy@72.60.137.226 "docker restart labcontrol_nginx"
+```
+
+### Important Deployment Notes
+- **NEVER rsync `.env.production`** — it overwrites server credentials with local template
+- **Rebuild ALL celery images** when adding new tasks — celery_worker and celery_beat use separate Docker images
+- Backup exists at `/opt/labcontrol/backups/2026-03-22-working-config/`
+
 ## Known Issues
 
-**None** - All features working, 373/373 tests passing.
+**None** - All features working, 374/374 tests passing.
 
 ---
 *AI Context File — update after major changes*
