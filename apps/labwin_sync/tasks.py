@@ -1,22 +1,25 @@
 """
-Celery task for syncing lab results from LabWin Firebird database.
+Celery tasks for syncing lab results from LabWin.
 
-Runs nightly via Celery Beat. Fetches validated DETERS rows incrementally,
-groups them by protocol (NUMERO_FLD), and creates one Study per protocol
-with multiple StudyPractice records. Tracks progress in SyncLog/SyncedRecord
-for idempotency.
+Tasks:
+- sync_labwin_results: Nightly sync from LabWin Firebird database.
+- fetch_ftp_pdfs: Fetch PDF result files from FTP server and attach to studies.
+- cleanup_ftp_pdfs: Remove successfully processed PDFs from FTP server.
 """
 
 import logging
+import os
 from collections import defaultdict
 
 from celery import shared_task
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
 from . import mappers
 from .connectors import get_connector
+from .ftp import get_ftp_connector
 from .models import SyncedRecord, SyncLog
 
 logger = logging.getLogger(__name__)
@@ -610,3 +613,209 @@ def _ensure_synced_record(
             "sync_log": sync_log,
         },
     )
+
+
+@shared_task(bind=True, max_retries=3, time_limit=1800)
+def fetch_ftp_pdfs(self, lab_client_id=None, delete_after_download=False):
+    """Fetch PDF result files from FTP server and attach to matching studies.
+
+    PDF filenames on the FTP server follow the pattern {NUMERO_FLD}.pdf.
+    This matches Study.sample_id (which stores the raw NUMERO_FLD value).
+
+    Args:
+        lab_client_id: Lab client ID to filter studies.
+            Defaults to LABWIN_DEFAULT_LAB_CLIENT_ID setting.
+        delete_after_download: If True, delete PDFs from FTP after successful
+            attachment to a study.
+
+    Returns:
+        dict: Summary with counts of matched, skipped, and failed files.
+    """
+    from apps.studies.models import Study
+
+    if lab_client_id is None:
+        lab_client_id = getattr(settings, "LABWIN_DEFAULT_LAB_CLIENT_ID", 1)
+
+    task_id = ""
+    try:
+        task_id = self.request.id or ""
+    except AttributeError:
+        pass
+
+    counters = {
+        "files_found": 0,
+        "files_matched": 0,
+        "files_attached": 0,
+        "files_skipped": 0,
+        "files_deleted": 0,
+    }
+    errors = []
+
+    try:
+        with get_ftp_connector() as ftp:
+            pdf_files = ftp.list_pdf_files()
+            counters["files_found"] = len(pdf_files)
+
+            logger.info("FTP: Found %d PDF files", len(pdf_files))
+
+            for filename in pdf_files:
+                try:
+                    # Extract NUMERO from filename (e.g. "100001.pdf" -> "100001")
+                    name_without_ext = os.path.splitext(filename)[0]
+
+                    # Find matching study by sample_id
+                    study = Study.objects.filter(
+                        sample_id=name_without_ext,
+                        lab_client_id=lab_client_id,
+                    ).first()
+
+                    if not study:
+                        counters["files_skipped"] += 1
+                        continue
+
+                    counters["files_matched"] += 1
+
+                    # Skip if study already has a results file
+                    if study.results_file:
+                        counters["files_skipped"] += 1
+                        logger.debug(
+                            "Study %s already has results file, skipping",
+                            study.protocol_number,
+                        )
+                        if delete_after_download:
+                            ftp.delete_file(filename)
+                            counters["files_deleted"] += 1
+                        continue
+
+                    # Download and attach
+                    content = ftp.download_file(filename)
+                    study.results_file.save(
+                        f"{study.protocol_number}.pdf",
+                        ContentFile(content),
+                        save=True,
+                    )
+                    counters["files_attached"] += 1
+                    logger.info(
+                        "Attached PDF %s to study %s",
+                        filename,
+                        study.protocol_number,
+                    )
+
+                    # Delete from FTP if requested
+                    if delete_after_download:
+                        ftp.delete_file(filename)
+                        counters["files_deleted"] += 1
+
+                except Exception as e:
+                    logger.error("Error processing FTP file %s: %s", filename, e)
+                    errors.append({"file": filename, "error": str(e)})
+
+                # Update progress
+                if task_id:
+                    self.update_state(
+                        state="PROCESSING",
+                        meta={**counters, "errors": len(errors)},
+                    )
+
+        result = {
+            "message": (
+                f"FTP PDF fetch completed. "
+                f"Found: {counters['files_found']}, "
+                f"Attached: {counters['files_attached']}, "
+                f"Skipped: {counters['files_skipped']}, "
+                f"Errors: {len(errors)}."
+            ),
+            **counters,
+            "error_count": len(errors),
+            "errors": errors[-50:],
+        }
+        logger.info("FTP PDF fetch completed: %s", result["message"])
+        return result
+
+    except Exception as e:
+        logger.exception("FTP PDF fetch failed: %s", e)
+        if task_id:
+            self.retry(exc=e, countdown=300 * (2**self.request.retries))
+        raise
+
+
+@shared_task(bind=True, max_retries=3, time_limit=1800)
+def cleanup_ftp_pdfs(self, lab_client_id=None):
+    """Remove PDFs from FTP server for studies that already have results_file.
+
+    Scans the FTP server for PDF files and deletes any whose corresponding
+    study already has a results_file attached. This is useful when
+    delete_after_download=False was used during fetch_ftp_pdfs.
+
+    Args:
+        lab_client_id: Lab client ID to filter studies.
+
+    Returns:
+        dict: Summary with counts of deleted and skipped files.
+    """
+    from apps.studies.models import Study
+
+    if lab_client_id is None:
+        lab_client_id = getattr(settings, "LABWIN_DEFAULT_LAB_CLIENT_ID", 1)
+
+    counters = {
+        "files_found": 0,
+        "files_deleted": 0,
+        "files_kept": 0,
+    }
+    errors = []
+
+    try:
+        with get_ftp_connector() as ftp:
+            pdf_files = ftp.list_pdf_files()
+            counters["files_found"] = len(pdf_files)
+
+            for filename in pdf_files:
+                try:
+                    name_without_ext = os.path.splitext(filename)[0]
+
+                    # Check if study exists and has results_file
+                    study = Study.objects.filter(
+                        sample_id=name_without_ext,
+                        lab_client_id=lab_client_id,
+                    ).first()
+
+                    if study and study.results_file:
+                        ftp.delete_file(filename)
+                        counters["files_deleted"] += 1
+                        logger.info(
+                            "Cleaned up FTP file %s (study %s already has PDF)",
+                            filename,
+                            study.protocol_number,
+                        )
+                    else:
+                        counters["files_kept"] += 1
+
+                except Exception as e:
+                    logger.error("Error cleaning up FTP file %s: %s", filename, e)
+                    errors.append({"file": filename, "error": str(e)})
+
+        result = {
+            "message": (
+                f"FTP cleanup completed. "
+                f"Found: {counters['files_found']}, "
+                f"Deleted: {counters['files_deleted']}, "
+                f"Kept: {counters['files_kept']}, "
+                f"Errors: {len(errors)}."
+            ),
+            **counters,
+            "error_count": len(errors),
+        }
+        logger.info("FTP cleanup completed: %s", result["message"])
+        return result
+
+    except Exception as e:
+        logger.exception("FTP cleanup failed: %s", e)
+        task_id = ""
+        try:
+            task_id = self.request.id or ""
+        except AttributeError:
+            pass
+        if task_id:
+            self.retry(exc=e, countdown=300 * (2**self.request.retries))
+        raise

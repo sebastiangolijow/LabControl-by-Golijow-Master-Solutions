@@ -31,12 +31,15 @@ apps/
 │   ├── filters.py
 │   ├── managers.py
 │   └── management/commands/load_practices.py
-├── labwin_sync/    # LabWin Firebird sync
+├── labwin_sync/    # LabWin Firebird sync + FTP PDF fetch
 │   ├── models.py   # SyncLog, SyncedRecord
-│   ├── tasks.py    # sync_labwin_results Celery task
+│   ├── tasks.py    # sync_labwin_results, fetch_ftp_pdfs, cleanup_ftp_pdfs
 │   ├── mappers.py  # LabWin → Django field mapping
-│   ├── connectors/ # base, firebird, mock
-│   └── management/commands/sync_labwin.py
+│   ├── connectors/ # base, firebird, mock (Firebird DB)
+│   ├── ftp/        # base, ftp, mock (FTP PDF fetch)
+│   └── management/commands/
+│       ├── sync_labwin.py    # Manual LabWin sync
+│       └── fetch_ftp_pdfs.py # Manual FTP PDF fetch
 ├── appointments/   # Appointment scheduling
 ├── payments/       # Payment processing
 ├── notifications/  # Notifications (email/in-app, Celery tasks)
@@ -188,6 +191,7 @@ GET/POST/PATCH /api/v1/studies/user-determinations/  # Study result values
 ### LabWin Sync
 ```
 POST   /api/v1/labwin-sync/trigger/         # Trigger manual sync (admin only)
+POST   /api/v1/labwin-sync/fetch-pdfs/      # Trigger FTP PDF fetch (admin only)
 GET    /api/v1/labwin-sync/status/           # Get last sync status
 GET    /api/v1/labwin-sync/logs/             # List sync logs
 ```
@@ -284,6 +288,9 @@ make load_practices      # Load practice catalogue from JSON
 make db-reset            # Drop + recreate DB (destroys data)
 make format / lint / isort / quality
 make sync-labwin         # Trigger LabWin sync manually
+python manage.py fetch_ftp_pdfs           # Fetch PDFs from FTP
+python manage.py fetch_ftp_pdfs --delete  # Fetch and delete from FTP
+python manage.py fetch_ftp_pdfs --cleanup # Clean up already-processed PDFs
 ```
 
 ## Environment
@@ -295,6 +302,15 @@ CELERY_BROKER_URL=redis://redis:6379/0
 FRONTEND_URL=http://localhost:5173
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
+
+# FTP PDF Fetch
+LABWIN_FTP_USE_MOCK=True          # Set False for production
+LABWIN_FTP_HOST=localhost
+LABWIN_FTP_PORT=21
+LABWIN_FTP_USER=
+LABWIN_FTP_PASSWORD=
+LABWIN_FTP_DIRECTORY=/results
+LABWIN_FTP_USE_TLS=False
 ```
 
 ## Doctor Import Feature
@@ -446,11 +462,20 @@ python manage.py sync_labwin --use-celery # Run via Celery worker
 ```
 
 ### Key Files
-- `apps/labwin_sync/tasks.py` - sync_labwin_results Celery task
-- `apps/labwin_sync/connectors/` - Connector abstraction (base, firebird, mock)
+- `apps/labwin_sync/tasks.py` - sync_labwin_results, fetch_ftp_pdfs, cleanup_ftp_pdfs
+- `apps/labwin_sync/connectors/` - Firebird DB connector (base, firebird, mock)
+- `apps/labwin_sync/ftp/` - FTP PDF connector (base, ftp, mock)
 - `apps/labwin_sync/mappers.py` - Data mapping logic
 - `apps/labwin_sync/models.py` - SyncLog, SyncedRecord
 - `apps/studies/models.py` - Practice.code field added for LabWin ABREV_FLD
+
+### FTP PDF Fetch (Phase 13)
+Fetches PDF result files from FTP server, matches `{NUMERO}.pdf` → `Study.sample_id`,
+attaches to `study.results_file`. Uses same connector abstraction pattern (mock/real).
+
+**Celery tasks**: `fetch_ftp_pdfs`, `cleanup_ftp_pdfs`
+**Management command**: `python manage.py fetch_ftp_pdfs [--delete] [--cleanup] [--use-celery]`
+**API endpoint**: `POST /api/v1/labwin-sync/fetch-pdfs/` (admin only)
 
 ### Future Phases
 - **Phase 2**: Replace mock with real Firebird credentials from lab

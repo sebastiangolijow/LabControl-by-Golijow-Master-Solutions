@@ -281,6 +281,15 @@ LABWIN_SYNC_BATCH_SIZE = env.int("LABWIN_SYNC_BATCH_SIZE", default=500)
 LABWIN_DEFAULT_LAB_CLIENT_ID = env.int("LABWIN_DEFAULT_LAB_CLIENT_ID", default=1)
 LABWIN_MOCK_FDB_PATH = env("LABWIN_MOCK_FDB_PATH", default="")
 
+# LabWin FTP Configuration (for fetching PDF results)
+LABWIN_FTP_USE_MOCK = env.bool("LABWIN_FTP_USE_MOCK", default=True)
+LABWIN_FTP_HOST = env("LABWIN_FTP_HOST", default="localhost")
+LABWIN_FTP_PORT = env.int("LABWIN_FTP_PORT", default=21)
+LABWIN_FTP_USER = env("LABWIN_FTP_USER", default="")
+LABWIN_FTP_PASSWORD = env("LABWIN_FTP_PASSWORD", default="")
+LABWIN_FTP_DIRECTORY = env("LABWIN_FTP_DIRECTORY", default="/results")
+LABWIN_FTP_USE_TLS = env.bool("LABWIN_FTP_USE_TLS", default=False)
+
 # Redis Cache Configuration
 CACHES = {
     "default": {

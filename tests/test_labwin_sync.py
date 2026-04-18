@@ -6,6 +6,7 @@ Tests cover:
 - Connector factory
 - Mock connector behavior
 - Sync task (creates records, idempotency, incremental sync, error handling)
+- FTP PDF fetch (mock connector, study matching, file attachment)
 """
 
 from datetime import date, datetime
@@ -21,6 +22,8 @@ from apps.labwin_sync.connectors.mock import (
     SAMPLE_PACIENTES,
     MockLabWinConnector,
 )
+from apps.labwin_sync.ftp import get_ftp_connector
+from apps.labwin_sync.ftp.mock import MockFTPConnector
 from apps.labwin_sync.mappers import (
     map_doctor,
     map_patient,
@@ -32,7 +35,7 @@ from apps.labwin_sync.mappers import (
     parse_name,
 )
 from apps.labwin_sync.models import SyncedRecord, SyncLog
-from apps.labwin_sync.tasks import sync_labwin_results
+from apps.labwin_sync.tasks import cleanup_ftp_pdfs, fetch_ftp_pdfs, sync_labwin_results
 from apps.studies.models import Practice, Study, StudyPractice
 from apps.users.models import User
 from tests.base import BaseTestCase
@@ -547,3 +550,245 @@ class SyncedRecordModelTests(BaseTestCase):
                 lab_client_id=1,
                 sync_log=log,
             )
+
+
+# ======================
+# FTP Connector Tests
+# ======================
+
+
+class FTPConnectorFactoryTests(BaseTestCase):
+    """Tests for the FTP connector factory."""
+
+    @override_settings(LABWIN_FTP_USE_MOCK=True)
+    def test_returns_mock_when_setting_true(self):
+        connector = get_ftp_connector()
+        self.assertIsInstance(connector, MockFTPConnector)
+
+    def test_explicit_use_mock(self):
+        connector = get_ftp_connector(use_mock=True)
+        self.assertIsInstance(connector, MockFTPConnector)
+
+
+class MockFTPConnectorTests(BaseTestCase):
+    """Tests for the mock FTP connector."""
+
+    def test_context_manager(self):
+        with MockFTPConnector() as conn:
+            self.assertTrue(conn._connected)
+        self.assertFalse(conn._connected)
+
+    def test_list_pdf_files(self):
+        with MockFTPConnector() as conn:
+            files = conn.list_pdf_files()
+            self.assertEqual(len(files), 3)
+            self.assertIn("100001.pdf", files)
+            self.assertIn("100002.pdf", files)
+
+    def test_download_file(self):
+        with MockFTPConnector() as conn:
+            content = conn.download_file("100001.pdf")
+            self.assertIsInstance(content, bytes)
+            self.assertTrue(len(content) > 0)
+            self.assertTrue(content.startswith(b"%PDF"))
+
+    def test_download_missing_file_raises(self):
+        with MockFTPConnector() as conn:
+            with self.assertRaises(FileNotFoundError):
+                conn.download_file("nonexistent.pdf")
+
+    def test_delete_file(self):
+        with MockFTPConnector() as conn:
+            conn.delete_file("100001.pdf")
+            files = conn.list_pdf_files()
+            self.assertNotIn("100001.pdf", files)
+
+    def test_delete_missing_file_raises(self):
+        with MockFTPConnector() as conn:
+            with self.assertRaises(FileNotFoundError):
+                conn.delete_file("nonexistent.pdf")
+
+    def test_download_deleted_file_raises(self):
+        with MockFTPConnector() as conn:
+            conn.delete_file("100001.pdf")
+            with self.assertRaises(FileNotFoundError):
+                conn.download_file("100001.pdf")
+
+    def test_custom_files(self):
+        custom = {"custom.pdf": b"%PDF-test"}
+        with MockFTPConnector(files=custom) as conn:
+            files = conn.list_pdf_files()
+            self.assertEqual(files, ["custom.pdf"])
+            content = conn.download_file("custom.pdf")
+            self.assertEqual(content, b"%PDF-test")
+
+
+# ======================
+# FTP Fetch Task Tests
+# ======================
+
+
+@override_settings(
+    LABWIN_USE_MOCK=True,
+    LABWIN_FTP_USE_MOCK=True,
+    CELERY_TASK_ALWAYS_EAGER=True,
+    CELERY_TASK_EAGER_PROPAGATES=True,
+)
+class FetchFTPPDFsTests(BaseTestCase):
+    """Integration tests for the fetch_ftp_pdfs task."""
+
+    def _sync_labwin_first(self):
+        """Run LabWin sync to create studies with sample_id values."""
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+        return Study.objects.filter(protocol_number__startswith="LW-")
+
+    def test_fetch_attaches_pdfs_to_studies(self):
+        """PDFs are attached to matching studies."""
+        studies = self._sync_labwin_first()
+        self.assertTrue(studies.exists())
+
+        result = fetch_ftp_pdfs(lab_client_id=1)
+
+        self.assertGreater(result["files_found"], 0)
+        self.assertGreater(result["files_attached"], 0)
+
+        # Verify study has results_file
+        study = Study.objects.get(protocol_number="LW-100001")
+        self.assertTrue(study.results_file)
+        self.assertIn("LW-100001", study.results_file.name)
+
+    def test_fetch_skips_studies_with_existing_file(self):
+        """Studies that already have results_file are skipped."""
+        self._sync_labwin_first()
+
+        # First fetch attaches PDFs
+        fetch_ftp_pdfs(lab_client_id=1)
+
+        # Second fetch should skip them
+        result = fetch_ftp_pdfs(lab_client_id=1)
+
+        self.assertEqual(result["files_attached"], 0)
+        self.assertGreater(result["files_skipped"], 0)
+
+    def test_fetch_skips_unmatched_files(self):
+        """Files without matching studies are skipped."""
+        # No LabWin sync — no studies with sample_id
+        result = fetch_ftp_pdfs(lab_client_id=1)
+
+        self.assertGreater(result["files_found"], 0)
+        self.assertEqual(result["files_attached"], 0)
+        self.assertGreater(result["files_skipped"], 0)
+
+    def test_fetch_with_delete(self):
+        """PDFs are deleted from FTP after download when requested."""
+        self._sync_labwin_first()
+
+        mock_ftp = MockFTPConnector()
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=mock_ftp,
+        ):
+            result = fetch_ftp_pdfs(
+                lab_client_id=1,
+                delete_after_download=True,
+            )
+
+        self.assertGreater(result["files_deleted"], 0)
+
+    def test_fetch_returns_correct_counters(self):
+        """Result dict contains all expected counter fields."""
+        self._sync_labwin_first()
+        result = fetch_ftp_pdfs(lab_client_id=1)
+
+        self.assertIn("files_found", result)
+        self.assertIn("files_matched", result)
+        self.assertIn("files_attached", result)
+        self.assertIn("files_skipped", result)
+        self.assertIn("error_count", result)
+        self.assertIn("message", result)
+
+    def test_fetch_filters_by_lab_client_id(self):
+        """Only studies matching lab_client_id are considered."""
+        self._sync_labwin_first()
+
+        # Fetch with a different lab_client_id — no matches
+        result = fetch_ftp_pdfs(lab_client_id=999)
+
+        self.assertEqual(result["files_attached"], 0)
+
+    def test_fetch_handles_download_error(self):
+        """Errors during download are captured, not raised."""
+        self._sync_labwin_first()
+
+        mock_ftp = MockFTPConnector(files={"100001.pdf": b"%PDF-content"})
+        # Make download raise for one file
+        original_download = mock_ftp.download_file
+
+        def failing_download(filename):
+            if filename == "100001.pdf":
+                raise IOError("Connection lost")
+            return original_download(filename)
+
+        mock_ftp.download_file = failing_download
+
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=mock_ftp,
+        ):
+            result = fetch_ftp_pdfs(lab_client_id=1)
+
+        self.assertGreater(result["error_count"], 0)
+
+
+@override_settings(
+    LABWIN_USE_MOCK=True,
+    LABWIN_FTP_USE_MOCK=True,
+    CELERY_TASK_ALWAYS_EAGER=True,
+    CELERY_TASK_EAGER_PROPAGATES=True,
+)
+class CleanupFTPPDFsTests(BaseTestCase):
+    """Integration tests for the cleanup_ftp_pdfs task."""
+
+    def test_cleanup_deletes_processed_files(self):
+        """Files for studies with results_file are deleted from FTP."""
+        # Sync + fetch to attach PDFs
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+        fetch_ftp_pdfs(lab_client_id=1)
+
+        mock_ftp = MockFTPConnector()
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=mock_ftp,
+        ):
+            result = cleanup_ftp_pdfs(lab_client_id=1)
+
+        self.assertGreater(result["files_deleted"], 0)
+
+    def test_cleanup_keeps_unprocessed_files(self):
+        """Files for studies without results_file are kept."""
+        # Sync but don't fetch — studies exist but have no results_file
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        mock_ftp = MockFTPConnector()
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=mock_ftp,
+        ):
+            result = cleanup_ftp_pdfs(lab_client_id=1)
+
+        self.assertEqual(result["files_deleted"], 0)
+        self.assertGreater(result["files_kept"], 0)
+
+    def test_cleanup_returns_correct_counters(self):
+        """Result dict contains all expected counter fields."""
+        mock_ftp = MockFTPConnector()
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=mock_ftp,
+        ):
+            result = cleanup_ftp_pdfs(lab_client_id=1)
+
+        self.assertIn("files_found", result)
+        self.assertIn("files_deleted", result)
+        self.assertIn("files_kept", result)
+        self.assertIn("message", result)

@@ -39,6 +39,35 @@ class TriggerSyncView(APIView):
         )
 
 
+class TriggerFTPFetchView(APIView):
+    """
+    Trigger a manual FTP PDF fetch (admin and lab staff only).
+
+    POST /api/v1/labwin-sync/fetch-pdfs/
+    Returns task_id to track progress.
+    """
+
+    permission_classes = [IsAdminOrLabManager]
+
+    def post(self, request):
+        from .tasks import fetch_ftp_pdfs
+
+        lab_client_id = request.user.lab_client_id or 1
+
+        task = fetch_ftp_pdfs.delay(
+            lab_client_id=lab_client_id,
+            delete_after_download=request.data.get("delete_after_download", False),
+        )
+
+        return Response(
+            {
+                "message": "FTP PDF fetch task queued successfully.",
+                "task_id": task.id,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
 class SyncStatusView(APIView):
     """
     Check status of a LabWin sync task.

@@ -132,9 +132,9 @@ labcontrol/
 │   │   ├── managers.py          # NotificationManager
 │   │   └── urls.py
 │   │
-│   ├── labwin_sync/             # LabWin Firebird sync
+│   ├── labwin_sync/             # LabWin Firebird sync + FTP PDF fetch
 │   │   ├── models.py            # SyncLog, SyncedRecord
-│   │   ├── tasks.py             # sync_labwin_results Celery task
+│   │   ├── tasks.py             # sync_labwin_results, fetch_ftp_pdfs, cleanup_ftp_pdfs
 │   │   ├── mappers.py           # LabWin row → Django model mapping
 │   │   ├── admin.py             # SyncLog/SyncedRecord admin views
 │   │   ├── connectors/
@@ -142,8 +142,14 @@ labcontrol/
 │   │   │   ├── base.py          # Abstract connector interface
 │   │   │   ├── firebird.py      # Real Firebird connector (firebirdsql)
 │   │   │   └── mock.py          # Mock connector with sample data
+│   │   ├── ftp/
+│   │   │   ├── __init__.py      # get_ftp_connector() factory
+│   │   │   ├── base.py          # Abstract FTP connector interface
+│   │   │   ├── ftp.py           # Real FTP/FTPS connector (ftplib)
+│   │   │   └── mock.py          # Mock FTP connector with sample PDFs
 │   │   └── management/commands/
-│   │       └── sync_labwin.py   # Manual sync trigger
+│   │       ├── sync_labwin.py   # Manual sync trigger
+│   │       └── fetch_ftp_pdfs.py  # Manual FTP PDF fetch
 │   │
 │   └── analytics/               # Analytics & reporting
 │       ├── views.py             # Dashboard, trends, revenue
@@ -1584,6 +1590,101 @@ Three layers prevent duplicate records:
 1. **SyncedRecord**: Maps `(source_table, source_key, lab_client_id)` → target UUID
 2. **Natural key matching**: DNI for patients, matricula for doctors, code for practices
 3. **Unique constraints**: `protocol_number` on Study
+
+### FTP PDF Fetch (Phase 13)
+
+Fetches PDF result files from an FTP server and attaches them to matching studies.
+
+#### How It Works
+
+1. LabWin sync creates studies with `sample_id = NUMERO_FLD` (e.g., "100001")
+2. The lab's LabWin system exports PDF result files to an FTP server, named `{NUMERO_FLD}.pdf`
+3. `fetch_ftp_pdfs` task lists PDFs on FTP, matches `{NUMERO}.pdf` → `Study.sample_id`
+4. Downloads and saves the PDF to `study.results_file`
+5. Optionally deletes the PDF from FTP after successful download
+
+#### FTP Connector Abstraction
+
+Follows the same pattern as the LabWin DB connector:
+
+```python
+from apps.labwin_sync.ftp import get_ftp_connector
+
+with get_ftp_connector() as ftp:
+    files = ftp.list_pdf_files()          # ["100001.pdf", "100002.pdf"]
+    content = ftp.download_file("100001.pdf")  # bytes
+    ftp.delete_file("100001.pdf")         # Remove from FTP
+```
+
+- **Mock connector**: In-memory PDF files for dev/tests. No FTP server needed.
+- **Real connector**: Uses Python's `ftplib` (FTP or FTPS). Connection params from Django settings.
+
+#### Celery Tasks
+
+```python
+# Fetch PDFs and attach to studies
+fetch_ftp_pdfs.delay(lab_client_id=1, delete_after_download=False)
+
+# Clean up already-processed PDFs from FTP
+cleanup_ftp_pdfs.delay(lab_client_id=1)
+```
+
+**`fetch_ftp_pdfs`** returns:
+```python
+{
+    "files_found": 10,
+    "files_matched": 8,      # Found matching study
+    "files_attached": 6,     # Downloaded and saved
+    "files_skipped": 4,      # No match or already has PDF
+    "files_deleted": 0,      # Deleted from FTP (if delete_after_download=True)
+    "error_count": 0,
+}
+```
+
+**`cleanup_ftp_pdfs`**: Scans FTP for PDFs whose matching study already has `results_file`, and deletes them from FTP.
+
+#### Configuration
+
+```env
+LABWIN_FTP_USE_MOCK=True          # Set False for production
+LABWIN_FTP_HOST=localhost
+LABWIN_FTP_PORT=21
+LABWIN_FTP_USER=
+LABWIN_FTP_PASSWORD=
+LABWIN_FTP_DIRECTORY=/results     # FTP directory containing PDFs
+LABWIN_FTP_USE_TLS=False          # Set True for FTPS
+```
+
+#### API Endpoint
+
+```
+POST /api/v1/labwin-sync/fetch-pdfs/    # Trigger FTP PDF fetch (admin/staff only)
+```
+
+Request body (optional):
+```json
+{ "delete_after_download": false }
+```
+
+Returns: `{ "message": "...", "task_id": "..." }` (202 Accepted)
+
+#### Management Command
+
+```bash
+python manage.py fetch_ftp_pdfs                  # Fetch without deleting from FTP
+python manage.py fetch_ftp_pdfs --delete          # Fetch and delete from FTP
+python manage.py fetch_ftp_pdfs --cleanup         # Only delete already-processed PDFs
+python manage.py fetch_ftp_pdfs --use-celery      # Run via Celery worker
+python manage.py fetch_ftp_pdfs --lab-client-id 1 # Specify lab client
+```
+
+#### Key Design Decisions
+
+1. **Separate from LabWin DB sync**: FTP fetch runs independently (different schedule, different server)
+2. **Skips existing PDFs**: Studies that already have `results_file` are skipped
+3. **Optional delete**: `delete_after_download=False` by default for safety
+4. **Cleanup task**: Separate task to clean up FTP files after verification
+5. **Mock connector**: In-memory PDFs matching DETERS NUMERO_FLDs for testing
 
 ### Future Phases
 
