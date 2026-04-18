@@ -119,9 +119,7 @@ class Command(BaseCommand):
                 self.style.SUCCESS("✓ Created: Fetch FTP PDFs (Every 30 min)")
             )
         else:
-            self.stdout.write(
-                self.style.WARNING("○ Already exists: Fetch FTP PDFs")
-            )
+            self.stdout.write(self.style.WARNING("○ Already exists: Fetch FTP PDFs"))
 
         # Cleanup FTP PDFs weekly Sunday 3 AM
         weekly_sunday_3am, _ = CrontabSchedule.objects.get_or_create(
@@ -142,14 +140,10 @@ class Command(BaseCommand):
         )
         if created5:
             self.stdout.write(
-                self.style.SUCCESS(
-                    "✓ Created: Cleanup FTP PDFs (Weekly Sunday 3 AM)"
-                )
+                self.style.SUCCESS("✓ Created: Cleanup FTP PDFs (Weekly Sunday 3 AM)")
             )
         else:
-            self.stdout.write(
-                self.style.WARNING("○ Already exists: Cleanup FTP PDFs")
-            )
+            self.stdout.write(self.style.WARNING("○ Already exists: Cleanup FTP PDFs"))
 
         self.stdout.write(self.style.SUCCESS("\n✓ Periodic tasks setup complete!"))
         self.stdout.write(
