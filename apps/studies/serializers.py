@@ -1,9 +1,8 @@
 """Serializers for studies app."""
 
-from django.conf import settings
 from rest_framework import serializers
 
-from .models import Determination, Practice, Study, UserDetermination
+from .models import Determination, Practice, Study, StudyPractice, UserDetermination
 
 
 class DeterminationSerializer(serializers.ModelSerializer):
@@ -76,7 +75,7 @@ class UserDeterminationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "uuid",
-            "study",
+            "study_practice",
             "determination",
             "determination_detail",
             "value",
@@ -88,14 +87,35 @@ class UserDeterminationSerializer(serializers.ModelSerializer):
         read_only_fields = ["uuid", "created_at", "updated_at"]
 
 
+class StudyPracticeSerializer(serializers.ModelSerializer):
+    """Serializer for StudyPractice — a practice within a study/protocol."""
+
+    practice_detail = PracticeSerializer(source="practice", read_only=True)
+    determination_results = UserDeterminationSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = StudyPractice
+        fields = [
+            "uuid",
+            "practice",
+            "practice_detail",
+            "result",
+            "code",
+            "order",
+            "determination_results",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["uuid", "created_at", "updated_at"]
+
+
 class StudySerializer(serializers.ModelSerializer):
     """Serializer for Study model."""
 
-    practice_detail = PracticeSerializer(source="practice", read_only=True)
+    study_practices = StudyPracticeSerializer(many=True, read_only=True)
     patient_email = serializers.EmailField(source="patient.email", read_only=True)
     patient_name = serializers.SerializerMethodField(read_only=True)
     ordered_by_name = serializers.SerializerMethodField(read_only=True)
-    determination_results = UserDeterminationSerializer(many=True, read_only=True)
 
     class Meta:
         model = Study
@@ -106,18 +126,15 @@ class StudySerializer(serializers.ModelSerializer):
             "patient",
             "patient_email",
             "patient_name",
-            "practice",
-            "practice_detail",
             "ordered_by",
             "ordered_by_name",
             "status",
             "solicited_date",
             "sample_id",
-            "service_date",  # Renamed from sample_collected_at → fecha de atención
-            "results",
+            "service_date",
             "results_file",
-            "determination_results",
-            "completed_at",  # fecha de entrega
+            "study_practices",
+            "completed_at",
             "notes",
             "created_at",
             "updated_at",
@@ -140,24 +157,28 @@ class StudyCreateSerializer(serializers.ModelSerializer):
     Serializer for creating a new study.
 
     Supports creating a study with or without a results file in a single request.
-    - If results_file is provided → status is set to 'completed' by the view.
-    - If no results_file → status defaults to 'pending'.
+    Accepts a list of practice UUIDs to create StudyPractice records.
     """
 
     results_file = serializers.FileField(required=False, allow_null=True)
+    practices = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Practice.objects.all(),
+        write_only=True,
+        required=True,
+    )
 
     class Meta:
         model = Study
         fields = [
-            "practice",
             "patient",
             "ordered_by",
             "protocol_number",
             "solicited_date",
-            "service_date",  # Renamed from sample_collected_at
+            "service_date",
             "results_file",
-            "results",
             "notes",
+            "practices",
         ]
 
     def validate_protocol_number(self, value):
@@ -182,12 +203,24 @@ class StudyCreateSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def create(self, validated_data):
+        """Create study and associated StudyPractice records."""
+        practices = validated_data.pop("practices")
+        study = Study.objects.create(**validated_data)
+        for i, practice in enumerate(practices):
+            StudyPractice.objects.create(
+                study=study,
+                practice=practice,
+                code=practice.code,
+                order=i,
+            )
+        return study
+
 
 class StudyResultUploadSerializer(serializers.ModelSerializer):
     """Serializer for uploading study results."""
 
     results_file = serializers.FileField(required=True)
-    results = serializers.CharField(required=False, allow_blank=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -203,7 +236,7 @@ class StudyResultUploadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Study
-        fields = ["results_file", "results", "ordered_by"]
+        fields = ["results_file", "ordered_by"]
 
     def validate_results_file(self, value):
         """Validate file size and type."""
@@ -228,7 +261,7 @@ class UserDeterminationCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDetermination
         fields = [
-            "study",
+            "study_practice",
             "determination",
             "value",
             "is_abnormal",
@@ -236,16 +269,19 @@ class UserDeterminationCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
-        """Ensure the determination belongs to the practice of the study."""
-        study = data.get("study")
+        """Ensure the determination belongs to the practice of the study practice."""
+        study_practice = data.get("study_practice")
         determination = data.get("determination")
 
-        if study and determination:
-            # Check if the determination is part of the practice
-            if not study.practice.determinations.filter(id=determination.id).exists():
+        if study_practice and determination:
+            if not study_practice.practice.determinations.filter(
+                pk=determination.pk
+            ).exists():
                 raise serializers.ValidationError(
                     {
-                        "determination": "This determination is not part of the study's practice."
+                        "determination": (
+                            "This determination is not part of the study practice's practice."
+                        )
                     }
                 )
 

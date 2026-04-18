@@ -11,12 +11,14 @@ class StudyFilter(django_filters.FilterSet):
 
     # Search across multiple fields
     search = django_filters.CharFilter(method="filter_search", label="Search")
+    practice = django_filters.UUIDFilter(
+        field_name="study_practices__practice", label="Practice"
+    )
 
     class Meta:
         model = Study
         fields = {
             "status": ["exact"],
-            "practice": ["exact"],
             "patient": ["exact"],
             "ordered_by": ["exact"],
         }
@@ -34,8 +36,8 @@ class StudyFilter(django_filters.FilterSet):
             Q(protocol_number__icontains=value)
             | Q(patient__first_name__icontains=value)
             | Q(patient__last_name__icontains=value)
-            | Q(practice__name__icontains=value)
-        )
+            | Q(study_practices__practice__name__icontains=value)
+        ).distinct()
 
 
 class DeterminationFilter(django_filters.FilterSet):

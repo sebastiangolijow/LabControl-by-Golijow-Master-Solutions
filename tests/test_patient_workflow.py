@@ -1,6 +1,7 @@
 """Tests for complete patient workflow: Registration -> Appointment -> Results."""
 
-from datetime import date, timedelta
+from datetime import date
+from datetime import timedelta
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
@@ -137,9 +138,7 @@ class TestPatientWorkflow(BaseTestCase):
             user=patient, notification_type="result_ready"
         )
         assert result_notifications.count() == 1
-        assert (
-            "results are now available" in result_notifications.first().message.lower()
-        )
+        assert "are now available" in result_notifications.first().message.lower()
 
         # ======================================================================
         # STEP 4: Patient Views and Downloads Results

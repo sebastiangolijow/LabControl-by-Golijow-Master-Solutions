@@ -26,13 +26,14 @@ from apps.labwin_sync.mappers import (
     map_patient,
     map_practice,
     map_study,
+    map_study_practice,
     parse_date,
     parse_datetime,
     parse_name,
 )
 from apps.labwin_sync.models import SyncedRecord, SyncLog
 from apps.labwin_sync.tasks import sync_labwin_results
-from apps.studies.models import Practice, Study
+from apps.studies.models import Practice, Study, StudyPractice
 from apps.users.models import User
 from tests.base import BaseTestCase
 
@@ -206,26 +207,38 @@ class MapStudyTests(BaseTestCase):
         import uuid
 
         patient_pk = uuid.uuid4()
-        practice_pk = uuid.uuid4()
         doctor_pk = uuid.uuid4()
-        row = SAMPLE_DETERS[0]  # GLU-Bi for order 100001
+        numero = 100001
 
-        result = map_study(row, patient_pk, practice_pk, doctor_pk)
+        result = map_study(numero, patient_pk, doctor_pk, "20251028", "09:30")
 
-        self.assertEqual(result["protocol_number"], "LW-100001-GLU-Bi")
+        self.assertEqual(result["protocol_number"], "LW-100001")
         self.assertEqual(result["patient_id"], patient_pk)
-        self.assertEqual(result["practice_id"], practice_pk)
         self.assertEqual(result["ordered_by_id"], doctor_pk)
         self.assertEqual(result["status"], "completed")
-        self.assertEqual(result["results"], "92")
         self.assertEqual(result["sample_id"], "100001")
 
     def test_protocol_number_format(self):
         import uuid
 
-        row = SAMPLE_DETERS[1]  # HEMC for order 100001
-        result = map_study(row, uuid.uuid4(), uuid.uuid4())
-        self.assertEqual(result["protocol_number"], "LW-100001-HEMC")
+        result = map_study(100002, uuid.uuid4())
+        self.assertEqual(result["protocol_number"], "LW-100002")
+
+
+class MapStudyPracticeTests(BaseTestCase):
+    """Tests for map_study_practice mapper."""
+
+    def test_maps_all_fields(self):
+        import uuid
+
+        practice_pk = uuid.uuid4()
+        row = SAMPLE_DETERS[0]  # GLU-Bi for order 100001
+
+        result = map_study_practice(row, practice_pk)
+
+        self.assertEqual(result["practice_id"], practice_pk)
+        self.assertEqual(result["result"], "92")
+        self.assertEqual(result["code"], "GLU-Bi")
 
 
 # ======================
@@ -329,12 +342,14 @@ class SyncTaskTests(BaseTestCase):
         self.assertGreater(result["patients_created"], 0)
         self.assertGreater(result["practices_created"], 0)
 
-        # Verify studies exist with LW- prefix (only validated rows)
+        # Verify studies exist with LW- prefix (one study per unique NUMERO_FLD)
         lw_studies = Study.objects.filter(protocol_number__startswith="LW-")
-        validated_count = sum(
-            1 for row in SAMPLE_DETERS if row.get("VALIDADO_FLD") == "1"
-        )
-        self.assertEqual(lw_studies.count(), validated_count)
+        validated_rows = [r for r in SAMPLE_DETERS if r.get("VALIDADO_FLD") == "1"]
+        unique_numeros = set(r["NUMERO_FLD"] for r in validated_rows)
+        self.assertEqual(lw_studies.count(), len(unique_numeros))
+
+        # Verify StudyPractice records created (one per validated DETERS row)
+        self.assertEqual(StudyPractice.objects.count(), len(validated_rows))
 
         # Verify patients created
         synced_patients = SyncedRecord.objects.filter(source_table="PACIENTES")
@@ -393,16 +408,19 @@ class SyncTaskTests(BaseTestCase):
         self.assertTrue(log.last_synced_fecha)
 
     def test_sync_study_has_results(self):
-        """Synced studies contain the raw RESULT_FLD value."""
+        """Synced study practices contain the raw RESULT_FLD value."""
         sync_labwin_results(lab_client_id=1, full_sync=True)
 
-        glu_study = Study.objects.filter(protocol_number="LW-100001-GLU-Bi").first()
-        self.assertIsNotNone(glu_study)
-        self.assertEqual(glu_study.results, "92")
+        study = Study.objects.filter(protocol_number="LW-100001").first()
+        self.assertIsNotNone(study)
 
-        hemc_study = Study.objects.filter(protocol_number="LW-100001-HEMC").first()
-        self.assertIsNotNone(hemc_study)
-        self.assertIn("|", hemc_study.results)  # Pipe-delimited
+        glu_sp = study.study_practices.filter(code="GLU-Bi").first()
+        self.assertIsNotNone(glu_sp)
+        self.assertEqual(glu_sp.result, "92")
+
+        hemc_sp = study.study_practices.filter(code="HEMC").first()
+        self.assertIsNotNone(hemc_sp)
+        self.assertIn("|", hemc_sp.result)  # Pipe-delimited
 
     def test_sync_study_status_completed(self):
         """Synced studies have status 'completed'."""

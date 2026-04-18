@@ -25,7 +25,7 @@ apps/
 │       ├── verify_email.py       # Verify single user email
 │       └── create_seed_users.py  # Create admin/doctor/patient seed users
 ├── studies/        # Lab studies, practices, determinations
-│   ├── models.py   # Practice (with code field), Determination, Study, UserDetermination
+│   ├── models.py   # Practice, Determination, Study, StudyPractice, UserDetermination
 │   ├── views.py    # Study CRUD, upload/download results
 │   ├── serializers.py  # PracticeSerializer includes determinations_detail
 │   ├── filters.py
@@ -97,12 +97,15 @@ class Determination(BaseModel):
 ### Study (apps/studies/models.py)
 ```python
 class Study(BaseModel, LabClientModel):
+    # 1 Study = 1 protocol = N practices (via StudyPractice)
     patient = FK(User, related_name='studies')
-    practice = FK(Practice)               # replaces old study_type FK
-    protocol_number = CharField(unique=True)  # replaces old order_number
     ordered_by = FK(User, null=True, related_name='ordered_studies')  # doctor
+    protocol_number = CharField(unique=True)  # e.g., "LW-12345"
     status = CharField(choices=['pending','in_progress','completed','cancelled'])
-    results_file, results, completed_at
+    results_file = FileField()              # PDF per protocol
+    sample_id = CharField(blank=True)       # LabWin NUMERO_FLD
+    service_date = DateField(null=True)
+    completed_at, solicited_date, notes
     lab_client_id = IntegerField()
     history = HistoricalRecords()
 
@@ -111,22 +114,37 @@ class Study(BaseModel, LabClientModel):
     Study.objects.completed()
     Study.objects.for_patient(patient)
     Study.objects.for_lab(lab_client_id)
+    Study.objects.for_practice(practice)
 
-    def __str__(self): return f"{protocol_number} - {practice.name}"
+    def __str__(self): return self.protocol_number
     @property is_pending, is_completed
+```
+
+### StudyPractice (apps/studies/models.py)
+```python
+class StudyPractice(BaseModel):
+    # Links a practice to a study, stores per-practice result
+    study = FK(Study, related_name='study_practices', on_delete=CASCADE)
+    practice = FK(Practice, related_name='study_practices', on_delete=PROTECT)
+    result = TextField(blank=True)          # Raw result (e.g., "105" or "79|4790|137")
+    code = CharField(max_length=20, blank=True, db_index=True)  # LabWin ABREV_FLD
+    order = IntegerField(default=0)
+    class Meta:
+        ordering = ['order', 'code']
+        unique_together = [['study', 'practice']]
 ```
 
 ### UserDetermination (apps/studies/models.py)
 ```python
 class UserDetermination(BaseModel):
-    # Stores result value of a determination for a specific study
-    study = FK(Study, related_name='determination_results')
+    # Stores result value of a determination for a specific study practice
+    study_practice = FK(StudyPractice, related_name='determination_results')
     determination = FK(Determination, related_name='user_results')
     value = CharField(max_length=200)
     is_abnormal = BooleanField(default=False)
     notes = TextField()
     class Meta:
-        unique_together = [['study', 'determination']]
+        unique_together = [['study_practice', 'determination']]
 ```
 
 ## API Endpoints
@@ -221,7 +239,8 @@ from tests.base import BaseTestCase
 self.create_user(role=...)
 self.create_admin() / create_lab_staff() / create_doctor() / create_patient()
 self.create_practice(**kwargs)         # name, technique, sample_type, price, etc.
-self.create_study(patient, practice)   # protocol_number auto-generated
+self.create_study(patient, practice=p)  # protocol_number auto-generated, creates StudyPractice
+self.create_study(patient, practices=[p1, p2])  # multiple practices
 self.create_appointment(patient, study)
 self.create_invoice(patient, study)
 self.create_payment(invoice)
@@ -395,15 +414,16 @@ Results stored as pipe-delimited strings in `DETERS.RESULT_FLD`:
 | PACIENTES | User (role=patient) | `dni` = `HCLIN_FLD` |
 | MEDICOS | User (role=doctor) | `matricula` = `MATNAC_FLD` |
 | NOMEN | Practice | `code` = `ABREV_FLD` |
-| DETERS | Study | `protocol_number` = `"LW-{NUMERO}-{ABREV}"` |
+| DETERS (grouped by NUMERO) | Study | `protocol_number` = `"LW-{NUMERO}"` |
+| DETERS (each row) | StudyPractice | `code` = `ABREV_FLD`, `result` = `RESULT_FLD` |
 
 ### Sync Flow
 1. Celery Beat triggers `sync_labwin_results` task nightly at 2 AM
 2. Task reads cursor from last successful SyncLog
 3. Connects to LabWin via connector factory (mock or real)
 4. Fetches validated DETERS in batches of 500
-5. Creates/updates patients, doctors, practices, studies (idempotent)
-6. Stores raw RESULT_FLD in Study.results
+5. Groups DETERS by NUMERO_FLD — creates 1 Study per NUMERO, N StudyPractice per Study
+6. Stores raw RESULT_FLD in StudyPractice.result
 7. Updates SyncLog with counts and cursor
 
 ### Configuration

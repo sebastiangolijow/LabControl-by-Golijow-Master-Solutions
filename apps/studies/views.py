@@ -15,7 +15,7 @@ from apps.notifications.tasks import send_result_notification_email
 from apps.users.permissions import IsAdminOrLabManager
 
 from .filters import DeterminationFilter, StudyFilter
-from .models import Determination, Practice, Study, UserDetermination
+from .models import Determination, Practice, Study, StudyPractice, UserDetermination
 from .serializers import (
     DeterminationSerializer,
     PracticeSerializer,
@@ -118,10 +118,10 @@ class UserDeterminationViewSet(viewsets.ModelViewSet):
             return queryset
         elif user.role == "patient":
             # Patients only see their own results
-            return queryset.filter(study__patient=user)
+            return queryset.filter(study_practice__study__patient=user)
         elif user.role == "doctor":
             # Doctors see results for studies they ordered
-            return queryset.filter(study__ordered_by=user)
+            return queryset.filter(study_practice__study__ordered_by=user)
         else:
             return UserDetermination.objects.none()
 
@@ -190,7 +190,7 @@ class StudyViewSet(viewsets.ModelViewSet):
             Notification.objects.create(
                 user=study.patient,
                 title="Test Results Ready",
-                message=f"Your {study.practice.name} results are now available.",
+                message=f"Your results for protocol {study.protocol_number} are now available.",
                 notification_type="result_ready",
                 related_study_id=study.pk,
                 channel="in_app",
@@ -201,7 +201,7 @@ class StudyViewSet(viewsets.ModelViewSet):
             send_result_notification_email.delay(
                 user_id=study.patient.pk,
                 study_id=study.pk,
-                study_type_name=study.practice.name,
+                study_type_name=study.protocol_number,
             )
 
         return Response(
@@ -240,8 +240,11 @@ class StudyViewSet(viewsets.ModelViewSet):
         """Filter studies based on user role."""
         user = self.request.user
 
-        # Base queryset: exclude soft-deleted studies
-        base_queryset = Study.objects.filter(is_deleted=False)
+        # Base queryset: exclude soft-deleted studies, prefetch practices
+        base_queryset = Study.objects.filter(is_deleted=False).prefetch_related(
+            "study_practices__practice",
+            "study_practices__determination_results__determination",
+        )
 
         if user.is_superuser or user.role == "admin":
             # Admins see all non-deleted studies in their lab
@@ -344,7 +347,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         Notification.objects.create(
             user=study.patient,
             title="Test Results Ready",
-            message=f"Your {study.practice.name} results are now available.",
+            message=f"Your results for protocol {study.protocol_number} are now available.",
             notification_type="result_ready",
             related_study_id=study.pk,
             channel="in_app",
@@ -357,7 +360,7 @@ class StudyViewSet(viewsets.ModelViewSet):
         send_result_notification_email.delay(
             user_id=study.patient.pk,
             study_id=study.pk,
-            study_type_name=study.practice.name,
+            study_type_name=study.protocol_number,
         )
 
         return Response(
@@ -443,10 +446,9 @@ class StudyViewSet(viewsets.ModelViewSet):
 
         # Clear the file field and reset status
         study.results_file = None
-        study.results = ""
         study.status = "in_progress"
         study.completed_at = None
-        study.save(update_fields=["results_file", "results", "status", "completed_at"])
+        study.save(update_fields=["results_file", "status", "completed_at"])
 
         return Response(
             {

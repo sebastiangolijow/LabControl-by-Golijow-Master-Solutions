@@ -146,6 +146,7 @@ class TestStudyStatisticsAPI(BaseTestCase):
         blood_entry = next(
             item for item in by_type if item["practice__name"] == "Blood Test"
         )
+        # Note: field is "practice__name" because analytics queries through StudyPractice
         assert blood_entry["count"] == 2
 
 
@@ -368,7 +369,7 @@ class TestTopRevenueStudyTypesAPI(BaseTestCase):
         assert len(types) >= 2
 
         # MRI should be first (highest revenue)
-        assert types[0]["study__practice__name"] == "MRI"
+        assert types[0]["study__study_practices__practice__name"] == "MRI"
         assert Decimal(types[0]["total_revenue"]) == Decimal("1000.00")
 
 

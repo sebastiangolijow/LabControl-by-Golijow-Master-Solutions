@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from apps.studies.models import Practice, Study
+from apps.studies.models import Practice, Study, StudyPractice
 
 User = get_user_model()
 
@@ -273,7 +273,7 @@ class Command(BaseCommand):
         """Create sample studies for patients"""
         patients = User.objects.filter(role="patient")
         doctors = User.objects.filter(role="doctor")
-        practices = Practice.objects.filter(is_active=True)
+        practices = list(Practice.objects.filter(is_active=True))
 
         if not patients.exists():
             self.stdout.write(
@@ -281,7 +281,7 @@ class Command(BaseCommand):
             )
             return
 
-        if not practices.exists():
+        if not practices:
             self.stdout.write(
                 self.style.WARNING("  - No practices found, skipping studies")
             )
@@ -296,7 +296,9 @@ class Command(BaseCommand):
             num_studies = random.randint(3, 5)
 
             for i in range(num_studies):
-                practice = random.choice(practices)
+                # Pick 1-3 random practices per study
+                num_practices = random.randint(1, min(3, len(practices)))
+                selected_practices = random.sample(practices, num_practices)
                 doctor = random.choice(doctors) if doctors.exists() else None
                 status = random.choice(statuses)
 
@@ -305,10 +307,9 @@ class Command(BaseCommand):
                     f"LDM{timezone.now().year}{random.randint(1000, 9999)}"
                 )
 
-                # Create study
+                # Create study (no practice FK — practices are via StudyPractice)
                 study = Study.objects.create(
                     patient=patient,
-                    practice=practice,
                     protocol_number=protocol_number,
                     ordered_by=doctor,
                     status=status,
@@ -316,14 +317,20 @@ class Command(BaseCommand):
                     created_at=timezone.now() - timedelta(days=random.randint(1, 30)),
                 )
 
+                # Create StudyPractice records
+                for order, practice in enumerate(selected_practices):
+                    StudyPractice.objects.create(
+                        study=study,
+                        practice=practice,
+                        code=practice.code,
+                        order=order,
+                    )
+
                 # Add results for completed studies
                 if status == "completed":
                     study.completed_at = timezone.now() - timedelta(
                         days=random.randint(0, 5)
                     )
-                    study.results = f"Resultados normales para {practice.name}. Todos los valores dentro de rangos de referencia."
-                    # Note: In production, you would upload a PDF file here
-                    # study.results_file = 'path/to/pdf'
                     study.save()
 
                 study_count += 1

@@ -34,7 +34,6 @@ class TestStudyDoctorValidation(BaseTestCase):
 
         study = Study(
             patient=patient,
-            practice=self.create_practice(),
             protocol_number="ORD-2024-TEST-001",
             ordered_by=non_doctor,
             status="pending",
@@ -54,7 +53,6 @@ class TestStudyDoctorValidation(BaseTestCase):
 
         study = Study(
             patient=patient,
-            practice=self.create_practice(),
             protocol_number="ORD-2024-TEST-002",
             ordered_by=admin,
             status="pending",
@@ -72,7 +70,6 @@ class TestStudyDoctorValidation(BaseTestCase):
 
         study = Study(
             patient=patient,
-            practice=self.create_practice(),
             protocol_number="ORD-2024-TEST-003",
             ordered_by=doctor,
             status="pending",

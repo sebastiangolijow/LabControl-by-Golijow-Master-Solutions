@@ -2,7 +2,7 @@
 
 from config.admin import admin, admin_site
 
-from .models import Determination, Practice, Study, UserDetermination
+from .models import Determination, Practice, Study, StudyPractice, UserDetermination
 
 
 class PracticeAdmin(admin.ModelAdmin):
@@ -37,13 +37,21 @@ class DeterminationAdmin(admin.ModelAdmin):
     ordering = ["name"]
 
 
+class StudyPracticeInline(admin.TabularInline):
+    """Inline for StudyPractice within StudyAdmin."""
+
+    model = StudyPractice
+    extra = 1
+    fields = ["practice", "code", "result", "order"]
+    readonly_fields = ["created_at"]
+
+
 class StudyAdmin(admin.ModelAdmin):
     """Admin interface for Study model."""
 
     list_display = [
         "protocol_number",
         "patient",
-        "practice",
         "status",
         "created_at",
         "completed_at",
@@ -52,20 +60,41 @@ class StudyAdmin(admin.ModelAdmin):
     search_fields = ["protocol_number", "patient__email", "sample_id"]
     ordering = ["-created_at"]
     readonly_fields = ["created_at", "updated_at"]
+    inlines = [StudyPracticeInline]
+
+
+class StudyPracticeAdmin(admin.ModelAdmin):
+    """Admin interface for StudyPractice model."""
+
+    list_display = [
+        "study",
+        "practice",
+        "code",
+        "order",
+        "created_at",
+    ]
+    list_filter = ["practice"]
+    search_fields = ["study__protocol_number", "practice__name", "code"]
+    ordering = ["-created_at"]
+    readonly_fields = ["created_at", "updated_at"]
 
 
 class UserDeterminationAdmin(admin.ModelAdmin):
     """Admin interface for UserDetermination model."""
 
     list_display = [
-        "study",
+        "study_practice",
         "determination",
         "value",
         "is_abnormal",
         "created_at",
     ]
     list_filter = ["is_abnormal", "determination"]
-    search_fields = ["study__protocol_number", "determination__name", "value"]
+    search_fields = [
+        "study_practice__study__protocol_number",
+        "determination__name",
+        "value",
+    ]
     ordering = ["-created_at"]
     readonly_fields = ["created_at", "updated_at"]
 
@@ -74,4 +103,5 @@ class UserDeterminationAdmin(admin.ModelAdmin):
 admin_site.register(Practice, PracticeAdmin)
 admin_site.register(Determination, DeterminationAdmin)
 admin_site.register(Study, StudyAdmin)
+admin_site.register(StudyPractice, StudyPracticeAdmin)
 admin_site.register(UserDetermination, UserDeterminationAdmin)

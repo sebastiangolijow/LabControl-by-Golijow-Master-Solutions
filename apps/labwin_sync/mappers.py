@@ -176,34 +176,47 @@ def map_practice(nomen_row):
     }
 
 
-def map_study(deters_row, patient_pk, practice_pk, doctor_pk=None):
-    """Map a DETERS row to Study model fields.
+def map_study(numero, patient_pk, doctor_pk=None, fecha=None, hora=None):
+    """Map a LabWin protocol (NUMERO_FLD) to Study model fields.
 
     Args:
-        deters_row: Dict with LabWin DETERS columns.
+        numero: LabWin NUMERO_FLD (order/protocol ID).
         patient_pk: UUID of the patient User.
-        practice_pk: UUID of the Practice.
         doctor_pk: Optional UUID of the ordering doctor User.
+        fecha: YYYYMMDD date string for service_date.
+        hora: HH:MM time string for service_date.
 
     Returns:
         Dict of Study model fields suitable for create/update.
     """
-    numero = deters_row["NUMERO_FLD"]
-    abrev = _clean_str(deters_row.get("ABREV_FLD"))
-    protocol_number = f"LW-{numero}-{abrev}"
+    protocol_number = f"LW-{numero}"
 
-    service_date = parse_datetime(
-        deters_row.get("FECHA_FLD"), deters_row.get("HORA_FLD")
-    )
+    service_date = parse_datetime(fecha, hora) if fecha else None
 
     return {
         "protocol_number": protocol_number,
         "patient_id": patient_pk,
-        "practice_id": practice_pk,
         "ordered_by_id": doctor_pk,
         "status": "completed",
-        "results": _clean_str(deters_row.get("RESULT_FLD")),
         "service_date": service_date,
         "completed_at": service_date,
         "sample_id": str(numero),
+    }
+
+
+def map_study_practice(deters_row, practice_pk):
+    """Map a DETERS row to StudyPractice model fields.
+
+    Args:
+        deters_row: Dict with LabWin DETERS columns.
+        practice_pk: UUID of the Practice.
+
+    Returns:
+        Dict of StudyPractice model fields suitable for create/update.
+    """
+    return {
+        "practice_id": practice_pk,
+        "result": _clean_str(deters_row.get("RESULT_FLD")),
+        "code": _clean_str(deters_row.get("ABREV_FLD")),
+        "order": deters_row.get("ORDEN_FLD", 0) or 0,
     }

@@ -1,6 +1,6 @@
 # LabControl Backend - Agent Context
 
-**Last Updated**: April 12, 2026
+**Last Updated**: April 18, 2026
 **Python**: 3.11
 **Django**: 4.2
 **Database**: PostgreSQL 15 with UUID primary keys
@@ -101,7 +101,7 @@ labcontrol/
 │   │       └── verify_email.py         # Manually verify email
 │   │
 │   ├── studies/                 # Lab studies & practices
-│   │   ├── models.py            # Practice, Determination, Study, UserDetermination
+│   │   ├── models.py            # Practice, Determination, Study, StudyPractice, UserDetermination
 │   │   ├── views.py             # Study CRUD, upload/download results
 │   │   ├── serializers.py       # Study, Practice, Determination serializers
 │   │   ├── filters.py           # StudyFilter, PracticeFilter
@@ -353,14 +353,16 @@ class Determination(BaseModel):
 
 ### Study Model (apps/studies/models.py)
 
-A **Study** represents a lab test order for a specific patient.
+A **Study** represents a lab protocol/order for a specific patient. One study contains one or more practices via `StudyPractice`.
+
+**Key design**: 1 Study = 1 protocol = N practices. This matches the LabWin domain where a patient visit (NUMERO_FLD) has multiple practices (DETERS rows).
 
 **Primary Key**: `uuid` (UUIDField)
 
 ```python
 class Study(BaseModel, LabClientModel):
     """
-    Laboratory study/test order for a patient.
+    Laboratory study/protocol order for a patient.
 
     Lifecycle:
     1. Created (pending)
@@ -370,7 +372,6 @@ class Study(BaseModel, LabClientModel):
     """
     # Relationships
     patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='studies')
-    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='studies')
     ordered_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -381,7 +382,7 @@ class Study(BaseModel, LabClientModel):
     )
 
     # Study details
-    protocol_number = models.CharField(max_length=50, unique=True)  # e.g., "2026-001234"
+    protocol_number = models.CharField(max_length=50, unique=True)  # e.g., "LW-12345" or "2026-001234"
     status = models.CharField(
         max_length=20,
         choices=[
@@ -393,13 +394,15 @@ class Study(BaseModel, LabClientModel):
         default='pending'
     )
 
-    # Results
+    # Results (PDF file per protocol)
     results_file = models.FileField(upload_to='study_results/', blank=True)
-    results = models.JSONField(null=True, blank=True)  # Structured results data
+
+    # LabWin fields
+    sample_id = models.CharField(max_length=50, blank=True, db_index=True)  # NUMERO_FLD
+    service_date = models.DateField(null=True, blank=True)
 
     # Dates
     solicited_date = models.DateField(null=True, blank=True)
-    sample_collected_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     # Notes
@@ -413,6 +416,9 @@ class Study(BaseModel, LabClientModel):
 
     # Custom manager (see managers.py)
     objects = StudyManager()
+
+    def __str__(self):
+        return self.protocol_number
 
     @property
     def is_pending(self):
@@ -437,30 +443,60 @@ class StudyManager(models.Manager):
 
     def for_lab(self, lab_client_id):
         return self.filter(lab_client_id=lab_client_id)
+
+    def for_practice(self, practice):
+        return self.filter(study_practices__practice=practice)
+```
+
+### StudyPractice Model (apps/studies/models.py)
+
+A **StudyPractice** links a practice to a study. Each practice within a protocol gets its own result.
+
+```python
+class StudyPractice(BaseModel):
+    """
+    A practice within a study/protocol.
+    Stores the raw result for this specific practice.
+
+    Example:
+    Study "LW-12345" (protocol) has:
+    - StudyPractice 1: Glucemia Basal → result="105"
+    - StudyPractice 2: Uremia → result="35"
+    - StudyPractice 3: Creatinina → result="0.9"
+    """
+    study = models.ForeignKey(Study, on_delete=models.CASCADE, related_name='study_practices')
+    practice = models.ForeignKey(Practice, on_delete=models.PROTECT, related_name='study_practices')
+    result = models.TextField(blank=True)  # Raw result value (e.g., "105" or "79|4790|137")
+    code = models.CharField(max_length=20, blank=True, db_index=True)  # LabWin ABREV_FLD
+    order = models.IntegerField(default=0)  # Display order
+
+    class Meta:
+        ordering = ['order', 'code']
+        unique_together = [['study', 'practice']]
 ```
 
 ### UserDetermination Model (apps/studies/models.py)
 
-Stores **individual result values** for a study.
+Stores **individual result values** for a specific practice within a study.
 
 ```python
 class UserDetermination(BaseModel):
     """
-    Individual result value for a determination within a study.
+    Individual result value for a determination within a study practice.
 
     Example:
-    Study: "Complete Blood Count for Patient A"
+    StudyPractice: "Complete Blood Count" in Study "LW-12345"
     - UserDetermination 1: Hemoglobin = "14.5 g/dL"
     - UserDetermination 2: WBC Count = "7200 /uL"
     """
-    study = models.ForeignKey(Study, on_delete=models.CASCADE, related_name='determination_results')
+    study_practice = models.ForeignKey(StudyPractice, on_delete=models.CASCADE, related_name='determination_results')
     determination = models.ForeignKey(Determination, on_delete=models.PROTECT, related_name='user_results')
     value = models.CharField(max_length=200)  # Actual result value
     is_abnormal = models.BooleanField(default=False)  # Flag if outside reference range
     notes = models.TextField(blank=True)
 
     class Meta:
-        unique_together = [['study', 'determination']]
+        unique_together = [['study_practice', 'determination']]
 ```
 
 ### Appointment Model (apps/appointments/models.py)
@@ -826,7 +862,7 @@ GET    /api/v1/studies/last-protocol-number/      # Get last protocol number for
 ```python
 # Available filters on /api/v1/studies/
 ?patient={uuid}           # Filter by patient
-?practice={uuid}          # Filter by practice
+?study_practices__practice={uuid}  # Filter by practice
 ?status=pending           # Filter by status
 ?ordering=-created_at     # Order by field (prefix '-' for descending)
 ?search=protocol          # Search in protocol_number, patient name
@@ -1481,13 +1517,14 @@ apps/labwin_sync/
 | PACIENTES | User (role=patient) | `dni` = `HCLIN_FLD` |
 | MEDICOS | User (role=doctor) | `matricula` = `MATNAC_FLD` |
 | NOMEN | Practice | `code` = `ABREV_FLD` |
-| DETERS | Study | `protocol_number` = `"LW-{NUMERO}-{ABREV}"` |
+| DETERS (grouped by NUMERO) | Study | `protocol_number` = `"LW-{NUMERO}"` |
+| DETERS (each row) | StudyPractice | `code` = `ABREV_FLD`, `result` = `RESULT_FLD` |
 
 ### Sync Models
 
 **SyncLog** — Tracks each sync run:
 - `status`: started / completed / failed / partial
-- Counters: `patients_created`, `patients_updated`, `doctors_created`, `studies_created`, `studies_updated`
+- Counters: `patients_created`, `patients_updated`, `doctors_created`, `studies_created`, `studies_updated`, `study_practices_created`
 - Cursor: `last_synced_numero` (BigIntegerField), `last_synced_fecha` (CharField)
 - `errors` (JSONField), `error_count`
 
@@ -1502,8 +1539,9 @@ apps/labwin_sync/
 3. Connects to LabWin via connector factory (mock or real based on `LABWIN_USE_MOCK`)
 4. Fetches validated DETERS in batches of 500
 5. For each batch: fetches PACIENTES, MEDICOS, NOMEN for referenced IDs
-6. Creates/updates patients, doctors, practices, studies (idempotent)
-7. Updates SyncLog with counts and cursor
+6. Groups DETERS rows by NUMERO_FLD — creates 1 Study per NUMERO, N StudyPractice records per Study
+7. Creates/updates patients, doctors, practices, studies, study_practices (idempotent)
+8. Updates SyncLog with counts and cursor
 
 ### Connector Abstraction
 
@@ -2011,5 +2049,5 @@ See **DEPLOYMENT.md** for complete production deployment guide.
 ---
 
 **Document Version**: 1.1
-**Last Updated**: April 12, 2026
+**Last Updated**: April 18, 2026
 **Maintained By**: Development Team

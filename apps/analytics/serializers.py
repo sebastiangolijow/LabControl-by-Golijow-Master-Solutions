@@ -84,7 +84,7 @@ class PopularPracticeSerializer(serializers.Serializer):
 class TopRevenuePracticeSerializer(serializers.Serializer):
     """Serializer for top revenue practices."""
 
-    study__practice__name = serializers.CharField()
-    study__practice__technique = serializers.CharField()
+    study__study_practices__practice__name = serializers.CharField()
+    study__study_practices__practice__technique = serializers.CharField()
     total_revenue = serializers.DecimalField(max_digits=10, decimal_places=2)
     order_count = serializers.IntegerField()

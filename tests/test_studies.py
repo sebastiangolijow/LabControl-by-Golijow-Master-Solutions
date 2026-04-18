@@ -99,8 +99,7 @@ class TestStudyModel(BaseTestCase):
     def test_study_str_representation(self):
         """Test study string representation."""
         study = self.create_study()
-        expected = f"{study.protocol_number} - {study.practice.name}"
-        assert str(study) == expected
+        assert str(study) == study.protocol_number
 
     def test_study_solicited_date_field(self):
         """Test that study has solicited_date field distinct from service_date."""
@@ -287,15 +286,16 @@ class TestStudyListAPI(BaseTestCase):
         assert "Ana" in response.data["patient_name"]
         assert "Pérez" in response.data["patient_name"]
 
-    def test_study_serializer_includes_practice_detail(self):
-        """Study response includes practice_detail nested object."""
+    def test_study_serializer_includes_study_practices(self):
+        """Study response includes study_practices nested array."""
         client, patient = self.authenticate_as_patient()
         practice = self.create_practice(name="Hepatograma")
         study = self.create_study(patient=patient, practice=practice)
 
         response = client.get(f"/api/v1/studies/{study.pk}/")
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["practice_detail"]["name"] == "Hepatograma"
+        assert len(response.data["study_practices"]) == 1
+        assert response.data["study_practices"][0]["practice_detail"]["name"] == "Hepatograma"
 
 
 # ===========================================================================
@@ -325,7 +325,7 @@ class TestStudyCreateAPI(BaseTestCase):
     def _base_payload(self, **overrides):
         payload = {
             "patient": str(self.patient.pk),
-            "practice": str(self.practice.pk),
+            "practices": [str(self.practice.pk)],
             "protocol_number": "2026-001",
         }
         payload.update(overrides)
@@ -387,7 +387,7 @@ class TestStudyCreateAPI(BaseTestCase):
         ).first()
         assert notification is not None
         assert notification.status == "sent"
-        assert "Hemograma" in notification.message
+        assert "2026-001" in notification.message
 
     # ── Dates ────────────────────────────────────────────────────────────────
 
@@ -478,7 +478,7 @@ class TestStudyCreateAPI(BaseTestCase):
         client, patient = self.authenticate_as_patient()
         payload = {
             "patient": str(patient.pk),
-            "practice": str(self.practice.pk),
+            "practices": [str(self.practice.pk)],
             "protocol_number": "2026-FORBIDDEN",
         }
         response = client.post("/api/v1/studies/", payload, format="multipart")
@@ -585,7 +585,7 @@ class TestStudyUploadEndToEnd(BaseTestCase):
         # ── Step 1: create study without file ─────────────────────────────
         create_payload = {
             "patient": str(self.patient.pk),
-            "practice": str(self.practice.pk),
+            "practices": [str(self.practice.pk)],
             "protocol_number": "2026-A001",
             "solicited_date": "2026-02-10",
             "ordered_by": str(self.doctor.pk),
@@ -662,12 +662,11 @@ class TestStudyUploadEndToEnd(BaseTestCase):
 
         create_payload = {
             "patient": str(self.patient.pk),
-            "practice": str(self.practice.pk),
+            "practices": [str(self.practice.pk)],
             "protocol_number": "2026-B001",
             "solicited_date": "2026-02-15",
             "service_date": "2026-02-15T08:00:00",
             "results_file": _make_pdf("resultado_b.pdf"),
-            "results": "Colesterol total: 190 mg/dL",
         }
         response = self.staff_client.post(
             "/api/v1/studies/", create_payload, format="multipart"

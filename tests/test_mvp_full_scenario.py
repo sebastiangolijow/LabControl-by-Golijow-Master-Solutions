@@ -189,7 +189,7 @@ class MVPFullScenarioTest(BaseTestCase):
         )
         assert in_app_notifications.count() >= 1
         notification = in_app_notifications.first()
-        assert "Complete Blood Count" in notification.message
+        assert study.protocol_number in notification.message
         assert notification.status == "sent"
         print(f"✓ In-app notification created: '{notification.title}'")
 
@@ -197,9 +197,9 @@ class MVPFullScenarioTest(BaseTestCase):
         assert len(mail.outbox) >= 1
         email = mail.outbox[-1]  # Get most recent email
         assert "patient@mvptest.com" in email.to
-        assert "Complete Blood Count" in email.subject
+        assert study.protocol_number in email.subject
         assert "Results Are Ready" in email.subject
-        assert "Complete Blood Count" in email.body
+        assert study.protocol_number in email.body
         print(f"✓ Email notification sent to: {email.to[0]}")
         print(f"  Subject: {email.subject}")
 
@@ -221,10 +221,10 @@ class MVPFullScenarioTest(BaseTestCase):
         ), f"Study {str(study.pk)} not found in results list. Available IDs: {result_ids}"
         assert new_result["status"] == "completed"
         assert new_result["results_file"] is not None
-        assert new_result["practice_detail"]["name"] == "Complete Blood Count"
+        assert new_result["study_practices"][0]["practice_detail"]["name"] == "Complete Blood Count"
         print(f"✓ Patient sees {len(results)} results (new result visible)")
         print(
-            f"  New result: {new_result['practice_detail']['name']} - {new_result['status']}"
+            f"  New result: {new_result['study_practices'][0]['practice_detail']['name']} - {new_result['status']}"
         )
 
         # ===================================================================
@@ -542,7 +542,7 @@ Email Notifications: ✓ Verified
             "/api/v1/studies/",
             {
                 "patient": str(patient.pk),
-                "practice": str(practice.pk),
+                "practices": [str(practice.pk)],
                 "protocol_number": "2026-NF001",
                 "solicited_date": "2026-02-10",
                 "ordered_by": str(doctor.pk),
@@ -599,12 +599,11 @@ Email Notifications: ✓ Verified
             "/api/v1/studies/",
             {
                 "patient": str(patient.pk),
-                "practice": str(practice.pk),
+                "practices": [str(practice.pk)],
                 "protocol_number": "2026-NF002",
                 "solicited_date": "2026-02-12",
                 "sample_collected_at": "2026-02-12T08:30:00",
                 "results_file": pdf_file,
-                "results": "GPT: 25 U/L — dentro de valores normales",
             },
             format="multipart",
         )
@@ -624,7 +623,7 @@ Email Notifications: ✓ Verified
         assert len(mail.outbox) >= 1
         email_obj = mail.outbox[-1]
         assert "newflow@test.com" in email_obj.to
-        assert "Hepatograma Completo" in email_obj.subject
+        assert "2026-NF002" in email_obj.subject
         print("✓ Notification + email sent on study creation with file")
 
         # Patient can download immediately
@@ -663,7 +662,7 @@ Email Notifications: ✓ Verified
             "/api/v1/studies/",
             {
                 "patient": str(patient.pk),
-                "practice": str(practice.pk),
+                "practices": [str(practice.pk)],
                 "protocol_number": "2026-NF001",  # already used
             },
             format="multipart",

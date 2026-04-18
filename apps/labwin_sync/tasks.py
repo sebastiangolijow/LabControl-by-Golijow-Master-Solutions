@@ -2,11 +2,13 @@
 Celery task for syncing lab results from LabWin Firebird database.
 
 Runs nightly via Celery Beat. Fetches validated DETERS rows incrementally,
-maps them to LabControl models (User, Practice, Study), and tracks progress
-in SyncLog/SyncedRecord for idempotency.
+groups them by protocol (NUMERO_FLD), and creates one Study per protocol
+with multiple StudyPractice records. Tracks progress in SyncLog/SyncedRecord
+for idempotency.
 """
 
 import logging
+from collections import defaultdict
 
 from celery import shared_task
 from django.conf import settings
@@ -32,7 +34,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
     Returns:
         dict: Summary with counts of created/updated records and errors.
     """
-    from apps.studies.models import Practice, Study
+    from apps.studies.models import Practice, Study, StudyPractice
     from apps.users.models import User
 
     if lab_client_id is None:
@@ -90,6 +92,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         "practices_created": 0,
         "studies_created": 0,
         "studies_updated": 0,
+        "study_practices_created": 0,
     }
     total_processed = 0
     max_numero = since_numero
@@ -157,11 +160,14 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                             {"type": "doctor", "key": str(num), "error": str(e)}
                         )
 
-                # Process each DETERS row
+                # Group DETERS rows by NUMERO_FLD (protocol)
+                grouped = defaultdict(list)
                 for row in batch:
-                    total_processed += 1
-                    numero = row["NUMERO_FLD"]
-                    abrev = row["ABREV_FLD"]
+                    grouped[row["NUMERO_FLD"]].append(row)
+
+                # Process each protocol group
+                for numero, rows in grouped.items():
+                    total_processed += len(rows)
 
                     try:
                         # Ensure patient exists
@@ -173,11 +179,10 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                 )
                                 patient_cache[numero] = patient_pk
                             else:
-                                # No patient data available, skip
                                 errors.append(
                                     {
                                         "type": "study",
-                                        "key": f"{numero}:{abrev}",
+                                        "key": str(numero),
                                         "error": "No PACIENTES data for this NUMERO_FLD",
                                     }
                                 )
@@ -187,14 +192,6 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         if not patient_pk:
                             continue
 
-                        practice_pk = practice_cache.get(abrev)
-                        if not practice_pk:
-                            # Practice not in NOMEN, create a minimal one
-                            practice_pk = _create_minimal_practice(
-                                abrev, lab_client_id, sync_log, counters
-                            )
-                            practice_cache[abrev] = practice_pk
-
                         # Find doctor for this order
                         pac_row = pacientes.get(numero)
                         doctor_pk = None
@@ -203,34 +200,45 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                             if num_medico:
                                 doctor_pk = doctor_cache.get(num_medico)
 
-                        # Create/update study
-                        _get_or_create_study(
-                            row,
+                        # Ensure all practices exist for this protocol
+                        for row in rows:
+                            abrev = row["ABREV_FLD"]
+                            if abrev not in practice_cache:
+                                practice_pk = _create_minimal_practice(
+                                    abrev, lab_client_id, sync_log, counters
+                                )
+                                practice_cache[abrev] = practice_pk
+
+                        # Create/update study and its practices
+                        _get_or_create_study_with_practices(
+                            numero,
+                            rows,
                             patient_pk,
-                            practice_pk,
                             doctor_pk,
+                            practice_cache,
                             lab_client_id,
                             sync_log,
                             counters,
                         )
 
-                        # Track cursor
-                        fecha = row.get("FECHA_FLD", "")
-                        if fecha > max_fecha or (
-                            fecha == max_fecha
-                            and (max_numero is None or numero > max_numero)
-                        ):
-                            max_fecha = fecha
-                            max_numero = numero
+                        # Track cursor (use max fecha/numero from this group)
+                        for row in rows:
+                            fecha = row.get("FECHA_FLD", "")
+                            if fecha > max_fecha or (
+                                fecha == max_fecha
+                                and (max_numero is None or numero > max_numero)
+                            ):
+                                max_fecha = fecha
+                                max_numero = numero
 
                     except Exception as e:
                         logger.error(
-                            "Error processing DETERS %s:%s: %s", numero, abrev, e
+                            "Error processing protocol %s: %s", numero, e
                         )
                         errors.append(
                             {
                                 "type": "study",
-                                "key": f"{numero}:{abrev}",
+                                "key": str(numero),
                                 "error": str(e),
                             }
                         )
@@ -254,13 +262,15 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         sync_log.errors = errors[-100:]  # Keep last 100 errors
         sync_log.error_count = len(errors)
         for key, val in counters.items():
-            setattr(sync_log, key, val)
+            if hasattr(sync_log, key):
+                setattr(sync_log, key, val)
         sync_log.save()
 
         result = {
             "message": (
                 f"Sync completed. Studies: {counters['studies_created']} created, "
                 f"{counters['studies_updated']} updated. "
+                f"StudyPractices: {counters['study_practices_created']} created. "
                 f"Patients: {counters['patients_created']} created. "
                 f"Errors: {len(errors)}."
             ),
@@ -481,52 +491,105 @@ def _create_minimal_practice(abrev, lab_client_id, sync_log, counters):
         return practice.pk
 
 
-def _get_or_create_study(
-    deters_row,
+def _get_or_create_study_with_practices(
+    numero,
+    deters_rows,
     patient_pk,
-    practice_pk,
     doctor_pk,
+    practice_cache,
     lab_client_id,
     sync_log,
     counters,
 ):
-    """Get or create a Study from a DETERS row. Returns Study pk."""
-    from apps.studies.models import Study
+    """Get or create a Study and its StudyPractice records for a protocol.
 
-    fields = mappers.map_study(deters_row, patient_pk, practice_pk, doctor_pk)
-    protocol_number = fields["protocol_number"]
+    Args:
+        numero: LabWin NUMERO_FLD (protocol/order ID).
+        deters_rows: List of DETERS row dicts for this protocol.
+        patient_pk: UUID of the patient.
+        doctor_pk: UUID of the doctor (or None).
+        practice_cache: Dict mapping ABREV_FLD -> Practice pk.
+        lab_client_id: Lab client ID.
+        sync_log: Current SyncLog instance.
+        counters: Dict of counters to update.
 
-    # Check by protocol_number (unique)
+    Returns:
+        Study pk.
+    """
+    from apps.studies.models import Study, StudyPractice
+
+    # Use first row for dates (all rows in a protocol share the same date)
+    first_row = deters_rows[0]
+    study_fields = mappers.map_study(
+        numero,
+        patient_pk,
+        doctor_pk,
+        fecha=first_row.get("FECHA_FLD"),
+        hora=first_row.get("HORA_FLD"),
+    )
+    protocol_number = study_fields["protocol_number"]
+
+    # Check if study already exists
     study = Study.objects.filter(protocol_number=protocol_number).first()
     if study:
-        # Update results if changed
-        new_results = fields.get("results", "")
-        if new_results and new_results != study.results:
-            study.results = new_results
-            study.save(update_fields=["results", "updated_at"])
-            counters["studies_updated"] += 1
+        # Study exists — add any new practices that aren't already linked
+        existing_codes = set(
+            study.study_practices.values_list("code", flat=True)
+        )
+        for row in deters_rows:
+            abrev = row["ABREV_FLD"].strip()
+            if abrev in existing_codes:
+                # Update result if changed
+                sp = study.study_practices.filter(code=abrev).first()
+                if sp:
+                    new_result = (row.get("RESULT_FLD") or "").strip()
+                    if new_result and new_result != sp.result:
+                        sp.result = new_result
+                        sp.save(update_fields=["result", "updated_at"])
+                        counters["studies_updated"] += 1
+                continue
+
+            practice_pk = practice_cache.get(abrev)
+            if practice_pk:
+                sp_fields = mappers.map_study_practice(row, practice_pk)
+                StudyPractice.objects.create(
+                    study=study,
+                    **sp_fields,
+                )
+                counters["study_practices_created"] += 1
+
         return study.pk
 
-    # Create new study
-    source_key = f"{deters_row['NUMERO_FLD']}:{deters_row['ABREV_FLD']}"
+    # Create new study + practices
+    source_key = str(numero)
 
     with transaction.atomic():
         study = Study(
             protocol_number=protocol_number,
             patient_id=patient_pk,
-            practice_id=practice_pk,
             ordered_by_id=doctor_pk,
             status="completed",
-            results=fields.get("results", ""),
-            service_date=fields.get("service_date"),
-            completed_at=fields.get("completed_at"),
-            sample_id=fields.get("sample_id", ""),
+            service_date=study_fields.get("service_date"),
+            completed_at=study_fields.get("completed_at"),
+            sample_id=study_fields.get("sample_id", ""),
             lab_client_id=lab_client_id,
         )
         study.save()
 
+        # Create StudyPractice for each DETERS row
+        for row in deters_rows:
+            abrev = row["ABREV_FLD"].strip()
+            practice_pk = practice_cache.get(abrev)
+            if practice_pk:
+                sp_fields = mappers.map_study_practice(row, practice_pk)
+                StudyPractice.objects.create(
+                    study=study,
+                    **sp_fields,
+                )
+                counters["study_practices_created"] += 1
+
         _ensure_synced_record(
-            "DETERS",
+            "PACIENTES",
             source_key,
             "Study",
             study.pk,

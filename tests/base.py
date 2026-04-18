@@ -116,37 +116,46 @@ class BaseTestMixin:
         defaults.update(kwargs)
         return Practice.objects.create(**defaults)
 
-    def create_study(self, patient=None, practice=None, **kwargs):
+    def create_study(self, patient=None, practice=None, practices=None, **kwargs):
         """
         Factory for creating studies.
 
         Args:
             patient: Patient user (created if not provided)
-            practice: Practice (created if not provided)
+            practice: Single Practice (creates one StudyPractice)
+            practices: List of Practices (creates multiple StudyPractice records)
 
         Returns:
             Study instance
         """
-        from apps.studies.models import Study
+        from apps.studies.models import Study, StudyPractice
 
         if patient is None:
             patient = self.create_patient()
-
-        if practice is None:
-            practice = self.create_practice()
 
         # Increment counter to ensure unique protocol numbers
         self._user_counter += 1
 
         defaults = {
             "patient": patient,
-            "practice": practice,
             "protocol_number": f"PROT-2024-{self._user_counter:04d}",
             "status": "pending",
             "lab_client_id": patient.lab_client_id or 1,
         }
         defaults.update(kwargs)
-        return Study.objects.create(**defaults)
+        study = Study.objects.create(**defaults)
+
+        # Create StudyPractice records
+        practice_list = practices or ([practice] if practice else [self.create_practice()])
+        for i, p in enumerate(practice_list):
+            StudyPractice.objects.create(
+                study=study,
+                practice=p,
+                code=p.code,
+                order=i,
+            )
+
+        return study
 
     # ======================
     # Appointment Factories

@@ -39,16 +39,20 @@ class StudyQuerySet(LabClientQuerySet):
         return self.filter(patient=patient)
 
     def for_practice(self, practice):
-        """Filter studies for a specific practice."""
-        return self.filter(practice=practice)
+        """Filter studies that include a specific practice."""
+        return self.filter(study_practices__practice=practice).distinct()
 
     def with_results(self):
-        """Return studies that have results."""
-        return self.exclude(Q(results="") | Q(results__isnull=True))
+        """Return studies that have at least one practice with results."""
+        return self.filter(
+            study_practices__result__gt=""
+        ).distinct()
 
     def without_results(self):
-        """Return studies without results yet."""
-        return self.filter(Q(results="") | Q(results__isnull=True))
+        """Return studies where no practice has results yet."""
+        return self.exclude(
+            study_practices__result__gt=""
+        ).distinct()
 
     def ordered_by(self, user):
         """Return studies ordered by a specific user."""

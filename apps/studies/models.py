@@ -133,9 +133,11 @@ class Practice(BaseModel):
 
 class Study(BaseModel, LabClientModel):
     """
-    Individual study/test order for a patient.
+    Laboratory study/protocol order for a patient.
 
-    Tracks the lifecycle of a medical test from order to completion.
+    Represents a single protocol (patient visit/order) that can contain
+    multiple practices. Tracks the lifecycle from order to completion.
+    One Study = one protocol number = one PDF result.
     """
 
     STATUS_CHOICES = [
@@ -152,12 +154,6 @@ class Study(BaseModel, LabClientModel):
         on_delete=models.CASCADE,
         related_name="studies",
         limit_choices_to={"role": "patient"},
-    )
-    practice = models.ForeignKey(
-        Practice,
-        on_delete=models.PROTECT,
-        related_name="studies",
-        help_text=_("The practice/test being ordered"),
     )
     ordered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -203,7 +199,6 @@ class Study(BaseModel, LabClientModel):
     )
 
     # Results
-    results = models.TextField(_("results"), blank=True)
     results_file = models.FileField(
         _("results file"),
         upload_to="study_results/%Y/%m/",
@@ -252,7 +247,7 @@ class Study(BaseModel, LabClientModel):
         ]
 
     def __str__(self):
-        return f"{self.protocol_number} - {self.practice.name}"
+        return self.protocol_number
 
     def clean(self):
         """Validate that ordered_by is a doctor."""
@@ -277,18 +272,66 @@ class Study(BaseModel, LabClientModel):
         return self.status == "pending"
 
 
-class UserDetermination(BaseModel):
+class StudyPractice(BaseModel):
     """
-    Stores the result value of a determination for a specific user/study.
+    Links a Study (protocol) to a Practice with per-practice result data.
 
-    Links a patient's study with specific determination results.
+    One Study can have multiple practices. Each StudyPractice stores the
+    raw result value for that specific practice within the protocol.
     """
 
     study = models.ForeignKey(
         Study,
         on_delete=models.CASCADE,
+        related_name="study_practices",
+        help_text=_("The study/protocol this practice belongs to"),
+    )
+    practice = models.ForeignKey(
+        Practice,
+        on_delete=models.PROTECT,
+        related_name="study_practices",
+        help_text=_("The practice/test being performed"),
+    )
+    result = models.TextField(
+        _("result"),
+        blank=True,
+        help_text=_("Raw result value for this practice (e.g. LabWin RESULT_FLD)"),
+    )
+    code = models.CharField(
+        _("code"),
+        max_length=20,
+        blank=True,
+        db_index=True,
+        help_text=_("Practice code/abbreviation (e.g. LabWin ABREV_FLD)"),
+    )
+    order = models.IntegerField(
+        _("display order"),
+        default=0,
+        help_text=_("Order for display (e.g. LabWin ORDEN_FLD)"),
+    )
+
+    class Meta:
+        verbose_name = _("study practice")
+        verbose_name_plural = _("study practices")
+        ordering = ["order", "code"]
+        unique_together = [["study", "practice"]]
+
+    def __str__(self):
+        return f"{self.study.protocol_number} - {self.practice.name}"
+
+
+class UserDetermination(BaseModel):
+    """
+    Stores the result value of a determination for a specific study practice.
+
+    Links a practice within a study with specific determination results.
+    """
+
+    study_practice = models.ForeignKey(
+        StudyPractice,
+        on_delete=models.CASCADE,
         related_name="determination_results",
-        help_text=_("The study this result belongs to"),
+        help_text=_("The study practice this result belongs to"),
     )
     determination = models.ForeignKey(
         Determination,
@@ -315,8 +358,11 @@ class UserDetermination(BaseModel):
     class Meta:
         verbose_name = _("user determination")
         verbose_name_plural = _("user determinations")
-        ordering = ["study", "determination"]
-        unique_together = [["study", "determination"]]
+        ordering = ["study_practice", "determination"]
+        unique_together = [["study_practice", "determination"]]
 
     def __str__(self):
-        return f"{self.study.protocol_number} - {self.determination.name}: {self.value}"
+        return (
+            f"{self.study_practice.study.protocol_number} - "
+            f"{self.determination.name}: {self.value}"
+        )

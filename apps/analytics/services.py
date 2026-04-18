@@ -15,7 +15,7 @@ from django.utils import timezone
 from apps.appointments.models import Appointment
 from apps.notifications.models import Notification
 from apps.payments.models import Invoice, Payment
-from apps.studies.models import Practice, Study
+from apps.studies.models import Practice, Study, StudyPractice
 from apps.users.models import User
 
 
@@ -61,9 +61,10 @@ class StatisticsService:
             cancelled=Count("pk", filter=Q(status="cancelled")),
         )
 
-        # Count by practice
+        # Count by practice (through StudyPractice join)
+        sp_queryset = StudyPractice.objects.filter(study__in=queryset)
         by_practice = list(
-            queryset.values("practice__name")
+            sp_queryset.values("practice__name")
             .annotate(count=Count("pk"))
             .order_by("-count")
         )
@@ -378,19 +379,23 @@ class StatisticsService:
         Returns:
             list: Practices with order counts
         """
-        queryset = Study.objects.all()
+        study_queryset = Study.objects.all()
 
         if lab_client_id:
-            queryset = queryset.for_lab(lab_client_id)
+            study_queryset = study_queryset.for_lab(lab_client_id)
+
+        sp_queryset = StudyPractice.objects.filter(study__in=study_queryset)
 
         popular_practices = list(
-            queryset.values(
+            sp_queryset.values(
                 "practice__name",
                 "practice__technique",
             )
             .annotate(
                 order_count=Count("pk"),
-                completed_count=Count("pk", filter=Q(status="completed")),
+                completed_count=Count(
+                    "pk", filter=Q(study__status="completed")
+                ),
             )
             .order_by("-order_count")[:limit]
         )
@@ -414,12 +419,12 @@ class StatisticsService:
         if lab_client_id:
             queryset = queryset.for_lab(lab_client_id)
 
-        # Join with studies to get practices
+        # Join with studies → study_practices → practice to get revenue by practice
         top_revenue = list(
             queryset.filter(study__isnull=False)
             .values(
-                "study__practice__name",
-                "study__practice__technique",
+                "study__study_practices__practice__name",
+                "study__study_practices__practice__technique",
             )
             .annotate(
                 total_revenue=Coalesce(Sum("paid_amount"), Value(Decimal("0.00"))),

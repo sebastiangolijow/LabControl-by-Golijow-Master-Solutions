@@ -55,10 +55,10 @@ class EmailNotificationTests(BaseTestCase):
         email = mail.outbox[0]
 
         # Verify email content
-        self.assertIn("Blood Test", email.subject)
+        self.assertIn(self.study.protocol_number, email.subject)
         self.assertIn("Results Are Ready", email.subject)
         self.assertEqual(email.to, [self.patient.email])
-        self.assertIn("Blood Test", email.body)
+        self.assertIn(self.study.protocol_number, email.body)
 
         # Verify in-app notification was also created
         notification_exists = Notification.objects.filter(
