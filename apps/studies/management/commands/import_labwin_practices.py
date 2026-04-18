@@ -211,7 +211,6 @@ class Command(BaseCommand):
 
         new = [p for p in merged if p["code"] not in existing_codes]
         update = [p for p in merged if p["code"] in existing_codes]
-        with_ref = [p for p in merged if p["reference_range"]]
 
         self.stdout.write(f"\n{'='*60}")
         self.stdout.write(self.style.SUCCESS("DRY RUN REPORT"))
@@ -219,13 +218,11 @@ class Command(BaseCommand):
         self.stdout.write(f"Total practices in CSV: {len(merged)}")
         self.stdout.write(f"Already in DB (will update): {len(update)}")
         self.stdout.write(f"New (will create): {len(new)}")
-        self.stdout.write(f"With reference ranges: {len(with_ref)}")
+        self.stdout.write(
+            f"With result templates: "
+            f"{sum(1 for p in merged if p['result_template'])}"
+        )
         self.stdout.write(f"Current DB count: {Practice.objects.count()}")
-
-        if with_ref:
-            self.stdout.write(f"\nSample reference ranges:")
-            for p in with_ref[:5]:
-                self.stdout.write(f"  {p['code']}: {p['reference_range'][:100]}")
 
     def _import_practices(self, merged, clear):
         """Import practices into the database."""
@@ -247,8 +244,6 @@ class Command(BaseCommand):
 
                     if item["result_template"]:
                         defaults["result_template"] = item["result_template"]
-                    if item["reference_range"]:
-                        defaults["reference_range"] = item["reference_range"]
 
                     practice, was_created = Practice.objects.update_or_create(
                         code=item["code"],
