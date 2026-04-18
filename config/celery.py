@@ -6,6 +6,7 @@ This module configures Celery for handling asynchronous tasks such as:
 - Report generation
 - Data exports
 - Scheduled appointment reminders
+- LabWin sync and FTP PDF fetch
 """
 
 import os
@@ -26,14 +27,14 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
 
-# Note: When using django-celery-beat DatabaseScheduler, periodic tasks
-# are managed through the Django admin interface, not here.
-# To add periodic tasks:
-# 1. Run: docker-compose exec web python manage.py migrate
-# 2. Go to Django Admin -> Periodic Tasks
-# 3. Add tasks like:
-#    - apps.appointments.tasks.send_appointment_reminders (daily at 9 AM)
-#    - apps.notifications.tasks.cleanup_old_notifications (weekly Sunday 2 AM)
+# Periodic tasks are managed via django-celery-beat DatabaseScheduler.
+# Use the setup_periodic_tasks management command to create them:
+#   python manage.py setup_periodic_tasks
+#
+# Scheduled tasks:
+#   - sync_labwin_results: daily at 2:00 AM
+#   - fetch_ftp_pdfs: every 30 minutes
+#   - cleanup_ftp_pdfs: weekly Sunday 3:00 AM
 
 
 @app.task(bind=True, ignore_result=True)

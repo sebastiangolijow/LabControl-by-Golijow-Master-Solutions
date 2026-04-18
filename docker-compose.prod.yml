@@ -63,6 +63,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - labcontrol_network
     healthcheck:
@@ -110,6 +112,8 @@ services:
       - media_volume:/app/media
     env_file:
       - .env.production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy

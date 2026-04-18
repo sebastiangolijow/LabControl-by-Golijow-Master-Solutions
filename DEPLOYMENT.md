@@ -443,6 +443,109 @@ sudo certbot certificates
 
 **Security**: File permissions set to `600` (owner read/write only)
 
+### 6. FTP Server for LabWin PDF Results
+
+**Decision**: vsftpd on the VPS host, accessed by Docker containers via `host.docker.internal`
+
+**Reason**:
+- LabWin exports PDF result files per protocol (e.g. `100001.pdf`)
+- The lab team configures LabWin to upload PDFs to this FTP server
+- A Celery task (`fetch_ftp_pdfs`) connects to the FTP, matches filenames to `Study.sample_id`, and attaches the PDF to the study
+
+---
+
+## 📡 FTP Server Configuration
+
+### Overview
+
+The VPS runs a vsftpd FTP server that receives PDF result files from LabWin. Docker containers connect to it via `host.docker.internal`.
+
+### FTP Credentials (for lab team)
+
+| Setting | Value |
+|---------|-------|
+| **Host** | `72.60.137.226` |
+| **Port** | `21` |
+| **User** | `labwin_ftp` |
+| **Password** | `LabWinFTP2026!` |
+| **Directory** | `/results` |
+| **Protocol** | FTP (plain, no TLS) |
+| **Passive Mode** | Yes (ports 30000-30100) |
+
+### File Naming Convention
+
+PDFs must be named `{NUMERO}.pdf` where `{NUMERO}` is the LabWin protocol number (NUMERO_FLD from DETERS table).
+
+Examples: `100001.pdf`, `100002.pdf`, `100003.pdf`
+
+### Server Setup (already configured)
+
+```bash
+# vsftpd installed and running
+sudo systemctl status vsftpd
+
+# FTP user
+user: labwin_ftp
+home: /home/labwin_ftp
+upload dir: /home/labwin_ftp/results/
+shell: /usr/sbin/nologin (FTP only, no SSH)
+
+# Config file: /etc/vsftpd.conf
+# Key settings:
+#   chroot_local_user=YES (user locked to home dir)
+#   pasv_enable=YES (passive mode for NAT/firewall)
+#   pasv_min_port=30000, pasv_max_port=30100
+#   pasv_address=72.60.137.226
+#   userlist_enable=YES (whitelist in /etc/vsftpd.userlist)
+
+# Firewall ports opened:
+#   21/tcp (FTP control)
+#   30000:30100/tcp (passive data)
+```
+
+### Docker Integration
+
+`docker-compose.prod.yml` has `extra_hosts: ["host.docker.internal:host-gateway"]` on `web` and `celery_worker` services.
+
+`.env.production` settings:
+```env
+LABWIN_FTP_USE_MOCK=False
+LABWIN_FTP_HOST=host.docker.internal
+LABWIN_FTP_PORT=21
+LABWIN_FTP_USER=labwin_ftp
+LABWIN_FTP_PASSWORD=LabWinFTP2026!
+LABWIN_FTP_DIRECTORY=/results
+LABWIN_FTP_USE_TLS=False
+```
+
+### Testing FTP Manually
+
+```bash
+# From local machine
+ftp 72.60.137.226
+# Login: labwin_ftp / LabWinFTP2026!
+# cd results
+# put 100001.pdf
+
+# From inside Docker container
+docker compose -f docker-compose.prod.yml exec web python -c "
+from ftplib import FTP
+ftp = FTP()
+ftp.connect('host.docker.internal', 21)
+ftp.login('labwin_ftp', 'LabWinFTP2026!')
+ftp.cwd('/results')
+print(ftp.nlst())
+ftp.quit()
+"
+```
+
+### Triggering PDF Fetch
+
+- **UI**: Click the green PDF sync button on the Results page (admin only)
+- **API**: `POST /api/v1/labwin-sync/fetch-pdfs/`
+- **CLI**: `python manage.py fetch_ftp_pdfs [--delete] [--cleanup]`
+- **Scheduled**: Can be added to Celery Beat for automatic fetching
+
 ---
 
 ## 🔄 Updating the Application
@@ -908,11 +1011,17 @@ docker exec -i labcontrol_db psql -U labcontrol_user -d labcontrol_db < backup.s
 
 ---
 
-**Document Version**: 2.0
+**Document Version**: 3.0
 **Maintained By**: Development Team
-**Last Reviewed**: March 22, 2026
+**Last Reviewed**: April 18, 2026
 
 ## 📜 Change Log
+
+### Version 3.0 - April 18, 2026
+- Added FTP Server Configuration section with credentials and setup details
+- Added Docker `extra_hosts` integration for container-to-host FTP access
+- Added FTP testing and triggering instructions
+- Updated deployment decision #6 for FTP architecture
 
 ### Version 2.0 - March 22, 2026
 - Added "Recent Updates & Fixes" section documenting SSL certificate and port preservation fixes
