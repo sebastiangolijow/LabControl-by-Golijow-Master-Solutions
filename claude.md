@@ -81,6 +81,8 @@ class Practice(BaseModel):
     code = CharField(max_length=20, blank=True, db_index=True)  # LabWin ABREV_FLD
     price = DecimalField()
     delay_days = IntegerField()
+    result_template = TextField(blank=True)       # Raw LabWin RESULTS_FLD template
+    reference_range = CharField(max_length=500, blank=True)  # For future use (needs clean data)
     is_active = BooleanField()
     determinations = ManyToManyField(Determination, blank=True)
 ```
@@ -284,7 +286,8 @@ make verify-email EMAIL=x@y.com
 make test                # 374 tests (DJANGO_SETTINGS_MODULE=config.settings.test)
 make test-coverage / test-verbose / test-fast
 make throttle-reset      # Clear rate limit cache
-make load_practices      # Load practice catalogue from JSON
+make load_practices      # Load practice catalogue from JSON (13 manual practices)
+python manage.py import_labwin_practices --practices data/practicas_labwin.csv --references data/referencias_labwin.csv  # Import 2174 LabWin practices
 make db-reset            # Drop + recreate DB (destroys data)
 make format / lint / isort / quality
 make sync-labwin         # Trigger LabWin sync manually
@@ -477,10 +480,24 @@ attaches to `study.results_file`. Uses same connector abstraction pattern (mock/
 **Management command**: `python manage.py fetch_ftp_pdfs [--delete] [--cleanup] [--use-celery]`
 **API endpoint**: `POST /api/v1/labwin-sync/fetch-pdfs/` (admin only)
 
+### LabWin Practice Import (Phase 1.5)
+Imported 2,174 practices from LabWin CSV exports into Practice model (2026-04-18).
+
+**Source files** (in `data/`):
+- `practicas_labwin.csv` — CODIGO + DETERMINACION (practice code + name)
+- `referencias_labwin.csv` — ABREV_FLD + RESULTS_FLD (result templates)
+
+**Management command**: `python manage.py import_labwin_practices --practices <file> --references <file>`
+- Matches on `Practice.code` (update_or_create)
+- Stores raw RESULTS_FLD in `Practice.result_template`
+- `Practice.reference_range` left empty — LabWin template text is not clean enough to display.
+  Will be populated when full LabWin DB is available with proper reference data.
+- Supports `--dry-run` and `--clear` flags
+
 ### Future Phases
-- **Phase 2**: Replace mock with real Firebird credentials from lab
+- **Phase 2**: Replace mock with real Firebird credentials from lab (need full DB with PACIENTES/MEDICOS/NOMEN populated)
 - **Phase 3**: Parse pipe-delimited RESULT_FLD into UserDetermination records
-  (requires RESULTS template table from LabWin)
+  (RESULTS template now stored in Practice.result_template)
 
 ## Deployment (Staging)
 
@@ -493,25 +510,30 @@ attaches to `study.results_file`. Uses same connector abstraction pattern (mock/
 ### Deploy Backend
 ```bash
 # Rsync code (EXCLUDE .env.production to avoid overwriting server secrets)
-rsync -avz --exclude='.env.production' --exclude='__pycache__' . deploy@72.60.137.226:/opt/labcontrol/
+sshpass -p '39872327Seba.' rsync -avz --exclude='.env.production' --exclude='__pycache__' --exclude='venv' --exclude='.git' --exclude='node_modules' . deploy@72.60.137.226:/opt/labcontrol/
 
 # Build & restart on server
-ssh deploy@72.60.137.226 "cd /opt/labcontrol && \
+sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 "cd /opt/labcontrol && \
   docker compose -f docker-compose.prod.yml build web celery_worker celery_beat && \
   docker compose -f docker-compose.prod.yml up -d --force-recreate web celery_worker celery_beat && \
   docker compose -f docker-compose.prod.yml exec web python manage.py migrate"
+
+# IMPORTANT: Always restart nginx after recreating web container to avoid 502
+sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml restart nginx"
 ```
 
 ### Deploy Frontend
 ```bash
 cd ../labcontrol-frontend && npm run build
-scp -r dist/* deploy@72.60.137.226:/opt/labcontrol/frontend/dist/
-ssh deploy@72.60.137.226 "docker restart labcontrol_nginx"
+sshpass -p '39872327Seba.' scp -r dist/* deploy@72.60.137.226:/opt/labcontrol/frontend/dist/
+sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml restart nginx"
 ```
 
 ### Important Deployment Notes
 - **NEVER rsync `.env.production`** — it overwrites server credentials with local template
+- **Always restart nginx** after recreating the web container — otherwise nginx gets a 502 pointing to the old container
 - **Rebuild ALL celery images** when adding new tasks — celery_worker and celery_beat use separate Docker images
+- **Use `sshpass -p '39872327Seba.'`** for all SSH/SCP/rsync commands to the deploy user
 - Backup exists at `/opt/labcontrol/backups/2026-03-22-working-config/`
 
 ## Known Issues
