@@ -119,6 +119,19 @@ class Practice(BaseModel):
         help_text=_("Determinations/analytes included in this practice"),
     )
 
+    # Result template from LabWin
+    result_template = models.TextField(
+        _("result template"),
+        blank=True,
+        help_text=_("Raw LabWin RESULTS_FLD template for this practice"),
+    )
+    reference_range = models.CharField(
+        _("reference range"),
+        max_length=500,
+        blank=True,
+        help_text=_("Reference range text extracted from LabWin template"),
+    )
+
     # Status
     is_active = models.BooleanField(_("active"), default=True)
 

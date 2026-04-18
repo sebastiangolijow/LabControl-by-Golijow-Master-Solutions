@@ -18,14 +18,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Setting up periodic tasks..."))
 
         # Create crontab schedules
-        daily_9am, _ = CrontabSchedule.objects.get_or_create(
-            minute="0",
-            hour="9",
-            day_of_week="*",
-            day_of_month="*",
-            month_of_year="*",
-        )
-
         weekly_sunday_2am, _ = CrontabSchedule.objects.get_or_create(
             minute="0",
             hour="2",
@@ -35,22 +27,16 @@ class Command(BaseCommand):
         )
 
         # Create periodic tasks
-        task1, created1 = PeriodicTask.objects.get_or_create(
-            name="Send Appointment Reminders",
-            defaults={
-                "task": "apps.appointments.tasks.send_appointment_reminders",
-                "crontab": daily_9am,
-                "enabled": True,
-            },
-        )
-        if created1:
-            self.stdout.write(
-                self.style.SUCCESS("✓ Created: Send Appointment Reminders (Daily 9 AM)")
-            )
-        else:
-            self.stdout.write(
-                self.style.WARNING("○ Already exists: Send Appointment Reminders")
-            )
+
+        # Note: Appointment reminders disabled — feature not yet implemented
+        # task1, created1 = PeriodicTask.objects.get_or_create(
+        #     name="Send Appointment Reminders",
+        #     defaults={
+        #         "task": "apps.appointments.tasks.send_appointment_reminders",
+        #         "crontab": daily_9am,
+        #         "enabled": False,
+        #     },
+        # )
 
         task2, created2 = PeriodicTask.objects.get_or_create(
             name="Cleanup Old Notifications",

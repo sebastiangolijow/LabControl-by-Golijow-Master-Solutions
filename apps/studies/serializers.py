@@ -56,6 +56,7 @@ class PracticeSerializer(serializers.ModelSerializer):
             "determinations",
             "determinations_detail",
             "determination_ids",
+            "reference_range",
             "is_active",
             "created_at",
             "updated_at",

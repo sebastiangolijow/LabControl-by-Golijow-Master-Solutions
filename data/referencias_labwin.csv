@@ -1,0 +1,5517 @@
+"ABREV_FLD","RESULTS_FLD"
+"2TIO4CAR","R00000000001
+"
+A SPP,"R00000000001
+{L=2}ESTUDIO MICROBIOLOGICO DE LENTES DE CONTACTO{L=0}
+"
+AA RET,"R00000000001
+"
+AA RET A,"R00000000001
+"
+AAC,"R00000000001
+"
+AACOC,"R00000000001
+"
+AAF,"R00000000001
+{l=2}ANTICUERPOS ANTIFOSFOLIPIDOS{l=0}
+"
+AAFMST-U,"R00000000001
+"
+AAFMT,"R00000000001
+"
+AAFOL,"R00000000001 ANTICUERPOS ANTIFOSFOLIPIDOS
+
+  Valores de referencia:        IgG  (UGPL)
+        Negativo          :        menor de  13
+        Positivo bajo     :        13 a  23
+        Positivo medio    :         24 a  35
+        Positivo alto   . :        mayor de 36"
+AAFOL G,R00000000001{CrLf}    
+AAFOL M,R00000000001{CrLf}                                                                                                                                                             {CrLf}                                                                                                                          
+AAG,"R00000000001
+"
+AAH,"R00000000001
+                                       "
+AAI,R00000000001{CrLf}A partir del 31/07/25 cambi� la metodolog�a y el valor de referencia.
+AAM,"R00000000001
+"
+AAQ,"R00000000001
+"
+AARPQ,"R00000000001
+"
+AAS,"R00000000001
+"
+AAT,R00000000001
+AATG,R00000000001{CrLf}{CrLf}
+vAATG-U,R00000000001{CrLf}
+ABI,R00000000001{CrLf}{CrLf}
+ABK,"R00000000001
+"
+INDIV,{CrLf}
+ABS,"R        003R        001R        002R        004R        005R        006R        008R        007
+{L=2}ANALISIS BACTERIOLOGICO DE MATERIAL DE ABSCESO{L=0}
+"
+AC ESPER,R        001     
+AC FORM,"R00000000001
+"
+AC GRASO,T        001R        001R        002R        003R        004R        005R        006{CrLf}{FB=1}DOSAJE DE ACIDOS GRASOS DE CADENA MUY LARGA{FB=0}{CrLf}                 {CrLf}
+AC HIP,"R00000000001
+"
+AC IRREG,"R00000000001
+"
+AC METIL,"R00000000001
+"
+ACC,"R00000000001
+"
+ACIDEZ,"R        001R        002
+
+     {L=2} ANALISIS BACTERIOLOGICO {L=0}
+
+
+"
+ACL,R00000000001
+ACL ORI,"R00000000001
+"
+ACL P,"R00000000001
+"
+ACLAC,"R00000000001
+{l=2}LACTATO en PLASMA{l=0}
+"
+ACRA,R00000000001{CrLf}
+ACS,"R00000000001
+{L=2}BIOQUIMICA SEMINAL{L=0}         
+Determinaciones Bioquimicas del Plasma Seminal
+
+Anexo: Pr�stata  
+"
+ACTH,R00000000001{CrLf}
+ACTH 16,"R00000000001
+"
+ACTH 17,"R00000000001
+"
+ACTH 18,"R00000000001
+"
+ACTH 19,"R00000000001
+"
+ACTH 20,"R00000000001
+"
+ACTH-4PO,"R00000000001
+"
+ACTINA,"R00000000001
+"
+ACTINOMI,"R00000000001
+"
+ACYL,R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021R        022R        023R        024R        025R        026R        027R        028R        029R        030R        031R        032R        033R        034R        035R        036R        037R        038R        039R        040R        041R        042R        043R        044R        045R        046R        047R        048R        049R        050R        051R        052{CrLf}{CrLf}{CrLf}{FB=1}ACILCARNITINAS{FB=0}{CrLf}{CrLf}   {CrLf}   Metodologia:LC-MS/MS -espectrometr�a de masas en tandem{CrLf}   Material: sangre seca en papel de filtro{CrLf}   
+ADA,"R00000000001
+
+"
+ADD,R        001R        002R        003R        004R        005R        006R        007{CrLf}{FB=1}RECUENTO DE ADDIS{FB=0}{CrLf}{L=1}M�todo: Recuento de elementos figurados en c�mara
+ADENO Ag,"R        001T        001R        002
+{L=2}INVESTIGACION DE ANTIGENO DE ADENOVIRUS {L=0}
+"
+ADENO GE,"R00000000001
+                              "
+ADENO GI,"R00000000001
+     "
+ADENO ME,"R00000000001
+         "
+ADENO MI,"R00000000001
+    "
+ADH,R        001R        002{CrLf}{L=2}HORMOMA ANTIDIURETICA - HAD {L=0}{CrLf}{CrLf}
+ADN ds,"R00000000001
+"
+ADN ss,"R00000000001
+"
+ADO,R00000000001{CrLf}
+ADR,R00000000001       {CrLf}
+AER,"R        001R        002R        003
+
+     {L=2} ANALISIS BACTERIOLOGICO {L=0}
+
+
+"
+AFA,R00000000001{CrLf}
+AFE,"R00000000001
+"
+AFENO,"R00000000001
+"
+AFG,"R        001
+{L=2}ACIDO FENILGLIOXILICO en ORINA{L=0}
+                    "
+AFI,"R00000000001
+"
+ADDIS 2H,R        001R        002R        003R        004R        005R        006R        007{CrLf}{FB=1}RECUENTO DE ADDIS{FB=0}{CrLf}{L=1}M�todo: Recuento de elementos figurados en c�mara
+AFL,"R00000000001
+ {L=1}{GOX=20}Valores de referencia en LIQUIDO AMNIOTICO:
+       - En embarazadas de entre 14 y 16 semanas de gestacion
+                           media esperada  15000 UI/ml.
+       - En embarazadas de entre 16 y 18 semanas de gestacion
+                           media esperada  10000 UI/ml.
+       - En embarazadas de entre 18 y 20 semanas de gestacion
+                           media esperada   8500 UI/ml.
+       - En embarazadas de entre 20 y 30 semanas de gestacion
+                           media esperada   5000 UI/ml.
+       - En embarazadas de entre 30 y 40 semanas de gestacion
+                           media esperada   2500 UI/ml.
+        (Contra la Curva standard BOEHRINGER MANNHEIM){l=0}"
+AFLAT,"R        001R        002R        003R        004
+
+
+
+
+     {L=2}AFLATOXINAS FRACCIONADAS{L=0}
+
+
+
+
+      Limite de deteccion : 0,2 ug/Kg"
+AFM,"R00000000001
+"
+AFO,R00000000001{CrLf}{CrLf}
+AFO ERI,R00000000001{CrLf}A partir de junio 2025 se modific� el valor de referencia.
+AFP,"R00000000001
+
+"
+ADE,"R        001
+"
+AFS,"R00000000001
+"
+AG QUIM,"R        001R        002R        004R        006R        008R        010R        012R        013R        014R        016R        018R        020R        021R        022R        023R        024R        025R        026R        027
+
+
+
+ {L=2}ANALISIS QUIMICO DE AGUA{L=0}
+
+    Determinaciones basicas :
+
+"
+AG-SSED,R        001
+AG-SSOL,R        001
+AG-STOT,R        001
+AG-SULF,R        001
+AG.RIEGO,"R        001R        002R        003R        004R        005R        006R        007R        008
+
+        {L=2} ANALISIS QUIMICO DE AGUA  {L=0}
+
+"
+AGL,R00000000001{CrLf}{l=1}{gox=20}METODO : Cromatografia liquida de alta presion (HPLC){CrLf}                      con derivatizacion pre-columna.{l=0}
+AGUA,"R        001T        001R        002R        003R        004
+
+        {L=2} ANALISIS FISICO - QUIMICO DE AGUA  {L=0}
+
+          Caracteres f�sico-qu�mico del agua potable,
+        seg�n ART.982 del Codigo Alimentario Argentino
+"
+AGUA BAT,T        004R        001R        002T        002R        003T        003R        004R        005R        006{CrLf}{FB=1}AN�LISIS BACTERIOL�GICO DE AGUA{FB=0}{CrLf}
+AGUA F,"R        001T        001R        002R        003R        004R        005
+
+           {L=2} ANALISIS FISICO - QUIMICO DE AGUA  {L=0}
+
+          Caracteres f�sico-qu�mico del agua potable,
+          seg�n ART.982 del Codigo Alimentario Argentino
+"
+AGUA FIS,"R        001T        001R        002R        003R        004R        005R        006
+
+        {L=2} ANALISIS QUIMICO DE AGUA  {L=0}
+
+"
+RAA,R        001R        002V        001{CrLf}V        002=R        001/F         10V        001=V        002/R        002V        001=V        001*F         10
+AGUA OXI,"R        001R        002
+
+
+
+
+
+        {L=2} ANALISIS FISICO - QUIMICO DE AGUA  {L=0}
+
+"
+AGUA Q,"R        001T        001R        002R        003R        004R        005
+
+        {L=2} ANALISIS FISICO - QUIMICO DE AGUA  {L=0}
+
+          Caracteres f�sico-qu�mico del agua potable,
+          seg�n ART.982 del Codigo Alimentario Argentino
+"
+AGUA FQ,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018{CrLf}{L=2}ANALISIS DE AGUA{L=0}{CrLf}     {CrLf}   {CrLf}   *Nota: La autoridad sanitaria competente podr� admitir valores distintos si la composici�n normal del agua{CrLf}de la zona y la imposibilidad de aplicar tecnolog�as de correcci�n lo hicieran necesario.{CrLf}En aquellas regiones del pa�s con suelos de alto contenido de ars�nico, la autoridad sanitaria competente{CrLf}podr� admitir valores mayores a 0,01 mg/L con un l�mite m�ximo de 0,05 mg/L cuando la composici�n{CrLf}normal del agua de la zona y la imposibilidad de aplicar tecnolog�as de correcci�n lo hicieran necesario; ello{CrLf}hasta contar con los resultados del estudio ""Hidroarsenicismo y Saneamiento B�sico en la Rep�blica{CrLf}Argentina - Estudios b�sicos para el establecimiento de criterios y prioridades sanitarias en cobertura y{CrLf}calidad de aguas"", cuyos t�rminos fueron elaborados por la Coordinaci�n Pol�ticas Socioambientales de la{CrLf}entonces Secretar�a de Gobierno de Salud del entonces Ministerio de Salud y Desarrollo Social y ex{CrLf}Secretar�a de Infraestructura y Pol�tica H�drica del entonces Ministerio del Interior, Obras P�blicas y{CrLf}Vivienda. La Comisi�n Nacional de Alimentos deber� recomendar el l�mite m�ximo admitido para dichas{CrLf}regiones del pa�s en base a los estudios antes referidos.{CrLf}** Nota: Este par�metro es interpretado seg�n el m�ximo permitido por el CAA sin tener en cuenta la variable de temperatura mediay m�xima del a�o de la zona.{CrLf}Seg�n ley 11.820 de la Provincia Buenos Aires el valor m�ximo toleroble es de 1,5 mg/L"
+AGUA5,"R        001R        002R        003T        001R        004T        002R        005T        003R        006
+
+
+           {L=2}ANALISIS DE AGUA{L=0}
+        
+
+       La muestra fue tomada y remitida por el interesado,
+       sin la intervencion de personal de este laboratorio."
+AG_SSOL,R        001
+AHO,R00000000001{CrLf}
+AIL,R00000000001{CrLf}
+AJO,R00000000001{CrLf}
+AL,R00000000001{CrLf}
+ALA,"R00000000001{CrLf}(*) Albiano, NF. Toxicolog�a Laboral. Criterios para la vigilancia de los trabajadores expuestos a sustancias qu�micas peligrosas. P�g 47"
+ALA C,"R00000000001
+"
+ALA FOOD,"R00000000001T        001
+          PANEL DE ALERGENOS RESPIRATORIOS
+
+Alergenos ensayados :
+            Clara de huevo,Leche,Pescado,
+            Mani,Soja y Trigo."
+ALA TOP,"R00000000001T        001
+          PANEL DE ALERGENOS RESPIRATORIOS
+
+Alergenos ensayados :
+            Dermatofagoides ptronyssinus,
+            epitelio de gato,caspa de perro,
+            Bermuda grass,Timothy grass,
+            Penicillium notatum,Alternaria
+            tenuis,Abedul,Cedro japones,
+            Ambrosia comun,Plantago y
+            Parietaria officinalis."
+ALB-Bi,R00000000001{CrLf}
+ALB-C,"R00000000001
+
+"
+ALB-E,"R00000000001
+
+"
+ALB-F,"R00000000001
+
+"
+ALB-U,R        001{CrLf}V        001=R        001*IVOL     001V        001=V        001/F00000001000
+ALC,"R00000000001
+"
+ALCO,"R00000000001
+"
+ALCOHOL,"R        001R        002R        003
+
+
+
+
+       {L=2}INVESTIGACION de ALCOHOL METILICO Y ETILICO{L=0}
+
+
+       {l=1}Metodo : Cromatografia Gaseosa Detector FID{l=0}"
+ALD,"R00000000001
+"
+ACRA.,R        001
+ALG-Bi,"T        001R        001
+
+         "
+ALIMEN,"R        001T        001R        002T        002R        003T        003R        004
+{L=2}ANALISIS QUIMICO DE ALIMENTO SUSTITUTO DEL POLEN{L=0}
+      "
+ALO,R00000000001{CrLf}
+ALP,"R00000000001
+"
+ALR,R00000000001{CrLf}
+ALR-PC,"R00000000001
+"
+ALR-POST,"R00000000001
+"
+ALRPD,"R00000000001
+"
+AAMIT,R00000000001 {CrLf}M�todo: Inmunofluorescencia
+AMANDE,"R00000000001
+"
+AME,"R00000000001
+"
+AMINA,"R00000000001
+"
+AMINOAC,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021
+
+
+
+       {L=2}CROMATOGRAFIA DE AMINOACIDOS{L=0}
+
+                {L=2}PERFIL SANGUINEO{L=0}
+
+"
+AMIO,R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021R        022R        023{CrLf}{FB=1} AMINOACIDOS SERICOS (PERFIL  DE 16){FB=0}{CrLf}M�todo: HPLC
+AMN,"R00000000001
+"
+AMP,"R00000000001
+"
+AMPN,"R00000000001
+"
+AMPO,"R00000000001
+"
+AMS,R00000000001
+AMS-C,"R00000000001
+"
+AMT,"R        001R        002
+{L=2}AMITRIPTILINA - NORTRIPTILINA {L=0}
+
+{L=1}{gox=20}{setleft}Rango terapeutico de la suma: 80 - 220 ng/ml.
+Nivel toxico: mayor de 500 ng/ml.
+Metodo: HPLC {L=0}{setleft}"
+AMU,R00000000001{CrLf}
+AN4,R00000000001{CrLf}{CrLf}
+AN4 30,"R00000000001
+"
+AN4 60,"R00000000001
+"
+URE-U,"R        001
+"
+GERM,R        001R        002R        003R        004R        005R        006{CrLf}{FB=1}G�RMENES COMUNES{FB=0}
+AN4 ACTH,"R        001R        002
+{L=2}PRUEBA DE  DELTA 4 ANDROSTENODIONA POST ESTIMULACION DE ACTH{L=0}
+"
+ANA,"R00000000001R        002
+"
+ANC C E,R00000000001{CrLf}
+ANC P E,R00000000001{CrLf}
+ANCA C,R00000000001{CrLf}
+ANCA P,R00000000001{CrLf}
+ANFETA,R        001R        002R        003T        001{FB=1}DETECCI�N DE DROGAS{CrLf}M�todo: Ensayo inmunol�gico con acs monoclonales espec�ficos{CrLf}{CrLf}{FB=1}Observaciones: Todo resultado positivo se deber�a confirmar con t�cnica de espectrometr�a de masa.
+ANG,R00000000001{CrLf}
+ANT,R        001R        002R        003{CrLf}{FB=1}ANTIBIOGRAMA{FB=0}
+ANTI LC1,"R00000000001
+"
+ANU,"R00000000001
+"
+APA,R00000000001{CrLf}
+vAPB,R00000000001{CrLf}
+APG,"R00000000001
+"
+vAPO,R00000000001{CrLf}
+ARCO5,R00000000001{CrLf}M�todo:Elisa
+ARENA,"R        001R        002R        003R        004
+
+
+                {L=2} Examen BACTERIOLOGICO{L=0}
+               
+"
+ARL,"R00000000001
+"
+ARL C,"R00000000001
+"
+vARO,R00000000001{CrLf}
+AS-A,"R00000000001
+"
+AS-CR-U,"R00000000001
+"
+AS-ESTEA,"R00000000001
+"
+AS-PELO,"R00000000001
+"
+AS-U,"R00000000001
+"
+ASM,"R00000000001
+"
+ASO,"R00000000001
+"
+ASP,"R00000000001
+"
+ASP 17,"R00000000001
+"
+ASP 20,"R00000000001
+"
+AT3,R        001R        002{CrLf}{CrLf}{CrLf}
+ATA,"R00000000001
+
+Metabolito para personas expuestas a tricloroetileno 
+"
+ATF,R        001T        001R        002T        002R        003R        004{CrLf}{L=2}DEPURACION DE  ALFA 1 ANTITRIPSINA {L=0}{CrLf}{CrLf}{L=1}{SETLEFT}MATERIAL EXAMINADO:suero y heces{CrLf}M�TODO: Inmunodifusi�n Radial{L=0}{RESLEFT}
+ATG A,"R00000000001
+"
+ATG G,R00000000001
+ATR,R00000000001
+ATRMF,"R00000000001
+"
+CHA I,"R        001
+"
+PROTROM,"R        001
+"
+AU-U,"R        001
+
+V        001=R        001*IVOL     001V        001=V        001/F00000010000"
+AUJESKY,"R        001R        002R        003
+
+     {L=2} SEROLOGIA PARA ENFERMEDAD DE AUJESZKY {L=0}
+
+      Metodo : ELISA
+"
+AUOCAS,"R00000000001
+"
+AUR-Bi,R00000000001{CrLf}
+PREALB,"R        001
+"
+AUR LS,"R00000000001
+"
+AUR-LIQ,"R00000000001
+"
+AUU,R00000000001{CrLf}
+AUU02,"R00000000001
+"
+AV SB,"R00000000001
+
+ Material : secrecion bronquial"
+AVES,"R        001T        001R        002
+
+
+
+       {L=2}ANALISIS QUIMICO DE ALIMENTO{L=0}
+
+
+
+      "
+AVM,R00000000001{CrLf}
+Ac APG,"R00000000001
+{l=1}{gox=20}Antigeno: Filtrado de cultivos de A. flavus
+      A. terrus, A. niger, A. fumigatus.{l=0}"
+Ac ESP A,"R00000000001
+"
+Ac ESP G,"R00000000001
+"
+Ac HU,R00000000001{CrLf}{CrLf}
+Ac PIEL,"R00000000001
+"
+Ac PIN,"R00000000001
+
+"
+Ac YO,"R00000000001
+"
+AcI,"R00000000001
+
+"
+vAla,R00000000001{CrLf}
+B12,R00000000001{CrLf}{CrLf}Se considera como limite saludable de Vitamina B12 en sangre a partir de 540 pg/ml.
+B2G G,R00000000001{CrLf}
+B2G M,R00000000001{CrLf}
+B2M,R00000000001{CrLf}
+B2O,"R00000000001
+"
+AVELLANA,R        001{CrLf}
+BACTE,"R        001R        002R        003R        004R        005R        006
+
+     {L=2} ANALISIS BACTERIOLOGICO {L=0}
+
+
+"
+BACTE F,"R        001R        002
+{L=2}EXAMEN BACTERIOLOGICO {L=0}
+ "
+BACTEL,"R        001R        002R        003
+
+
+        {L=2}    Examen BACTERIOLOGICO{L=0}
+               
+"
+BACTQUE,"R        001R        002R        003R        004R        005
+
+
+             {L=2} Examen BACTERIOLOGICO{L=0}
+               
+"
+BAD,"R        001R        002R        003R        004R        005R        006
+{L=2}INFORME DE ANALISIS BACTERIOLOGICO DE AGUA DE DIALISIS{L=0}
+{L=1}{GOX=20}{SETLEFT}
+Metodologia analitica: Recuento de colonias aerobias y
+microaerofilas por el metodo de filtracion por membrana
+segun normas O.N.S. y de acuerdo a reglamentaciones
+vigentes ( Ley Nac. 22853 - Prov. 11284 y Res. H.C.D. IOMA  274/94.
+{L=0}{RESLEFT}"
+BAN-OLIG,"R00000000001
+"
+BARTO G,R00000000001{CrLf}            
+BAT,"R        001R        002R        003R        004R        005R        006T        001R        007R        008R        009
+{L=2}EXAMEN BACTERIOLOGICO {L=0}
+"
+BAT-FQ,"R        001R        002R        003R        004
+{L=2}ANALISIS BACTERIOLOGICO Y FISICO-QUIMICO{L=0}
+"
+BBA,"R00000000001
+"
+BBF,"R00000000001
+"
+BBI,R00000000001{CrLf}
+BBI-C,"R00000000001
+"
+BBM,R00000000001{CrLf}
+BCA,"R00000000001
+"
+BCL2/IGH,"R        001R        002R        003
+{L=2}TRANSLOCACION BCL-2/IgH{L=0}
+"
+vBCR/ABL,"R        001R        002R        003
+{L=2}ANALISIS de ADN por BIOLOGIA MOLECULAR{L=0}
+{L=2}DETECTAR TRANSLOCACION BCR/ABL{L=0}
+
+{l=1}{gox=20}{setleft}Tecnica :
+1- Aislamiento y purificacion de ADN celular.
+2- Transcripcion reversa del RNA celular y generacion del ADNc.
+3- Amplificacion por reaccion en cadena de la polimerasa del ADNc
+empleando  primers especificos para la translocacion
+t(9;22)(q34;11) gen de fusion p210 y p190.
+4- Revelado por electroforesis en gel de agarosa.{l=0}{resleft}
+
+"
+BCROSS,"R00000000001
+"
+PRENAT,R        001R        002R        003R        004T        005R        005R        006R        007R        008T        006T        001T        007T        002T        008R        009R        010R        011R        012R        013R        014T        009R        015R        016T        010R        017T        011T        003T        012T        004{CrLf}{FB=1}SCREENING PRENATAL DEL PRIMER TRIMESTRE DE EMBARAZO{FB=0}{CrLf}
+BDE,"R        001R        002R        003R        004R        005R        006IZNC     000
+{L=2}EXAMEN BACTERIOLOGICO DE ESPUTO{L=0}      
+
+{L=3}Ex�men microsc�pico de la reacci�n inflamatoria {L=0}  
+{L=1}M�todo: coloraci�n previa con Giemsa - Azul de metileno"" {L=0}
+"
+BEM,"R        001R        002R        003R        004R        005R        006R        007
+
+        {l=2}     Examen BACTERIOLOGICO {L=0}
+               
+
+Resultado:
+
+- Recuento de microorganismos"
+BEM-1,"R        001R        002R        003R        004
+
+ {L=2}                 EXAMEN   BACTERIOLOGICO{L=00}    
+               
+Resultado:
+
+- Recuento de microorganismos"
+BEN,R        001R        002R        003T        001{CrLf}{FB=1}DETECCI�N DE DROGAS{CrLf}M�todo: Ensayo inmunol�gico con acs monoclonales espec�ficos{CrLf}
+BENDOR,"R00000000001
+
+"
+BETA2GLI,"R00000000001
+
+"
+IGA T,"R        001
+"
+vBGT,"R        001R        002R        003
+{L=2}ANALISIS CITOGENETICO ESTUDIO CROMOSOMICO : BANDEO G-T {L=0}
+
+MUESTRA             : sangre entera heparinizada
+
+MATERIAL EXAMINADO  : linfocitos
+
+METODO DE CULTIVO   : microcultivo de sangre entera
+
+METAFASES ANALIZADAS: 11 (once)
+
+{L=2}CARIOTIPO SIMPLE{L=0}
+"
+BHCG,R00000000001T        002T        003T        006T        007{CrLf}
+BIC,"R00000000001
+"
+BIN,"R00000000001
+"
+BIOP,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013
+{L=2}ANALISIS BACTERIOLOGICO DE MATRIAL DE BIOPSIA{L=0}
+"
+BIU,"R00000000001
+"
+BLA,"R00000000001
+"
+BOO,"R        001
+{L=2}ANALISIS DE ORINA
+DETERMINACION DE BANDAS OLIGOCLONALES{L=0}
+"
+BORRE G,R00000000001{CrLf}
+BORRE M,R00000000001{CrLf}
+BPG,R00000000001{CrLf}
+BPM,R00000000001{CrLf}
+BR-ASU,R00000000001
+BR-BAM,R00000000001
+BR-BCER,R00000000001
+BR-COL F,R00000000001
+BR-COLI,R00000000001
+BR-ECO,R00000000001
+BR-HYL,R00000000001
+BR-PERF,"R00000000001
+"
+BR-SAL,"R00000000001
+"
+BR-STA,R00000000001
+BR-TER,R00000000001
+BRAND T,"R00000000001
+
+"
+BROM,"R        001R        002R        003R        004R        005
+
+
+      {L=2}ANALISIS QUIMICO DE ALIMENTOS{L=0}
+
+
+       Ensayo cualitativo
+       Metodo  :  Colorimetrico Ioduro de Potasio-
+                 Acido Clorhidrico.
+
+      - Muestra extraida y remitida por el solicitante
+      sin intervencion de personal de este laboratorio."
+BRP,R        001V        001R        002{CrLf}{L=2}BILIRRUBINEMIA post-prandial{L=0}{CrLf}V00000000001=R00000000002-R00000000001
+BIL-Bi,R        001R        002R        003{CrLf}{CrLf}V00000000001=R00000000002-R00000000001
+BRR-C,"V        001V        002V        003
+
+
+          {L=2}BILIRRUBINEMIA {L=0}
+{L=13}
+
+           V        001=R        001/F00000000010V        003=R        002/F00000000010V00000000002=V00000000003-V00000000001"
+BRR-E,"R        001V        001R        002
+
+
+          {L=2}BILIRRUBINEMIA {L=0}
+{L=13}
+
+            V        001=R        002-R        001"
+BRR-F,"V        001V        002V        003
+
+
+          {L=2}BILIRRUBINEMIA {L=0}
+
+
+          V00000000001=R00000000001*F00000000000V00000000003=R00000000002*F00000000000V00000000002=V00000000003-V00000000001"
+BRUCE G,R00000000001{CrLf}                            
+BRUCE M,"R00000000001
+                       "
+BTA,"R00000000001
+"
+BUF,"R00000000001
+"
+BVD,"R        001R        002R        003
+{L=2}DIAGNOSTICO DE DIARREA VIRAL BOVINA {L=0}
+
+Metodo : Inmunofluorescencia indirecta
+"
+C BILIAR,"R        001R        002R        003R        004R        005
+{L=2} ANALISIS DE CALCULOS BILIARES{L=0}
+
+{L=3}Caracteristicas macroscopicas:{L=0}
+   "
+C125,"R00000000001
+"
+C15,R00000000001{CrLf}{CrLf}
+C17,R00000000001
+C18,"R00000000001
+
+"
+C19,"R00000000001
+"
+C1Q,R00000000001{CrLf}
+vC1Q-IF,R00000000001{CrLf}
+C1Q-IN,R00000000001{CrLf}
+C1T,"R00000000001
+"
+C2,"R00000000001
+"
+C21,R00000000001{CrLf}               
+C2T,"R00000000001
+
+"
+C3,R00000000001{CrLf}
+ACMUSK,R        001{CrLf}
+C3S,"R        001R        002R        003R        004R        005
+{L=2} PRUEBA DE SUPRESION DEL EJE SOMATOTROFICO 
+                 post sobrecarga de Glucosa{L=0}
+
+Resultado:
+
+{L=1}{gox=20}{setleft}Valor de referencia basal: hasta 10 ugr/l.
+
+La prueba se considera positiva cuando se observa
+un descenso de los valores de Somatotrofina a los
+60 minutos por debajo de 1-2 ugr/l. {L=0}{resleft}"
+C4,R00000000001{CrLf}
+C5,"R00000000001
+"
+C50,R00000000001
+C72,"R00000000001
+"
+CA-A,"R00000000001
+"
+CA-B,"R00000000001
+"
+CA-CR-OC,R        001R        002V        002R        003{CrLf}V00000000002=R00000000001/R00000000002V00000000002=V00000000002*F00000000100
+CA-U,"R        001T        001IVOL     000
+
+V        001=R        001*IVOL     001V        001=V        001/F00000010000V        002=R        001/ICR-U    001V        002=V        002*F00000000001"
+CA-U-AA,"R00000000001
+"
+CA-U12,"R00000000001
+"
+CA-U2,"R00000000001
+"
+CA-U2-AA,"R00000000001
+"
+CA-U3,"R00000000001
+"
+CA-UOC,"R00000000001
+"
+CAA,"R00000000001
+"
+CADMIO,R00000000001{CrLf}
+CA-Bi,R00000000001{CrLf}
+CAL,"R00000000001
+"
+CAM,R00000000001{CrLf}
+CAMPYLO,"R        001R        002R        003
+{L=2}DIAGNOSTICO DE CAMPYLOBACTER FETUS{L=0}
+
+Metodo : Inmunoflorescencia Directa
+"
+CAN,"R00000000001
+"
+FARMACOS,
+CAP,"R        001R        002
+{L=2}TEST DEL CAPTOPRIL{L=0}
+
+MATERIAL EXAMINADO: plasma
+METODO            : IRMA - INMUNORADIOMETRICO
+{L=1}{GOX=20}Intervalo de referencia basal: 5,0 a 47,0 pg/ml
+
+
+
+
+
+
+     "
+CAR,R00000000001{CrLf}
+CARA,R00000000001{CrLf}
+vCARIO,"R        001R        002R        003
+{L=2}AN�LISIS GEN�TICO{L=0}
+"
+vCARIO 2,"R        001R        002R        003
+{L=2}ANALISIS GENETICO{L=0}
+"
+vCARIO S,"R        001R        002
+{L=2}ANALISIS CITOGENETICO ESTUDIO CROMOSOMICO SIMPLE{L=0}
+
+MUESTRA             : sangre entera heparinizada
+
+MATERIAL EXAMINADO  : linfocitos
+
+METODO DE CULTIVO   : microcultivo de sangre entera
+
+METAFASES ANALIZADAS: 10 (diez)
+
+{L=2}CARIOTIPO SIMPLE{L=0}
+"
+CARNE,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015
+
+
+   {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+"
+CARNE1,"R        001R        002R        003
+
+
+   {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+
+"
+CARNE2,"T        010R        001R        002R        003R        004R        005R        006R        007R        008R        009T        012T        013T        014T        015T        016T        017
+   {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=00}
+"
+CARNES,"R        001R        002R        003R        004R        005R        006
+
+
+   {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+
+"
+CAS,"R00000000001
+"
+CAS-AA,"R00000000001
+"
+CAT U,R00000000001R        002R        003
+CATETER,"R        001
+{L=2}EXAMEN BACTERIOLOGICO CATETER RECUENTO DE COLONIAS {L=0}
+"
+CAU,R        001T        001IVOL     000{CrLf}V        001=R        001/IVOL     001V00000000001=V00000000001*F00000000100V00000000002=V00000000001/ICRU     001V00000000002=V00000000002*F00000000100
+CBI.,R00000000001
+CBD,R00000000001{CrLf}
+CBI,"R00000000001
+"
+CBN,"R00000000001
+"
+CBX,"R00000000001
+ "
+CBZ,"R00000000001
+"
+CC1,R        001R        002R        003V        002{CrLf}{FB=1}CLEARENCE DE CREATININA{FB=0}{CrLf}{CrLf}           V00000000001=R00000000003/F00000000720V00000000003=R00000000002/R00000000001V00000000002=V00000000003*V00000000001
+CCL,"R00000000001
+{L=01}{Gox=20}{SETLEFT}-Rango de referencia Nichols Institute -
+- TRASPLANTADOS RENALES:
+  Valores de 250 a 875 ng/ml
+- TRASPLANTADOS NO RENALES:
+  Valores de 360 a 1200 ng/ml  {L=0}{RESLEFT} "
+CD-A,"R00000000001
+"
+CD15,"R        001R        002R        003
+{L=2}CD15 POR CITOMETRIA DE FLUJO{L=0}
+"
+CD16,"R        001R        002
+{L=2}CD16 POR CITOMETRIA DE FLUJO {L=0}
+"
+CD19,"R00000000001R        002R        003R        004
+{L=2}ANALISIS DE SUBPOBLACIONES LINFOCITARIAS{L=0} 
+"
+CD19-INV,"R00000000001
+"
+CD2,"R        001R        002
+{L=2}CD 2 POR CITOMETRIA DE FLUJO{L=0}
+{L=1}{GOX=20}Valor nornal en porcentaje de 60% a 80%"
+CD20,R00000000001R        004R        002R        003{CrLf}{FB=1}ANALISIS DE SUBPOBLACIONES LINFOCITARIAS - LINFOCITOS CD20{FB=0} {CrLf}
+CD3,R00000000001R        002R        003R        004{CrLf}{FB=1}AN�LISIS DE SUBPOBLACIONES LINFOCITARIAS - LINFOCITOS CD3{FB=0} {CrLf}
+CD4,R00000000001R        004R        002R        003{CrLf}{FB=1}AN�LISIS DE SUBPOBLACIONES LINFOCITARIAS - LINFOCITOS CD4{FB=0} {CrLf}
+CD5,"R        001R        002
+{L=2}CD5 POR CITOMETRIA DE FLUJO{L=0}
+{L=1}{GOX=20}Valor normal en porcentaje : de 60% a 85%"
+CD56,R00000000001R        002R        003R        004{FB=1}ANALISIS DE SUBPOBLACIONES LINFOCITARIAS - LINFOCITOS CD56{FB=0} 
+CD57,R        001R        002{CrLf}{L=2}CD57 POR CITOMETRIA DE FLUJO{L=0}
+CD7,"R        001R        002
+{L=2}CD7-POR CITOMETRIA DE FLUJO {L=0}
+"
+CD8,R00000000001R        004R        002R        003{CrLf}{FB=1}AN�LISIS DE SUBPOBLACIONES LINFOCITARIAS - LINFOCITOS CD8{FB=0} {CrLf}
+CDAUR,"R        001R        002V        001R        003V        002
+{L=2}CLEARENCE DE ACIDO URICO{L=0}
+
+V00000000001=R00000000003/F00000001440V00000000001=V00000000001*F00000000100V00000000003=R00000000002/R00000000001V00000000002=V00000000003*V00000000001"
+CDC,R        001R        002R        003V        002{CrLf}{L=n}{FB=1}CLEARENCE DE CREATININA{L=0}{CrLf}V        001=R        003/F       1440V        003=R        002/R        001V        002=V        003*V        001
+CDC PA,"R        001R        002V        001R        003R        004R        005R        006R        007V        004V        005
+{L=2}CLEARENCE DE CREATININA
+Corregido por superficie corporal{L=0}
+V        001=R        003/F00000001440V00000000001=V00000000001*F00000000100V00000000003=R00000000002/R00000000001V        002=V        003*V        001V        004=V        002*F00000000173V        004=V        004/R        006V        008=R        009-R        007V        008=V        008*R        004V        005=V        008/R        001V        005=V        005/R        008V        005=V        005*F00000000100"
+CDS,"R        001R        002
+{L=2}ANALISIS BACTERIOLOGICO DE SANGRE: HEMOCULTIVO{L=0}
+"
+CDSxBRU,"R        001R        002
+{L=2}ANALISIS DE SANGRE:
+HEMOCULTIVO para BRUCELOSIS{L=0}
+"
+CDU,R        001R        002R        003V        002{CrLf}{FB=1}CLEARENCE DE UREA{FB=0}{CrLf}          V        004=R        003/F       1440V        001=V        004*F        100V00000000003=R00000000002/R00000000001V        005=V        003*V        001V        002=V        005*F        100
+ERS,R        001
+CDU PA,"R        001R        002V        001R        003R        004R        005R        006R        007V        004
+{L=2}CLEARENCE DE UREA{L=0}
+{L=3}Corregido por superficie corporal{L=0}
+V        001=R        003/F00000001440V00000000001=V00000000001*F00000000100V        003=R        002/R        001V        002=V        003*V        001V        004=V        002*F00000000173V        004=V        004/R        006"
+CEA,"R00000000001
+"
+CEL CLA,"R00000000001
+
+"
+CEL NAR,"R00000000001
+"
+CEL RED,"R00000000001
+
+"
+CEN,R00000000001{CrLf}A partir de agosto 2025 se modific� la metodolog�a 
+CEPA,"R        001R        002R        003R        004R        005
+{L=2}IDENTIFICACI�N DE G�RMENES{L=0}
+{L=1}Material: CEPA AISLADA{L=0}
+"
+CEPA 2,"R        001R        002R        003R        004R        005R        006R        007
+
+
+
+       {L=2}TIPIFICACION DE CEPA{L=0}
+
+"
+PEN,"R        001
+"
+CEPA 3,"R        001R        002R        003R        004R        005R        006R        007R        008
+
+
+
+       {L=2}TIPIFICACION DE CEPA{L=0}
+
+"
+CEPA 4,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+
+
+
+       {L=2}TIPIFICACION DE CEPA{L=0}
+
+"
+CER,R00000000001{CrLf}
+CET,R00000000001{CrLf}{CrLf}
+CETOACI,"R00000000001
+{L=2}INVESTIGACI�N CUALITATIVA DE  
+METABOLITOS DE AMINO�CIDOS URINARIOS {L=00}  
+"
+CEU,"R00000000001
+{L=n}{FB=1}CETONURIA (orina de la ma�ana)"
+CFI,"R00000000001
+"
+CFL,"R00000000001
+"
+CHA,"R00000000001
+"
+CHAE,"R00000000001
+ "
+CHAE G,"R00000000001
+"
+CHAE M,R00000000001{CrLf} 
+CHE,R00000000001{CrLf}
+CHF,"R00000000001
+"
+CHH,"R00000000001
+"
+CHI,"R00000000001
+"
+CHL,"R00000000001
+"
+CHM,"R00000000001
+"
+CHO,"R        001R        002R        003R        004
+{L=2}EXAMEN MICOLOGICO{L=0}
+"
+CIC,"R00000000001
+"
+CIM,"R        001R        002R        003
+{L=2}CONCENTRACION INHIBITORIA MINIMA{L=0}
+
+{l=1}{gox=20}{setleft}Interpretacion :
+Sensible : menor de 0,120 ugr/ml
+Intermedio : de 0,250 ugr/ml a 4,000 ugr/ml
+Resistente : mayor de 4,000 ugr/ml
+
+Metodo : E - TEST{l=0}{resleft}"
+CIS,R00000000001{CrLf}
+CIT,R        001
+CIT-S,"R00000000001
+
+"
+CIT2,"R00000000001
+"
+HIV-WES,R        001R        002R        003R        004R        005R        006R        007R        008R        009{CrLf}{FB=1}Anticuerpos Anti HIV I y II. M�todo confirmatorio{FB=0}{CrLf}M�todo: LIA{CrLf}
+CITO MO,"R        001R        002R        003R        004R        005R        006R        007
+{L=2}CROMOSOMOPATIAS ONCOLOGICAS{L=0}
+"
+CITO MO1,"R        001R        002R        003R        004R        005R        006
+{L=2}CROMOSOMOPATIAS ONCOLOGICAS - INFORME CITOGENETICO{L=0}
+"
+CITOGE 1,"R        001R        002R        003
+
+
+
+               {L=2}HEMATOLOGIA ONCOLOGICA{L=0}
+
+               Analisis citogenetico molecular
+
+
+
+"
+CITOGE 2,"R        001R        002R        003R        004R        005R        006R        007
+{L=2}ANALISIS CITOGENETICO{L=0}
+"
+CITOGEN,"R        001R        002R        003R        009R        015R        016
+
+
+
+               {L=2}INFORME GENETICO{L=0}
+
+"
+CITRICO,"R00000000001
+"
+CKL,"R        001R        002
+{L=2}CADENAS LIVIANAS EN SUERO{L=0}
+
+         "
+CKM,"R00000000001
+"
+INMU-ORI,R00000000001{CrLf}{l=1}{Gox=20}M�todo : Inmunofijaci�n {l=0}
+CLE,R00000000001{CrLf}{CrLf}
+CLI,"R00000000001
+{L=2}DETERMINACION DE AZUCARES REDUCTORES en Materia Fecal{L=0}
+"
+CLI ORI,"R00000000001
+"
+CLKL,R00000000001{CrLf}{FB=1}CADENAS LIVIANAS LIBRES KAPPA en suero{CrLf}
+CLNE G,R00000000001{CrLf}
+CLNE M,R00000000001{CrLf}
+CLO,"R00000000001
+"
+CLO LCR,R00000000001{CrLf}
+CLORO,"R00000000001
+
+"
+CLORPR,"R00000000001
+"
+CLOS,"R00000000001R        002
+{L=2}ESTUDIO MICROBIOLOGICO
+INVESTIGACION DE TOXINAS A Y B DE CLOSTRIDIUM DIFFICILE{L=0}                    
+"
+CLOSTRI,"R00000000001     {L=2}        INVESTIGACION DE CLOSTRIDIUM
+                         Y CAMPYLOBACTER{L=0}
+
+
+
+"
+CLOZAP,R        001R        002R        003{CrLf}{L=2}DETERMINACION DE CLOZAPINA{L=0}{CrLf}
+CLP,"R00000000001
+"
+CLPS G,"R00000000001
+"
+CLPS LP,"R        001R        002
+{L=2}Investigacion de Antigenos para CHLAMYDIA PSITTACI{L=0}
+"
+CLPS M,"R00000000001
+"
+CLR,"R00000000001
+
+"
+CLTR A,"R00000000001
+                                      "
+CLTR G,R00000000001{CrLf}{CrLf} {CrLf}
+CLTR M,R00000000001{CrLf}
+CLU,"R00000000001
+"
+CLUE CEL,"R00000000001
+"
+CMC,"R00000000001
+"
+CMF,R        001R        002R        003R        004R        005R        006R        007{CrLf}{L=2}{FB=1} COPROCULTIVO{FB=0}{L=0}{CrLf}  {CrLf}{FB=1}EXAMEN EN FRESCO:{FB=0}{CrLf}
+CMO,"R        001R        002R        003R        004R        005
+{L=2}MOCO NASAL{L=0}
+   
+{L=3}Examen Citologico{L=0}
+    
+Resultado:
+"
+CMV A,"R00000000001
+"
+CMV AV,R00000000001
+CMV AVM,"R00000000001
+
+ Valor de referencia :
+       Avidez superior a 45% significa avidez alta
+       de la IgM anti CMV, reinfeccion o respuesta
+       secundaria.
+       Avidez antre 35 y 45 % zona gris
+       Avidez inferior a 35% significa avidez baja
+       de la IgG anti CMV, primoinfeccion o
+       respuesta primaria."
+CMV G,R00000000001T        001{CrLf}{CrLf}
+CMV M,R00000000001{CrLf}{CrLf}                                                         
+CMV PCR,"R00000000001
+"
+CNZ,"R00000000001
+"
+CO3,"R        001R        002R        003R        004R        005R        006
+{L=2}COAGULOGRAMA BASICO{L=0}
+
+          "
+vCOA,"R        001T        002R        002T        003R        004T        004R        005T        005R        006T        006R        007T        001R        003R        008
+{L=n}{FB=1}COAGULOGRAMA  {L=0}
+"
+COA CAO,"R00000000001
+"
+EUD,R        001T        002R        002R        003T        001R        004R        005R        006R        007{CrLf}{FB=1}G�RMENES COMUNES{FB=0}{CrLf}
+COA SBB,"R        001R        002
+{l=2}Investigacion de Antigenos Capsulares de Estreptococo grupo B
+          ( Streptococcus Agalactiae){l=0} 
+"
+DROGAS 2,"R        001
+{L=2}DETECCI�N DE DROGAS{L=0}
+{L=3}Metabolitos de : COCAINA {L=0}
+
+Deteccion cuantitativo de Benzoylecgonina
+{L=1}{gox=20}Valor de corte : 30 ng/ml   {L=0}"
+COCCI,"R00000000001
+"
+COE,R00000000001{CrLf}
+COFACTOR,"R00000000001
+"
+COG,"R        001R        002R        003R        004
+                Investigacion de ANTIGENOS
+                CAPSULARES DE NATURALEZA
+                POLISACARIDA
+                Material examinado  :  Liquido Cefalorraquideo
+
+   Resultado:
+
+   Metodo empleado: COAGLUTINACION"
+COL-Bi,R00000000001
+COLONIA,"R        001R        002
+{L=2}ESTUDIO DE COLONIAS MICOTICAS{L=0}
+"
+COMPAT,"R00000000001R        002
+{L=2}COMPATIBILIDAD MATRIMONIAL{L=00}
+
+                                "
+CONCLUS,"R        001
+
+
+
+    {L=2} CONCLUSION : {L=0}
+
+          Sintetizando los antigenos encontrados por
+   serologia, referidos al pedido medico.
+"
+COR,R00000000001{CrLf}
+COR-10,"R00000000001
+"
+COR-12,"R00000000001
+"
+COR-16,R00000000001{CrLf}
+COR-1630,"R00000000001
+"
+COR-16DP,"R00000000001
+{l=1}{gox=20}Valores de referencia: En los individuos normales
+     se produce una supresion de al menos el 50 %."
+COR-17,"R00000000001
+"
+COR-1730,"R00000000001
+"
+COR-18,"R00000000001
+"
+COR-18PD,"R00000000001
+{l=1}{gox=20}{setleft}Valores de referencia: En los individuos normales
+se produce una supresion de al menos el 50 %.{l=0}{resleft}"
+COR-19,"R00000000001
+"
+COR-1930,"R00000000001
+"
+COR-2,"R00000000001
+"
+COR-20,"R00000000001
+"
+COR-21,"R00000000001
+"
+COR-2130,"R00000000001
+"
+COR-22,"R00000000001
+"
+COR-23,"R00000000001
+"
+COR-2PH,"R        001R        002
+{L=2}PRUEBA DEL CORTISOL PLASMATICO{L=0}
+        {L=1}{GOX=20}{SETLEFT}Metodo: Radioinmunoensayo            
+Valor de referencia basal : 8 hs. 10 a 20 ugr/100 ml{L=0}{RESLEFT}"
+COR-30,"R00000000001
+"
+COR-4PA,"R00000000001
+"
+COR-6,"R00000000001
+"
+COR-60,"R00000000001
+"
+ESP-BAC,R        001R        002R        003T        001R        004R        005R        006R        007{CrLf}{FB=1}EXAMEN BACTERIOL�GICO DE ESPERMA - ESPERMOCULTIVO{FB=0}{CrLf}
+COR-60PA,"R        001R        002
+{L=2}PRUEBA DE CORTISOL - POST ESTIMULACION ACTH{L=0}
+{l=1}{gox=20}{setleft}Valores de referencia:
+- El incremento debera ser superior
+a 7 ugr%, con respecto del valor
+basal {L=0}{resleft}"
+COR-7,"R00000000001
+"
+COR-8DP,R00000000001{CrLf}{CrLf}
+COR-8PD,"R00000000001
+{l=1}{gox=20}Valores de referencia: En los individuos normales
+      se produce una supresion de al menos el 50 %."
+COR-90,"R00000000001
+"
+COR-930,"R00000000001
+"
+COR-AC3M,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULACION SUPRARENAL
+DE CORTISOL POST ACTH{L=0}
+
+{l=1}{gox=20}{setleft}Valor de referencia post ACTH :
+Debe tener un incremento de entre 2 y 4 veces
+al valor basal.{l=0}{resleft}"
+COR-AC4M,"R        001R        002R        003R        004
+{L=2}PRUEBA DE ESTIMULACION SUPRARENAL
+DE CORTISOL POST ACTH{L=0}
+
+{l=1}{gox=20}{setleft}Valor de referencia post ACTH :
+Debe tener un incremento de entre 2 y 4 veces
+al valor basal.{l=0}{resleft}"
+COR-ACTH,"R        001R        002
+{L=2}PRUEBA DE CORTISOL POST ESTIMULACION ACTH{L=0}
+"
+COR-PA,"R00000000001
+{L=1}{GOX=20}{SETLEFT}Valores de referencia:
+El incremento debera ser superior
+a 7 ugr%, con respecto del valor
+basal (en este caso, desconocido).{L=0}"
+COR-PD,"R00000000001
+"
+COR-U,"R00000000001
+"
+COR-U1,"R00000000001
+"
+COR-V,"R00000000001
+"
+COX B G,"R00000000001
+"
+COX B M,"R00000000001
+"
+CPE,"R00000000001
+"
+CK-Bi,"R00000000001
+"
+CPK-C,"R00000000001
+
+"
+CPK-F,"R00000000001
+
+"
+CPO,"R00000000001
+"
+CPR,R00000000001{CrLf}
+CR-U,"R00000000001V        001
+V        001=R        001*IVOL     001V        001=V        001/F00000001000"
+CR-U02,"R00000000001
+"
+CR-U03,"R00000000001
+"
+CR-U12,"T        001R00000000001
+"
+CRA,R00000000001{CrLf}
+CRE-Bi,R00000000001
+CRE-C,"R00000000001
+
+"
+CRE-E,"R00000000001
+
+"
+CRE-F,"R00000000001
+"
+CREATO,"R00000000001
+
+"
+cl,R        001
+CREMA,"R        001R        002R        003R        004R        005R        006R        007
+
+
+   {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+
+
+
+
+       Valores permitidos segun articulo 585 CAA
+       -----------------------------------------
+
+    Rto.bac.aerobias mesofilas       < de 100000 UFC/g
+    Rto.bac.coliformes               < de    100 UFC/g
+    Rto.bac.coliformes fecales    ausencia en  1 g
+    Rto.Staphylococcus aureus     ausencia en  1 g
+    Salmonella                    ausencia en 50 g
+    Hongos y levaduras                        20 UFC/g"
+CRG,"R00000000001
+"
+CRINA,"R00000000001
+"
+CRIOS,"R        001R        002
+
+    {L=2}          ANALISIS BROMATOLOGICO DE LECHE {L=00}
+    {L=2}  DETERMINACION DEL  DESCENSO CRIOSCOPICO {L=00}
+
+
+    {L=03}         Valores esperados: inferior a : - 0.530 �C     {L=00}"
+CRISTAL,"R        001R        002
+{L=2} DETERMINACION DE CRISTALES {L=0}
+"
+CRO,"R        001R        002
+{L=2}PRUEBA DEL CORTISOL PLASMATICO{L=0}
+
+
+{l=3}CORTISOL PLASMATICO basal{l=0}
+         {L=1}{gox=20}{setleft}
+Valor de referencia basal: (8 hs. 10 a 20 ugr/100 ml.)
+Metodo: Radioinmunoensayo
+
+NOTA: En los individuos normales se produce una supresion
+      de al menos el 50%{L=0}{resleft}"
+CRO-AMIN,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018
+{L=2}CROMATOGRAFIA DE AMINOACIDOS{L=0}
+
+METODO : HPLC - FD con Derivatizacion
+
+{L=3}AMINOACIDO ESENCIAL{L=0}
+
+NIVEL PLASMATICO DE:{gox=60}RESULTADOS     VALORES NORMALES
+"
+CRO-CR-U,"R00000000001
+"
+CRO-U,R00000000001IBE: < 25 ug/L{CrLf}LOQ (L�mite de Cuantificaci�n): 1 ug/L
+CROMO,R00000000001{CrLf}
+CROSS,"R00000000001
+"
+CROSSL,"R00000000001
+ M�todo: Electroquimioluminiscencia                               Mujeres post menopausicas : de 0,10 a 1,01 ng/ml"
+CRT,"R        001R        002R        003
+{L=2} Determinacion de CARNITINA {L=0}
+
+{L=1}MATERIAL EXAMINADO: suero/plasma
+METODO: Espectrofotometrico UV{L=0}
+
+        "
+CRU,"R00000000001
+"
+CRYPTO,R        001{CrLf}{L=2}INVESTIGACION DE ANTIGENOS CAPSULARES DE  CRYPTOCOCCUS NEOFORMANS{L=0}{CrLf}{CrLf}       
+CSX,"R        001R        002R        003R        004R        005
+{L=2} CROMATINA SEXUAL{L=0}
+
+{L=1}{gox=20}{setleft}Valores de referencia:
+- Mujeresy ni�as = 40 - 60 % de nucleos cromatin (+)
+- Varones y ni�os =  0 % de nucleos cromatin (+){L=0}{setleft}"
+CTG,"R        001R        002R        003R        005
+{FB=1}PRUEBA DE SOBRECARGA DE GLUCOSA{FB=0}
+"
+CTR3M,"R        001R        002R        003
+{L=2}PRUEBA DEL CORTISOL PLASMATICO{L=0}
+
+
+          CORTISOL PLASMATICO basal
+          -------------------------{l=1}{gox=20}{SETLEFT}
+Metodo : Radioinmunoensayo
+Valor de referencia basal : 8hs.de 10 a 20 ugr/100ml.
+
+NOTA: En individuos normales se produce una supresion de al menos el 50 %.{l=0}{RESLEFT}"
+CU,R00000000001{CrLf}
+CU-A,"R00000000001
+"
+CU-B,"R00000000001
+"
+CU-CR-U,"R00000000001
+"
+CU-EQ,"R00000000001
+"
+CU-U,R00000000001{CrLf}
+CUR,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010
+{L=2}ANALISIS DE: CALCULO URINARIO{L=0}
+
+{L=3}Caracteristicas Macroscopicas{L=0}    
+"
+CUR-CRIS,"R        001
+{L=2}CALCULO URINARIO EXAMEN CRISTALOGRAFICO{L=0}
+"
+CUT,"R00000000001
+"
+CVH,"R00000000001
+{l=1} LIMITE DE DETECCION: 400 copias/ml.
+
+    La determinacionde los niveles del RNA del HIV-1 es util para la
+    evaluacion de la respuesta del paciente a terapias anti-retrovirales,
+    para la determinacion del pronostico antes del inicio de una terapia,
+    y para monitorear la evolucion de la infeccion. Cualquier cambio en
+    los niveles del RNA del HIV-1 en el enfermo, se deben a variaciones
+    esperadas entre diferentes ensayos o fluctuaciones normales en los
+    niveles del RNA viral. Estos resultados deben interpretarse conjunta-
+    mente con la informacion tanto clinica como de laboratorio del afec--
+    tado.
+
+    Este estudio debe solicitarse solamente en individuos que posean in--
+    feccion por HIV previamente documentada. Los resultados no deberian
+    ser usados para diagnosticar infeccion por HIV-1.{l=0}"
+CYG,"R00000000001
+
+"
+CYI PCR,"R        001R        002
+{L=2}INVESTIGACION DE ANTIGENO DE CHLAMYDIA TRACHOMATIS{L=0}
+
+{L=1}{GOX=20}{SETLEFT}METODO  : PCR    {L=00}
+TECNICA :
+-  Obtenci�n del genoma bacteriano por lisis - digesti�n
+   enzim�tica.
+-  Amplificaci�n por reacci�n en cadena de la polimerasa
+   con primers espec�ficos para chlamydia trachomatis; cuyo
+   producto es un fragmento de 517 pb.
+-  An�lisis por electroforesis en gel de agarosa al 1,5%
+   con tinci�n con bromuro de etidio y revelado por
+   exposici�n del gel a luz ultravioleta .{l=0}{RESLEFT}
+"
+CYST,R00000000001
+CYi,"R00000000001
+"
+Cdt,"R00000000001
+
+"
+Cro,"R        001R        002
+{l=2}CROSS-MATCH CONTRA PANEL Microtest de Linfocitotoxicidad{L=0}
+         
+{l=1}Material examinado: Suero del paciente fente a un panel de 30 muestras diferentes de linfocitos.
+
+"
+D11,"R00000000001
+   "
+DALD AT,"R        001
+{L=2}DELTA-AMINO-LEVULINICO DEHIDRATASA ACTIVIDAD TOTAL{L=0}
+"
+DALD IN,"R00000000001
+{L=2}PORCIENTO DE INHIBICION DE LA DELTA-AMINO-LEVULINICO DEHIDRATASA{L=0}
+
+"
+DBO,R        001T        001T        002
+DCB,"R00000000001
+"
+DE LECHE,"R00000000001
+
+"
+DHEAS,"R00000000001
+
+
+"
+CAI,R        001{CrLf}
+BRAF,"R        001R        002
+{L=n}{FB=1}Estudio de  B-Raf{FB=0}{L=1}"
+DEH 17,R00000000001
+DEH ACTH,"R        001R        002
+{L=2}PRUEBA DE SULFATO DE DEHIDROEPIANDROSTERONA
+POST ESTIMULACION DE ACTH{L=0}
+{L=01}{gox=20}{setleft}
+Metodo : Quimioluminiscencia
+Valores de referencia basales :
+- Mujer
+   Prepuber           : 100 a 600 ng/ml.
+   Premenopausia      : 900 a 5000 ng/ml.
+   (20 a 35 a�os)
+   Embarazo a termino : 200 a 2200 ng/ml.
+   Post menopausia    : 100 a 3500 ng/ml.
+   Recien nacido      : 1000 a 4000 ng/ml.
+   (ambos sexos)
+- HOMBRE
+   Prepuber           : 50 a 500 ng/ml.
+   Adulto             : 2000 a 3350 ng/ml. {L=0}{resleft}"
+DEH60,"R00000000001
+"
+DEN,R00000000001{CrLf}
+DEN 2,"R00000000001
+"
+DENGUE G,R00000000001{CrLf}
+DENGUE M,R00000000001{CrLf}
+DES,"R00000000001
+
+"
+DETDRG,"R        001R        002R        003R        004R        005
+{L=2}DETECCION DE DROGAS{L=0}
+
+{FB=1}Metodo : Ensayo inmunol�gico con acs monoclonales espec�ficos
+"
+DIF,"R00000000001
+
+Metodo: Quimioluminiscencia"
+DIF 3 HS,"R        001R        002
+{L=2}DOSAJE DE DIFENILHIDANTOINA BASAL Y A LAS 3 HORAS {L=0}
+"
+DIG,"R00000000001
+       "
+DIM,"R00000000001
+"
+DMD,R00000000001{CrLf}
+DMF,"R00000000001
+
+ "
+DNN,"R00000000001
+"
+DOO,R00000000001{CrLf}
+DOP,R00000000001{CrLf}{CrLf}
+DPD,"R00000000001
+"
+DQO,R        001T        001T        002
+CAR M,"R        001
+"
+DRG ORI,"R        001R        002R        003R        004
+{L=2}SCREENING DE DROGAS DE ABUSO EN ORINA{L=0}
+
+Metodo : IFP
+    "
+NOTAHPV,"R        001
+"
+DROGA,
+DROGA10,"T        001R        001
+{L=2}TEST INMUNOLOGICO PARA LA DETECCION DE DROGAS DE ABUSO{L=0}
+      "
+DROGAS,"R        001R        002
+{L=2}RECONOCIMIENTO DE DROGAS{L=0}
+"
+DUREZA A,"R00000000001
+
+"
+DZP,"R00000000001
+"
+Dpi,T        001R00000000001                                
+E2,"R00000000001T        001T        002T        003T        004
+"
+E2-2,"R00000000001
+"
+E2-30,"R00000000001
+"
+E2-4,"R00000000001
+"
+E2-60,"R00000000001
+"
+E2-72,"R00000000001
+"
+E2-90,"R00000000001
+"
+E2-B,"R00000000001
+"
+E2-HCG,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULACION GONADAL {L=0}
+{L=2}PARA ESTRADIOL POST 5000 U DE HCG {L=0}
+
+{L=1}{GOX=20}{SETLEFT}
+Metodo : Radioinmunoensayo
+Valor normal basal : de 10 a 60 pg/ml.{L=0}{RESLEFT}"
+E2-LUT,"R        001R        002
+{L=2}PRUEBA DE ESTIMULACION DE ESTRADIOL
+POST LUTEOLIBERINA{L=0}
+ "
+vE3,R00000000001M�todo: RADIOINMUNOENSAYO{CrLf}{CrLf}Valores de referencia:{CrLf}De la semana 17 a la 20 de embarazo:  de 14  a    52 ng/ml{CrLf}De la semana 21 a la 25 de embarazo:  de 24  a    84 ng/ml{CrLf}De la semana 26 a la 30 de embarazo:  de 38  a  160 ng/ml{CrLf}De la semana 31 a la 35 de embarazo:  de 46  a  200 ng/ml{CrLf}De la semana 36 a la 40 de embarazo:  de 60  a  325 ng/ml{CrLf}Mujeres no embarazadas y hombres  : < 8 ng/ml{L=0}{RESLEFT}
+E3L,R00000000001{CrLf}M�todo: Radioinmunoensayo{CrLf}Valores de referencia:{CrLf}- Semana 16 de embarazo: 0.70 a 2.80 ng/ml{CrLf}- Semana 17 de embarazo: 1.0 a 3.20 ng/ml{CrLf}- Semana 18 de embarazo:  1.0 a 4.50 ng/ml{CrLf}- Semana 19 de embarazo:  1.90 a 5.30 ng/ml{CrLf}- Semana 20 de embarazo:  2.30 a 6.10 ng/ml{CrLf}-Hombre y mujeres no embarazadas: Menor de 2.0 ng/ml{CrLf}{CrLf}{CrLf}
+EAB,"R        007R        001R        002R        003R        004R        005R        006
+{L=2} ESTADO ACIDO BASE {L=0}
+        "
+EAN,"R00000000001  
+TEST DE GRAHAM-ESCOBILLADO ANAL
+"
+FILIAC,R        001{CrLf}{CrLf}
+EB EA G,R00000000001{CrLf}
+EB EA M,R00000000001{CrLf}
+EB NA G,R00000000001{CrLf}    
+EB NA M,R00000000001{CrLf}
+EB VCA G,R00000000001{CrLf}{CrLf}
+GEN,R        001R        002R        003R        004R        005R        006
+EB VCA M,R00000000001{CrLf}
+ECA,R00000000001{CrLf}A partir del 8/8/2025 se modific� metodolog�a y valores de referencia.
+ECX,"R00000000001
+"
+EHE,"R00000000001
+"
+EMB,"R00000000001
+"
+EMF,R00000000001{CrLf}
+ENA,R        001{CrLf}{FB=1}ANTICUERPOS ANTI-ENA{l=0}{CrLf}{CrLf}{l=1}{gox=20}ENA Screening{CrLf}Antigenos usados:{CrLf}Mezcla de :  SS-A (Ro). SS-B (La). RNP (Ribonucleoproteinas). Sm  (Smith). Scl-70 (Topoisomerasa). Jo-1 (Histidil tRNA Sintetasa).{CrLf}            
+END,"R00000000001
+"
+ENG,"R00000000001
+"
+ENM,"R00000000001
+"
+ENTE-VR,"R        001R        002
+{L=2}INVESTIGACION DE ENTEROCOCOS VANCOMICINA RESISTENTE:{L=0}
+"
+EOS ORI,"R00000000001
+"
+EOS SALI,"R        001
+{L=2}EOSINOFILOS EN SALIVA{L=0}
+"
+EOS-B,"R00000000001R        002R        003R        004R        005R        006
+{L=2}BUSQUEDA DE EOSINOFILOS{L=0}
+"
+EOT,"R00000000001
+"
+EPEC,"R        001R        002R        003
+{L=2}SEROLOGIA PARA ESCHERICHIA COLI ENTERO PATOGENO{L=0}
+"
+EPEC-1,"R        001
+{L=2}SEROLOGIA PARA ESCHERICHIA COLI ENTERO PATOGENO{L=0}
+"
+EPO,"R00000000001
+"
+EPO POST,"R00000000001
+"
+EPY,"R00000000001
+"
+ERI,"R        001
+{FB=1}ERITROSEDIMENTACION (Metodo Westergreen)  
+"
+ESE,"R        001R        002R        003R        004R        005
+
+ {l=2}        Determinacion de EXTRACTO SECO{l=0}
+         
+
+Resultado:
+"
+ESPUTO,R        001R        002R        003R        004{CrLf}{L=n}{FB=1}ESTUDIO BACTERIOL�GICO DE ESPUTO{FB=0}{L=1}
+ESO,"R00000000001
+"
+ESP,T        001R        001R        002R        003R        004R        005R        006T        002R        007R        008R        009R        010R        011R        012R        013R        014T        003R        015R        016R        017R        018R        019{CrLf}{L=n}{FB=1}E S P E R M O G R A M A{L=0}V00000000001=R00000000001*R00000000006V        001=V        001/F00000000100
+ESP A,"R00000000001
+"
+ESP G,"R00000000001
+"
+ESPER Ac,"R00000000001
+"
+ESR,R00000000001{CrLf}
+ESU,"R00000000001
+"
+ETA,"R00000000001
+{l=2}TEST del ETANOL(Busqueda de productos de degradacion del fibrinogeno){l=0}
+
+"
+HPVDQ,"R        001R        002R        003R        004
+{FB=1}PAPILOMA VIRUS HUMANO (HPV){FB=0}
+"
+K-ras,"R        001R        002R        003R        004
+{L=n}{FB=1}Estudio Gen�mico del Gen K-ras{FB=0}{L=1}"
+ETO,"R00000000001
+"
+ETS,"R        001R        002
+{L=2}PRUEBA DE ESTIMULO DE TESTOSTERONA {L=0}
+"
+BRCA1-2,"R        001R        002R        003R        004R        005R        006R        007
+{L=n}{FB=1}BRCA 1-2{FB=0}{L=1}"
+EUG,"R00000000001
+"
+EUG POS,R00000000001{CrLf}
+MICO,R        001R        002R        003R        004{CrLf}{FB=1}ESTUDIO MICOL�GICO{FB=0}
+SARA Ag,
+EUG PRE,"R00000000001
+{L=2}ANALISIS DE LISIS DE EUGLOBULINAS{L=0}
+"
+EX BAT,"
+
+        {L=2}ANALISIS BACTERIOLOGICO DE : Exudado uretral{L=0}
+
+      Examen microscopico en fresco (Directo):
+
+
+
+
+
+          ^02EXAMEN BACTERIOLOGICO@02
+
+
+              Mat"
+EXB,"R00000000001
+"
+EXO,"R00000000001
+"
+EZQ,"R00000000001
+"
+EZT,R00000000001
+F REMAT,R00000000001{CrLf}{CrLf}                       
+F17,"R        002T        001R        003R        004R        005R        006R        007R        008
+
+          FRACCIONAMIENTO CROMATOGRAFICO DE LOS
+          17-CETOESTEROIDES NEUTROS URINARIOS
+        
+       ----------------------------------------------------------------
+       Fraccion             Esteroide                 Orina
+                                                      Examin.
+       ----------------------------------------------------------------
+         
+        -------------------------------------------------------------------
+        VALORES NORMALES
+        ----------------
+        - Fraccion   I :  Mujer-0.6 a 1.4   Hombre-0.6 a 1.5
+        - Fraccion  II :  Mujer-0.7 a 2.8   Hombre-0.8 a 3.8
+        - Fraccion III :  Mujer-1.2 a 3.0   Hombre-2.1 a 4.9
+        - Fraccion  IV :  Mujer-1.0 a 2.9   Hombre-2.0 a 4.6
+        - Fraccion   V :  Mujer-1.1 a 2.9   Hombre-2.8 a 4.4
+        - Fraccion  VI :  Mujer-0.4 a 1.2   Hombre-0.4 a 1.4
+        - C19 O2       :  Mujer-2.9 a 8.7   Hombre-4.9 a 13.3
+        - 17-Ceto tot. :  Mujer- 6 a 13     Hombre- 11 a 20"
+FAA,"R00000000001
+       "
+FACTURA,"R        001R        002R        003
+
+     {L=2} ANALISIS BACTERIOLOGICO {L=0}
+
+
+          "
+CDO,R        001R        002R        003R        004{CrLf}{CrLf}{FB=1}CLEARENCE DE OSMOLARIDAD{FB=0}V        001=R        003/F       1440V        002=R        002/R        001V        003=V        001*V        002
+FVD/ANT,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}G�rmenes Comunes{L=0}"
+FAI,"R        001R        002R        003R        004R        005
+{L=2}ISOENZIMAS DE FOSTAFASA ALCALINA{L=0}
+         
+Resultado:
+
+
+{L=1}{gox=20}Valores de referencia :
+
+         % inactiv.56 gr.10 min.   % inactiv.60 gr.5 min.
+
+        - HIGADO     :           50 -  70 %            100 %
+        - OSEA       :           90 - 100 %            100 %
+        - INTESTINAL :           50 -  60 %            100 %{L=0}"
+ALP-Bi,R00000000001
+FAL LEU,"R        001R        002R        003R        004
+{L=2}INDICE DE ACTIVIDAD DE LA FOSFATASA
+ALCALINA LEUCOCITARIA - CITOQUIMICA{L=0}
+
+{L=3}PIGMENTACION                                INDICE{L=0}
+      
+{L=1}{gox=20}Valor de referencia del indice  : 20 - 40{l=0}
+{L=1}{gox=20}Metodo : KAPLOW{l=0}"
+EXTRA,R        001T        001
+FAL LEU2,"R        001R        003R        005T        001R        007
+{L=2}INDICE DE ACTIVIDAD DE LA FOSFATASA
+ALCALINA LEUCOCITARIA - CITOQUIMICA{L=0}
+
+{L=3}PIGMENTACION                                        INDICE{L=0}
+
+
+{L=1}{gox=20}Valor de referencia del indice  : 20 - 40{L=0}
+{L=1}{gox=20}Metodo : KAPLOW{L=0}"
+FAL-C,"R00000000001
+"
+FAL-H,"R00000000001
+"
+FAL-I,"R00000000001
+"
+FAL-O,R00000000001{CrLf}{CrLf}                                                            
+FAN,"R00000000001
+"
+FANHEP2,"R00000000001
+"
+FAO,"R00000000001
+                 "
+FAP,R00000000001{CrLf}
+FAR,"R00000000001
+"
+FAT,"R00000000001
+"
+FATR,"R00000000001
+"
+FC10,R00000000001{CrLf}
+FC11,R00000000001{CrLf}
+FC2,R00000000001{CrLf}
+FC5,R00000000001{CrLf}
+FC7,R00000000001{CrLf}
+FC8,R00000000001{CrLf}
+FC9,R00000000001{CrLf}
+FCROMOX,"R        001R        002
+{L=2}DETECCION DE FRAGILIDAD DEL CROMOSOMA X{L=0}
+"
+FDu,"R00000000001
+"
+FEA,R00000000001{CrLf}
+FEB,R00000000001
+FEB 3HS,"R        001R        002
+{L=2}DOSAJE DE FENOBARBITAL BASAL Y A LAS 3 HORAS {L=0}
+
+    "
+FEL,"R        001
+{L=2}FOSFATASA ALCALINA CITOQUIMICA{L=0}
+"
+FENC,"R        001
+{L=2}SCREENING DE DROGAS DE ABUSO EN ORINA{L=0}
+{L=2}Metabolitos de : FENCICLIDINA II {L=0}
+              "
+FENILCET,"R00000000001
+"
+PEN O,"R        001
+"
+FENOL,"R        001R        002
+{L=2}FENOLES en ORINA{L=0}
+              
+{L=1}{GOX=20}Metodo utilizado: Cromatografia gaseosa{L=0}
+{L=1}{gox=20}{SETLEFT}
+Valores normales :
+  FENOL    : hasta 45 mg/g creat.en exp.a benceno
+             hasta 300 mg/g creat.en exp.a fenoles
+             hasta 20.7 mg/g creat.en exp.no expuestos
+  p-CRESOL : hasta 65 mg/g creat.en expuestos{L=0}{RESLEFT}"
+FENOLES,"R00000000001
+{L=01}{gox=20}{SETLEFT}Valores de indicativos :
+Norna NIOSH segun Leuwerys
+-No expuestos : 4,5 a 20,7 mg/g de creatinina
+-Expuestos a benceno : VMP hasta 45 mg/g de creatinina
+-BEI(Biologycal Exposure Index) : hasta 250 mg/g de creat.
+-Expuestos a fenol : hasta 300 mg/g de creatinina   {L=0} {RESLEFT}"
+FEO,"R        001R        002R        003
+{L=2}Investigacion de METABOLITOS del BENCENO{L=0}      
+
+{L=1}{gox=20}Metodo utilizado: Theiss-Benedict{L=0}
+
+           "
+FER,R00000000001{CrLf}{CrLf}
+FER-AA,"R00000000001
+"
+FER-B,"R00000000001
+"
+FET,R00000000001{CrLf}{CrLf}{CrLf}   {CrLf}
+FGL,"R00000000001
+"
+FHA,"R00000000001
+
+"
+FCT,"R        001 
+"
+GLU-90,"R        001
+"
+FHA-G,"R00000000001
+{L=2}IDENTIFICACION DE  VIRUS  JUNIN{L=0}
+{L=01}{GOX=20}{SETLEFT}
+M�todo : 
+ -    Extracci�n del RNA
+ -    Retrotrascripci�n de un fragmento del      
+      genoma viral. (RT) Obtenci�n del  cDNA
+ -    Amplificaci�n (PCR) en dos reacciones separadas
+      del los fragmentos 5' (240 bp) y 3' (180 bp) del cDNA.
+ -    Visualizaci�n de los resultados en gel de agarosa
+      al 2% con bromuro de etidio. {L=0}{RESLEFT}"
+FIB,R00000000001{CrLf}
+FIDEOS,"R        001R        002R        003R        004
+
+
+
+    {L=2}INVESTIGACION DE INSECTICIDAS{L=0}
+
+
+       Metodologia : Cromatografia Gaseosa/Captura Electrones
+                     (ECD),Columna PE-5(30m x 0,25mm x 0,25um)
+"
+FIG,"R00000000001
+{L=2} ANTICUERPOS ANTIFOSFOLIPIDOS{L=0}
+"
+FILIA 3,"R        001R        002R        003R        004R        013R        014R        023R        024R        033R        034R        043
+
+
+        {L=2}RESULTADO DE LA INVESTIGACION {L=0}
+      {L=2}DEL VINCULO GENETICO DE FILIACION {L=0}
+          {L=2}POSIBLE PADRE/MADRE/HIJO{L=0}
+"
+FILIA 8,"R        001R        002R        003R        004R        013R        014R        023R        024R        033R        034R        043
+
+
+        {L=2}RESULTADO DE LA INVESTIGACION {L=0}
+      {L=2}DEL VINCULO GENETICO DE FILIACION {L=0}
+          {L=2}POSIBLE PADRE/MADRE/HIJO{L=0}
+"
+FIM,"R00000000001
+"
+FLU-A,"R00000000001
+"
+FLUOR,"R00000000001
+{l=1}{Gox=20}Valor de referencia  : de 1 a  4 umol/l
+               Rango terapeutico  : de 5 a 10 umol/
+               Nivel toxico       : > 15 umol/ll {l=0}"
+FLUOR-O,"R00000000001
+     "
+FMF,T        002R        001R        002R        003R        004R        005R        007R        008R        006T        001R        009R        010R        011R        012R        013R        014{CrLf}{FB=1}EXAMEN FUNCIONAL DE MATERIA FECAL{FB=0}{CrLf}             {CrLf}
+FNL,"R00000000001
+"
+FO-U,"R        001
+V        001=R        001*IVOL     001V        001=V        001/F00000100000"
+FO12,"R00000000001
+"
+FOG,"R        001R        002
+{l=2}ANALISIS DE LIQUIDO AMNIOTICO {l=0}
+         
+Resultado:
+
+{l=1}{gox=20}Metodo empleado: Cromatografia en capa delgada{l=0}"
+FOL IgG,"R00000000001
+                            M�todo: Enzimoinmunoensayo                                                                          Positivo bajo: de 10 a 20 GPL
+                                                                                                                                                             Positivo medio: de 20 a 80 GPL
+                                                                                                                                                             Positivo alto: mayor de 80 GPL"
+FON,"R00000000001
+"
+FOOSESP,"R00000000001
+
+"
+FORMULA,R        001R        002R        003R        004R        005{CrLf}{L=2}FORMULA LEUCOCITARIA{L=0}{CrLf}{CrLf}Formula leucocitaria    Porcentual
+FOS-Wi,R00000000001{CrLf}
+FOS-B,"R00000000001
+"
+FOU,R00000000001{CrLf}{CrLf}
+FOu,"R00000000001
+"
+FRH,"R00000000001
+"
+FRO,"R        001R        002R        003R        004R        005R        006
+{l=2}Analisis de FROTIS CONJUNTIVAL 
+Examen Citologico{l=0}
+       
+Resultado:
+"
+FRP,"R00000000001
+"
+FRU,R00000000001R        002{CrLf}
+vFSH,R00000000001T        001T        002T        003T        004{CrLf}
+FSH-20,"R00000000001
+"
+FSH-25,"R00000000001
+"
+FSH-30,"R00000000001
+"
+FSH-40,"R00000000001
+"
+FSH-60,"R00000000001
+"
+FSH-90,"R00000000001
+"
+FSH-LUT,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULO DE FSH POST LUTEOLIBERINA{L=0}
+
+"
+FTA,R00000000001{CrLf}
+FTA-LCR,"R00000000001
+"
+FTM,"R00000000001
+"
+vFVD,R        001T        002R        002R        003T        001R        004R        005R        006R        007{CrLf}{FB=1}G�RMENES COMUNES{FB=0}{CrLf}
+FVD-C,"R        001
+
+      {L=2}DETECCION DE PORCENTAJE DE CELULAS EOSINOFILAS{L=0}
+"
+Fat,"R00000000001
+"
+G6F,"R00000000001
+"
+G6F-ERI,R00000000001{CrLf}
+GAA,"R00000000001
+
+"
+GABA,"R00000000001
+
+"
+GAD,R00000000001{CrLf}A partir del 02/01/25  cambia la metodolog�a y el valor de referencia.
+GAG,R00000000001{CrLf}
+GAL,"R00000000001
+"
+GALLINA,"R        001R        002R        003R        004R        005R        006R        007
+
+
+   {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+
+"
+GAM,"R00000000001
+"
+GAN,"R00000000001
+"
+GAS,R00000000001{CrLf}
+GASPP,"R00000000001
+"
+GCG,"R00000000001
+   "
+GCO,"R00000000001
+"
+GCS,"R00000000001
+"
+GERMEN,"R        001R        002
+{L=2}IDENTIFICACION SEROLOGICA DEL GERMEN{L=0}
+"
+GES,"R        001R        002
+{l=2}GASES EN SANGRE{L=0}
+              "
+GGF,"R        001T        001R        002R        003T        002R        004R        008R        005R        009R        006R        010R        007
+                         {L=2}     GENOTIPIFICACION DE Rh        {L=00}
+"
+GGT,R00000000001
+vGGT-Bi,R00000000001
+GGT-E,"R00000000001
+
+"
+GGT-F,"R00000000001
+
+"
+GLAE,"R00000000001
+"
+GLD,"R00000000001
+"
+GLI,"R00000000001
+{L=2}Anexo: Epididimo{L=0}   
+"
+GLICINA,"R00000000001
+"
+GLN,"R00000000001
+"
+MSI,R        001R        002R        003R        004R        005R        006R        007T        001{CrLf}{L=n}{FB=1}ESTUDIO DE INESTABILIDAD DE MICROSAT�LITES ( Panel de Bethesda){FB=0}{L=1}{CrLf}
+GLO,"R00000000001
+
+"
+GLU-Bi,R00000000001{CrLf}A partir del 10/07/2023 se modifica el Valor de referencia .
+GLU-P,R00000000001{CrLf}
+GLU-12,R00000000001{CrLf}
+GLU-120M,"R00000000001
+        M�todo: Enzimatico Oxidasa-Peroxidasa"
+GLU-13,"R00000000001
+"
+GLU-14,"R00000000001
+"
+GLU-15-P,"R00000000001
+"
+GLU-16-A,"R00000000001
+"
+GLU-17,"R00000000001
+"
+GLU-18,"R00000000001
+"
+GLU-180M,"R00000000001
+"
+GLU-19,"R00000000001
+"
+GLU-20,"R00000000001
+"
+GLU-22,"R00000000001
+"
+GLU-30M,"R00000000001
+"
+GLU-60M,"R00000000001
+          M�todo: Enzimatico Oxidasa-Peroxidasa"
+GLU-U12,"R00000000001
+"
+GM1,"R00000000001
+{l=2}ANTICUERPOS ANTI GANGLIOSIDO ASIALO GM1{l=0}
+"
+GM1 G,"R00000000001
+"
+GM1 M,"R00000000001
+"
+GM1-M,"R00000000001
+{l=2}ANTICUERPOS ANTI GANGLIOSIDO ASIALO GM1{l=0}
+
+ "
+GON,"R00000000001
+{L=2}Investigacion de GONOCOCO {L=0}
+"
+GPP,"R00000000001
+"
+GRANULOM,"R        001R        002R        003
+{L=2}INVESTIGACION DE MYCOBACTERIAS{L=0}
+
+{L=1}{gox=20}Metodo : Ziehl-Nielsen
+"
+GRASA,"R        001R        002
+
+
+   {L=2}ANALISIS DE ALIMENTOS{L=0}
+
+"
+GRASA L,"R        001R        002
+    {L=2}          ANALISIS BROMATOLOGICO DE LECHE {L=00}
+    {L=2}                  DETERMINACION DE GRASA {L=00}
+
+  "
+GRU,"R00000000001
+"
+H-CONJ,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}EXAMEN BACTERIOLOGICO DE SECRECION CONJUNTIVAL{L=0}
+"
+H-CORN,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}EXAMEN  MICROBIOLOGICO DE HISOPADO DE CORNEA{L=0}
+"
+H-FAU,"R        001R        002R        003R        004R        005T        001R        007R        006
+{L=2}EXAMEN BACTERIOLOGICO DE HISOPADO DE FAUCES{L=0}
+
+{L=3}EXAMEN MICROSCOPICO DIRECTO{L=0}
+"
+H-HER,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}EXAMEN BACTERIOLOGICO DE HISOPADO DE HERIDA {L=0}
+"
+H-LEN,"R        001R        002R        003R        004R        005R        006R        007
+{L=2}EXAMEN BACTERIOLOGICO DE HISOPADO DE LENGUA{L=0}
+
+{L=3}EXAMEN MICROSCOPICO DIRECTO{L=0}
+"
+H-NAS,"R        001R        002R        003R        004R        005T        001R        006R        007
+{L=2}EXAMEN BACTERIOLOGICO DE HISOPADO DE NASAL{L=0}
+
+{L=3}EXAMEN MICROSCOPICO DIRECTO   {L=00}
+"
+H-REC,"R        001R        002R        003R        004R        005R        006R        007R        008
+{L=2}EXAMEN BACTERIOLOGICO DE HISOPADO RECTAL{L=0}
+
+{L=3}EXAMEN MICROSCOPICO DIRECTO{L=0}
+"
+H-ULCE,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}EXAMEN BACTERIOLOGICO DE ULCERA DE  PIEL{L=0}
+"
+H10,"R00000000001
+"
+H17,"R00000000001
+"
+H20,"R00000000001
+"
+H25,"R00000000001
+"
+H30,"R00000000001
+"
+H40,"R00000000001
+"
+H45,"R00000000001
+"
+H60,"R00000000001
+"
+H90,"R00000000001
+"
+HA1,"R00000000001
+"
+HA2,"R00000000001
+ "
+HALOP,"R00000000001
+ "
+HAM,"R        001R        002R        003R        004
+{L=2}RECUENTO DE HAMBURGER{L=0}
+"
+HAM ORI,"R00000000001
+
+"
+HAM T,"R00000000001
+"
+HAN,"R00000000001
+"
+HANTA G,R00000000001{CrLf}
+HANTA M,R00000000001{CrLf}
+HAP,"R00000000001
+"
+HARINA,"R        001R        002R        003R        004R        005R        006R        007R        008
+
+
+
+
+
+  {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+     ------------------------------------
+"
+HARINA 2,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011
+
+  {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=00}
+"
+HAV Ac G,R        001{CrLf}
+HAV Ac M,R00000000001{CrLf}
+HB-CV,R        001R        002{CrLf}{L=2}CARGA VIRAL HEPATITIS B{L=0}{CrLf}{CrLf}{CrLf}
+HBC Ac G,R00000000001T        001{CrLf}
+DHEA,"R        001
+"
+HBC Ac M,R00000000001{CrLf}
+HBE Ac,R00000000001{CrLf}
+HBE Ag,R00000000001{CrLf}
+HBS Ac,R00000000001{CrLf}
+HBS Ag,R00000000001{CrLf}{CrLf}
+HBV,"R00000000001
+"
+HPV GEN,"R        001R        002R        003
+{L=n}{FB=1}PAPILOMA VIRUS HUMANO (HPV){FB=0}{L=1}
+"
+HBV-ADN,"R        001{CrLf}{L=2}HEPATITIS B - ADN VIRAL{L=0}{CrLf}{CrLf}{l=1}{Gox=20}{SETLEFT}Tecnica :{CrLf}1- Aislamiento y purificacion de ADN viral a partir de{CrLf}   plasma humano.{CrLf}2- Amplificacion del ADN viral aislado por reaccion en{CrLf}   cadena de la polimerasa empleando iniciadores (primers){CrLf}   especificos de la region core del genoma del HBV.{CrLf}3- Visualizacion de los productos de amplificacion por{CrLf}   electroforesis en gel de agarosa al 1,8%, tincion con{CrLf}   bromuro de ethidium, y exposicion del gel a la luz{CrLf}   ultravioleta mediante transiluminacion.{l=0}{RESLEFT}"
+HBV-CV,"R00000000001R        002
+{L=01}{gox=20}{SETLEFT}TECNICA :
+1 - Aislamienro y purificacion del ADN viral
+2 - Amplificacion por reaccion en cadenas de la
+    polimerasa (PCR) utilizando iniciadores (primers)
+    especificos de la region core conservada del
+    genoma del virus de la hepatitis B con controles
+    de inhibiciones y curva de calibracion
+3 - Detecci�n 
+
+MARCA:  ANPLICOR MONITOR
+RANGO DINAMICO : DE 1.000 A 40.000.000 copia de ADN por ml {l=0}
+{RESLEFT}      "
+HBV-PCR,"R00000000001
+"
+HCP,R00000000001
+vHCV CV,"R        001R        002
+{L=2}CARGA VIRAL HCV  -  RT PCR{L=0}
+
+{l=1}{gox=20}{setleft}METODO : RT -PCR EN TIEMPO REAL
+
+RANGO LINEAL: 15 A 100.000.000 UI/ML"
+HCV,R00000000001{CrLf}
+HCV M,"R00000000001
+"
+COCA ORI,T        001R        001R        002R        003{CrLf}{FB=1}DETECCI�N DE DROGAS{FB=0}{CrLf}{FB=1}Observaciones:{FB=0}Todo resultado positivo se deber�a confirmar con t�cnica de espectrometr�a de masa.
+HCV-GENO,R        001{CrLf}{L=2}{FB=1}HCV - RNA GENOTIPO{L=0}{FB=0}{CrLf}{CrLf}{l=1}{gox=20}Metodo  :  RT PCR  automatizada+ Hibridaci�n Reversa{CrLf}{CrLf}
+HCV-LIA,"R        001R        002R        003R        004R        005R        006R        007
+{L=2}HCV-ANTIC.PRUEBA CONFIRMATORIA RIBA/LIA{L=0}
+
+HCV PRUEBA CONFIRMATORIA
+{l=1}{Gox=20}{SETLEFT}
+Metodo : RIBA/LIA
+Metodologia :
+         Deteccion de anticuerpos clase IgG contra antigenos y
+         recombinantes del HCV dispuestos en linea sobre un
+         soporte de nylon.{L=0}{RESLEFT}"
+HCV-PCR,"R        001
+{L=2}HCV - RNA CUALITATIVO {L=0}
+
+{l=1}{gox=20}{SETLEFT}Metodo  :  RT PCR
+
+Tecnica :
+1- Aislamiento y purificacion de ARN viral.
+2- Transcripcion reversa del ARN viral aislado y generacion
+   de ADNc.
+3- Amplificacion por reaccion en cadena de la polimerasa del
+   ADNc utilizando iniciadores (primers)especificos de la re
+   gion 5'No codificante altamente conservada del genoma del
+   virus de la hepatitis C.
+4- Visualizacion de los amplicones producidos(fragmentos del
+   ADNc amplificados de 260 bp)por electroforesis en gel de
+   agarosa al 1,8%,tincion con bromuro de etidio,y exposicion
+   del gel a la luz ultravioleta mediante trasiluminacion.
+5- Segunda ronda de amplificacion (NESTED PCR).{l=0}{RESLEFT}"
+EXTRAIN,R        002R        004
+HDH,R00000000001T        001R        002{CrLf}{FB=1}ELECTROFORESIS DE HEMOGLOBINA{CrLf}
+HDI,"R00000000001
+"
+HDL-Wi,"R        001
+V00000000001=ICOL     001/R00000000001V00000000001=V00000000001*F00000000100"
+HDV,"R00000000001
+"
+HEF,"R00000000001
+M�todo: IDR                                                                       Adultos: de 1.0 a 3.0 %"
+ASCA  A,R        001{CrLf}
+vPRENAT,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        013R        014
+{L=n}{FB=1}Screening Bioqu�mico del Primer Trimestre de Embarazo  
+Para la estimaci�n de riesgo de embarazo cn S�ndrome de Down (SD)
+Para la estimaci�n de riesgo de embarazo cn S�ndrome de Edwards Patau 
+
+{L=n}{FB=1}Nota: Los resultados representan unicamente un �ndice de riesgo y no constituyen un diagn�stico. La sensibilidad en la detecci�n de S D por estos dos marcadores bioquimicos es de aproximadamente un 80 % de los afectados. Con el agregado de los datos ecogr�ficos la sensibilidad alcanza el 89% de detecci�n.
+"
+vPLP,R        001T        011R        002T        005R        003T        006R        004T        007R        005T        008IVLD     000T        001R        006T        010V        002{CrLf}{L=n}{FB=1}PERFIL LIPOPROTEICO{FB=0}{L=00}{CrLf}{CrLf}La realizaci�n del perfil lip�dico con un ayuno estandar no prolongado refleja mejor el verdadero estado metab�lico y es un mejor predictor del RCV.Se actualiza el valor de referencia correspondiente a triglic�ridos a partir de Septiembre 2022V        001=R        002/R        004V        003=R        003*F        100V        002=V        003/R        004
+vHEMC,"T        001R        001R        002R        003R        004R        005T        006R        006R        007R        008T        002R        009R        010R        011R        012R        013R        014T        003R        015{FB=1}HEMOGRAMA
+Contador hematol�gico GEO MC{FB=0}V00000000001=R00000000001*F00000010000V00000000002=R00000000004*F00000000100V00000000003=R00000000003*F00000000010V00000000005=R00000000002*F00000100000V        005=V        005/R        001V00000000006=V00000000003*F00000001000V        006=V        006/R        001V00000000007=V00000000003*F00000000100V00000000007=V00000000007/R00000000002V00000000010=R00000000005*R00000000004V00000000011=R00000000006*R00000000004V00000000012=R00000000007*R00000000004V00000000013=R00000000008*R00000000004V00000000014=R00000000009*R00000000004V00000000015=R00000000010*R00000000004V00000000016=R00000000011*R00000000004"
+HEMOL,"R00000000001
+
+"
+HEP,T        003R        006R        007R        008T        001R        001R        002R        003R        004R        005T        004ILDH     000IGGT     000IALB-Bi  000{CrLf}{FB=1}HEPATOGRAMA COMPLETO {FB=0}{CrLf}V00000000001=IBRR     002-IBRR     001V00000000003=IPRO     001-IALB     001V00000000002=IALB     001/V00000000003V00000000002=V00000000002*F00000000100
+HERBI,"R        001R        002R        003
+
+
+
+           {L=2}INVESTIGACION DE HERBICIDAS EN AGUA{L=0}
+
+
+       Metodologia : Cromatografia Gaseosa con deteccion por
+                     espectrometria de masas(GC-MS).
+
+
+       Limite de deteccion de metodo empleado : 2,0 ppb"
+HES,"R        001R        002
+{L=2}HEMOCULTIVO  SERIADO{L=0}
+"
+HEV,"R00000000001
+"
+HEXANO,"R00000000001
+"
+HFE,"R00000000001
+"
+HFE MEC,"R00000000001
+"
+HG2,"R00000000001
+"
+HGB,R00000000001
+HGB-L,"R00000000001
+"
+HGH,"R00000000001
+"
+HGH-GLU,"R        001R        002R        003R        004
+{L=2}PRUEBA DE SOMATOTROFINA post GLUCOSA{L=0}
+  
+"
+HGH-PE,"R00000000001
+"
+vMICOL,"R        001R        002R        003
+{L=2}Estudio Micol�gico{L=0}
+"
+HGH-TRH,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULACION HIPOFISIARIA DE HGH CON TRH-200 ugr.{L=0}
+   
+
+{L=1}{gox=20}{setleft}Valor normal basal: de 0 a 7,0 ng/ml.
+Los valores de estimulacion no deben
+superar el valor base ni el maximo normal.
+Metodo: Radioinmunoensayo{L=0}{resleft}"
+HGY,"R00000000001
+
+"
+HI AGUA,"R00000000001
+"
+HI-U,"R00000000001
+"
+HI5,"R00000000001
+"
+HIB,"R00000000001
+"
+HID,R00000000001{CrLf}
+HID-12,"R00000000001
+"
+HID-2,"R00000000001
+"
+HIDA-E,"R00000000001
+  "
+HIDA-H,"R00000000001
+"
+HIDA-IF,"R00000000001
+
+"
+HIDA-M,"R00000000001
+"
+HIDA-WBL,"R00000000001
+
+"
+HIDPIRE,"R00000000001
+"
+HIS,"R00000000001
+{l=2}HISTOPLASMA CAPSULATUM{l=0}
+"
+HISOPADO,"R        001R        002
+
+
+     {L=2}CONTROL DE CONTAMINACION DE SUPERFICIES{L=0}
+                  {L=2}POR HISOPADO{L=0}
+
+
+{L=1}{gox=20}Metodo : Agar sangre 37�C - 48 Hs.{L=0}"
+HISTOP,"R00000000001
+"
+HIT,"R00000000001
+"
+HIV,R00000000001T        001R        002
+HIV CV,"R        001R        002{CrLf}{CrLf}{FB=1}CARGA VIRAL HIV{FB=0}{CrLf}{CrLf}{L=1}M�TODO : RT - PCR Cuantitativa. Amplificaci�n de segmentos espec�ficos del genoma viral con primers correspondientes a la regi�n gag del virus, por t�cnica de RT - Polymerase Chain Reaction (PCR) contra est�ndares internos de cuantificaci�n para control de la reacci�n y monitoreo de potenciales interferencias.{CrLf}{L=1}M�todo automatizado - (Ampliprep-TaqMan){CrLf}"
+HIV DNA,"R        001
+{L=2}HIV DNA PCR - Viral integrado{L=0}
+          GAG y POL de HIV-1
+    -Analisis de los productos de amplificacion por electroforesis
+     en gel de agarosa al 1,8 % con tincion, con bromuro de
+     etidio y exposicion a luz ultravioleta mediante transilu-
+     minacion.
+
+     NOTA : El presente resultado no debe considerarse conclusivo
+     para el diagnostico de infeccion por HIV-1 y debe considerarse
+     en conjunto con otros indicadores clinicos y de laboratorio.
+
+
+
+"
+HIV MURE,"R00000000001
+"
+HIV P24,"R00000000001
+"
+PROS L,R        001{CrLf}
+HIV PCR,"R        001R        002
+{L=2}HIV RNA PCR {L=0}
+      
+{l=1}{gox=20}{setleft}METODO  : RT-PCR/DNA PCR
+
+TECNICA :
+-Aislamiento y purificacion del ARN viral a partir de plasma
+ humano y de ADN genomico de leucocitos de sangre entera.
+-Transcripcion reversa del ARN viral aislado y generacion
+ del ADN copia.
+-Amplificacion por reaccion en cadena de la polimerasa del
+ ADN copia, utilizando iniciadores especificos del gen GAG
+ de la inmunodeficiencia humana tipo 1,(SK38/39 y SK19)
+ y visualizacion en electroforesis en gel de poliacrilamida.
+{l=0}{resleft}
+"
+HIV-PCR,"R        001R        002
+{L=2}HIV RNA PCR{L=0}
+      
+{l=1}{gox=20}{setleft}METODO  : RT-PCR/DNA PCR
+
+TECNICA :
+-Aislamiento y purificacion del ARN viral a partir de plasma
+ humano y de ADN genomico de leucocitos de sangre entera.
+-Transcripcion reversa del ARN viral aislado y generacion
+ del ADN copia.
+-Amplificacion por reaccion en cadena de la polimerasa del
+ ADN copia, utilizando iniciadores especificos del gen GAG
+ de la inmunodeficiencia humana tipo 1,(SK38/39 y SK19)
+ y visualizacion en electroforesis en gel de poliacrilamida.{l=0}{resleft}
+"
+HLA,R        001{CrLf}{FB=1}Ant�geno de Histocompatibilidad{L=0}{CrLf}{FB=1}HLA - B27 {L=0}{CrLf}{CrLf}Material examinado: sangre entera heparinizada{CrLf}
+HLA AB,"R        001R        002
+{L=2}ANTIGENOS DE HISTOCOMPATIBILIDAD CLASE 1-HLA AB 
+MICROTEST DE LINFOCITOTOXIDAD {L=0}
+"
+HLA DQ,"R        001R        003
+
+
+
+       {L=2} TIPIFICACION POR BIOLOGIA MOLECULAR {L=0}
+
+          {L=2} DE LOS GENES HLA CLASE II - DQ {L=0}
+
+
+     RESULTADO :
+                       NOMENCLATURA
+     BIOLOGIA MOLECULAR            SEROLOGIA
+
+
+    {L=1} Metodo : PCR e hibridizacion reversa {L=0}"
+HLA DR,"R        001R        003R        005R        007R        009
+
+
+
+       {L=2} TIPIFICACION POR BIOLOGIA MOLECULAR {L=0}
+
+          {L=2} DE LOS GENES HLA CLASE II - DR {L=0}
+
+
+     RESULTADO :
+                       NOMENCLATURA
+     BIOLOGIA MOLECULAR            SEROLOGIA
+
+
+
+    {L=1} Metodo : PCR e hibridizacion reversa {L=0}"
+HLA-B27,"R00000000001
+"
+HLA-DR,"R        001R        002R        003R        004R        005R        006
+{L=2}HLA-DR - POR CITOMETRIA DE FLUJO Marcadores estudiados por I.F.I.{L=0}
+
+
+
+{l=1}{gox=20}Valores de referencia para adultos caucasicos:
+                de 60 - 85 %{l=0}"
+HLAB5,"R        001
+{L=2}ANTIGENO DE HISTOCOMPATIBILIDAD{L=0}
+{L=2}HLA - B5 {L=0}
+
+Material examinado: sangre entera heparinizada
+"
+HLADR-CF,"R        001R        002
+{L=2}HLA-DR - POR CITOMETRIA DE FLUJO Marcadores estudiados por I.F.I.
+
+{l=1}{gox=20}{setleft}Observaciones Generales : HLA-DR 4,2 % corresponde
+a celulas B CD-/DR+.
+HLA-DR total : 14,9 % (T actividad + B).{l=0}{resleft}"
+HMC,R00000000001{CrLf}
+HMI,"R00000000001
+"
+HMS,R00000000001{CrLf}{CrLf}
+HOFENOL,"R00000000001
+"
+HOMA,"R        001R        002V        002   
+{FB=1}INSULINO RESISTENCIA (HOMA IR){FB=0}
+                                V        001=R        001*R        002V        002=V        001/F        405"
+HOW,"R00000000001
+"
+HOyLEA,"R        001R        002
+
+
+
+             {L=2}ANALISIS MICROBIOLOGICO{L=0}
+
+
+"
+HOyLEV,"R        001R        002R        003
+
+
+               {L=2}ANALISIS MICROBIOLOGICO{L=0}
+
+
+
+
+           Metodo  : Recuento en placa Agar nutritivo
+                     a 37�C"
+HPG,"R        001R        002R        003R        004
+{L=2}COPROPARASITOLOGICO HPG {L=0}
+"
+HPN,"R00000000001
+"
+HPR,"R00000000001
+
+"
+LISTERIA,"R        001
+"
+NTX,R        001{CrLf}{FB=1}N-TELOPEPTIDOS (NTX)                                                                                                     
+CD 56 NK,"R        001R        002R        003R        004
+{FB=1}AN�LISIS DE SUBPOBLACIONES LINFOCITARIAS - LINFOCITOS CD56 (Natural Killer){FB=0}
+ "
+HPR ACTH,"R        001R        002
+{L=2}PRUEBA DE 17-HIDROXIPROGESTERONA POST ESTIMULACION DE ACTH {L=0}
+
+
+{L=1}{GOX=20}{SETLEFT}Metodo : Radioinmunoensayo
+Valores de referencia basal:
+Valores de referencia post ACTH :
+Segun criterio m�dico.
+Se podria conciderar como respuesta
+positiva a una elevacion de entre 2
+a 4 veces el valor basal."
+HPR POST,"R00000000001
+"
+HPR-1,"R00000000001
+"
+HPR-2,"R00000000001
+"
+HPR-2-4,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULACION GONADAL
+17-HIDROXIPROGESTERONA POST 5000 U DE HCG {L=0}
+"
+HPR-4,"R00000000001
+"
+HPR-72,"R00000000001
+"
+HPR-ACTH,"R        001R        002
+{L=2}PRUEBA DE 17-HIDROXIPROGESTERONA 
+POST ESTIMULACION DE ACTH{L=0}
+
+{L=1}{GOX=20}{SETLEFT}Metodo : Radioinmunoensayo
+Valores de referencia basal:
+-MASCULINO                : 0,30 a 2,20 ng/ml.
+-FEMENINO
+ Fase folicular           : 0,20 a 0,80 ng/ml.
+ Fase luteal              : 0,30 a 3,00 ng/ml.
+ 1er.semana de embarazo   : hasta 9,00 ng/ml.
+Valores de referencia post ACTH :
+Segun criterio medico.
+Se podria conciderar como respuesta
+positiva a una elevacion de entre 2
+a 4 veces el valor basal. {L=0}{RESLEFT}"
+HPR-HCG,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULACION GONADAL
+17-HIDROXIPROGESTERONA POST 5000 U DE HCG {L=0}
+"
+HPR30,"R00000000001
+"
+HPR60,"R00000000001
+
+"
+HPR90,"R00000000001
+"
+HPRACTH3,"R        001R        002R        003
+{L=2}PRUEBA DE 17-HIDROXIPROGESTERONA POST ESTIMULACION DE ACTH {L=0}
+
+{L=1}{GOX=20}{SETLEFT}Metodo : Radioinmunoensayo
+
+Valores de referencia basal:
+-MASCULINO                  : 0,30 a 2,20 ng/ml.
+-FEMENINO
+ Fase folicular           : 0,20 a 0,80 ng/ml.
+ Fase luteal              : 0,30 a 3,00 ng/ml.
+ 1er.semana de embarazo   : hasta 9,00 ng/ml.
+Valores de referencia post ACTH:
+Debe tener un incremento de entre 2 y 4 veces
+al valor basal.{L=0}{RESLEFT}"
+HPV-HIB,"R        001R        002
+{L=2}HPV HIBRIDACION IN SITU {L=0}
+
+{l=1}{gox=20}{setleft}METODO  : HIBRIDACION IN SITU
+
+TECNICA :
+-Digestion, exposicion del material genomico y desnatu-
+ ralizacion de las hebras de ADN.
+-Hibridacion selectiva del ADN viral aislado con sondas
+ biotiniladas para subtipos 6/11, 16/18, 31/33, 51/52.
+-Inmunodeteccion con anticuerpos antibiotina y complejo
+ anticuerpo streptavidina fosfatasa alcalina.{l=0}{resleft}"
+BACT,R        001R        002
+vHPV,R        001R        002R        003{CrLf}{FB=1}PAPILOMA VIRUS HUMANO (HPV){FB=0}{CrLf}
+HPX,"R00000000001
+"
+HPY A,R00000000001{CrLf}                                                                                                                    
+HPY G,"R00000000001
+                                                                                                                                                                                                                  "
+HPY M,R00000000001{CrLf}
+HSI,"R00000000001
+"
+HSM,"R00000000001
+"
+HSV-Ag,"R00000000001R        002R        003
+{l=2}HERPES SIMPLEX ANTIGENO{l=0}
+"
+HTL,R00000000001{CrLf}
+HTLV-1-2,R00000000001
+HTLV-2,"R00000000001
+"
+HSVPCR,"R        001R        002R        003T        001
+{FB=1}VIRUS DEL HERPES SIMPLEX (HSV I/II)-PCR{FB=0}
+"
+HSVMOL,R        001R        002R        003T        001{CrLf}{FB=1}VIRUS DEL HERPES SIMPLEX (HSV I/II){FB=0}
+HTO,R00000000001{CrLf}
+HU2,"R        001R        002
+{L=2}REACCION DE HUDLESSON CON 2-MERCAPTO ETANOL{L=0}
+{L=01}{gox=20}{setleft}
+M�todo : 2-mercapto Etanol
+Valor de referencia : hasta 1/20
+La disminuci�n en 2 o m�s t�tulos en un
+Test de Hudlesson con 2-mercapto Etanol
+con respecto al test de Hudlesson infiere
+la presencia de IgM para Brucellas.{L=0}{resleft}"
+HUD,"R00000000001
+"
+HUE,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013
+{L=2}ANALISIS BACTERIOLOGICO DE MATERIAL OSEO{L=0}
+"
+HV1 G,R00000000001{CrLf}
+HV1 M,"R00000000001
+"
+HV2 G,R00000000001{CrLf}
+HV2 M,"R00000000001
+"
+IAM,"R00000000001
+"
+IAO,"R00000000001
+
+"
+IAS,R00000000001{CrLf}
+IBE,"R00000000001
+"
+IBE A,"R00000000001
+"
+IBE M,"R00000000001
+"
+IBR,"R        001R        002R        003
+{L=2}DIAGNOSTICO DE RINOTRAQUEITIS INFECCIOSA BOVINA {L=0}
+
+      "
+IEF,"R00000000001
+
+M�todo: Inmunodifus. posterior a electroforesis"
+IEF LCR,"R00000000001
+"
+IEL,"R00000000001
+"
+IEO,R00000000001{CrLf}
+IEs,"R00000000001
+"
+IFO,"R00000000001
+"
+IG1,R00000000001{CrLf} 
+IG2,R00000000001{CrLf} 
+IG3,R00000000001{CrLf} 
+IG4,R00000000001{CrLf}
+IGA,R00000000001{CrLf}
+IGA NASA,"R00000000001
+"
+IGAO,"R00000000001
+"
+IGAS,"R00000000001
+"
+IGD,R00000000001{CrLf}Metodo: Inmunodifusion radial
+IGE,R00000000001{CrLf}
+HCV CV,R        001R        002{CrLf}{FB=1}VIRUS de HEPATITIS C - CARGA VIRAL{FB=0}{CrLf}{L=1}M�todo: RT-PCR en tiempo real (Cobas Taqman/Ampliprep){CrLf}{L=1}Rango lineal: 15 a 100.000.000 UI/ml{CrLf}
+IGE COR,"R00000000001
+{l=1}{gox=20}{setleft}Valores de referencia (promedios):
+   - En ni�os de:
+     1 a�o  hasta     15 IU/ml.
+     2 a�os hasta     29 IU/ml.
+     3 a�os hasta     47 IU/ml.
+     4 a�os hasta     69 IU/ml.
+     7 a�os hasta    161 IU/ml.
+    10 a�os hasta    250 IU/ml.
+    14 a�os hasta    195 IU/ml.
+   - En adultos: hasta 125 IU/ml.{l=0}{resleft}"
+IGE NASA,"R00000000001
+"
+IGFBP-3,R        001{CrLf}{CrLf}
+FING,R        001
+CRO A,"R        001
+"
+IGFBP3,"R00000000001
+
+
+{l=2}INSULIN-LIKE GROWTH FACTOR BINDING PROTEIN-3{l=0}
+
+{l=1}{gox=20}Valores de referencia:
+Edad          Hombres               Mujeres
+00 - 01      1030 - 3090           1030 - 3090
+01 - 02      1100 - 3620           1100 - 3620
+02 - 03      1200 - 3990           1200 - 3990
+03 - 04      1400 - 4250           1400 - 4250
+04 - 05      1630 - 3150           1630 - 3150
+05 - 06      2000 - 4230           2000 - 4230
+06 - 07      2000 - 4210           2000 - 4210
+07 - 08      1250 - 6350           2060 - 6530
+08 - 09      2300 - 5050           2560 - 5530
+09 - 10      2190 - 5190           2860 - 7740
+10 - 11      1800 - 7060           2690 - 7200
+11 - 12      2000 - 5470           2300 - 7740
+12 - 13      1820 - 6990           1800 - 8410
+13 - 14      2400 - 7330           2000 - 7110
+14 - 15      1700 - 6940           2600 - 7320
+15 - 16      2100 - 7170           2400 - 5980
+16 - 18      2590 - 7280           2000 - 6470
+18 - 20      2680 - 7290           2310 - 7480
+20 - 23      2930 - 7380           2760 - 7350
+23 - 25      2250 - 5480           2920 - 7000
+25 - 30      2330 - 6680           2050 - 7600
+30 - 40      1730 - 5590           2300 - 7260
+40 - 50      2080 - 4310           2080 - 4310
+50 - 70      2020 - 3990           2020 - 3990"
+IGG,R00000000001{CrLf}
+HbF,R        001M�todo: IDR                                                                                    Infantes: hasta 7.0%
+IGG LCR,"R00000000001
+"
+IGGO,"R00000000001
+"
+IGGS,"R00000000001
+"
+IGM,R00000000001{CrLf}
+IGMO,"R00000000001
+"
+vCHLA,R        001R        002{CrLf}{FB=1}G�RMENES ESPECIALES{FB=0}
+ILU,"R        001R        002R        003R        004R        005R        006
+{l=2}Investigacion del ANTICOAGULANTE LUPICO {l=0}
+
+
+"
+ILUPI,R00000000001R        002R        003R        004R        005R        006R        007R        008R        009R        010{CrLf}{FB=1}INHIBIDOR L�PICO
+IMI,"R        001R        002
+{l=2}ANTIDEPRESIVOS TRICICLICOS{l=0}
+               "
+IN160,"R00000000001
+
+"
+INDICE,"R        001R        002
+{l=2}ANALISIS DE INDICE MECONIAL{l=0}
+         "
+INF,R00000000001{CrLf}{FB=1}INMUNOFIJACI�N EN SUERO{FB=0}{CrLf}
+INF A SB,"R00000000001
+"
+INF B SB,"R00000000001
+{L=2}INVESTIGACI�N DEL ANTIGENO VIRUS INFLUENZA B{L=0}
+"
+INFL-A,"R00000000001
+"
+INFL-B,"R00000000001
+"
+INH B,"R00000000001
+ "
+INHI-LEC,"R00000000001
+
+"
+INM-TIP,"R00000000001R        002
+{L=2}CITOMETRIA DE FLUJO{L=0} 
+"
+INMUNOB.,"R00000000001
+
+         
+
+           "
+INMUNOBA,"R00000000001
+
+         
+
+           "
+INSU,R00000000001{CrLf}
+INSU-12,"R00000000001
+"
+INSU-12A,"R00000000001
+"
+INSU-16,"R00000000001
+"
+INSU-16A,"R00000000001
+"
+INSU-18,"R00000000001
+"
+INSU-19,"R00000000001
+"
+INSU-2,"R00000000001
+"
+INSU-20,"R00000000001
+"
+INSU-3,"R00000000001
+"
+INSU-30,"R00000000001
+"
+INSU-4,"R00000000001
+"
+INSU-5,"R00000000001
+"
+INSU-60,"R00000000001
+"
+INSU-6PG,"R00000000001
+"
+INSU-90,"R00000000001
+"
+INSU-P,"R00000000001
+"
+IODO-AZ,"R00000000001
+"
+ION,T        001R        001R        002R        003{CrLf}{FB=1}IONOGRAMA PLASM�TICO{FB=0}
+ION-B,"R        001R        002R        003
+
+
+
+            {L=2}  IONOGRAMA PLASMATICO{L=0}
+
+"
+IONO MF,"R        001R        002R        003
+{l=2}IONOGRAMA EN MATERIA FECAL{L=0}
+         "
+OLIGOCL,R        001{CrLf}
+IOU,R        001T        001R        002T        002R        003{CrLf}{FB=1}IONOGRAMA URINARIO{FB=0}{CrLf}{CrLf}
+IOU12,R        001R        002R        003R        004{CrLf}{FB=1}IONOGRAMA URINARIO EN 12 HS.{FB=0}{CrLf}{CrLf}
+IOu,"R        001R        002R        003
+{L=2}Ionograma Urinario - Orina Ocasional{l=0}
+              
+{L=01}{gox=20}{setleft}NOTA:
+Dado que los valores de referencia estan estudiados
+para orina 24 horas en el presente caso por no poseer 
+dicho dato no se pueden informar valores de referencia
+{L=0}{resleft}   "
+ISOHEM,"R00000000001
+"
+IgA LAG,"R00000000001
+"
+Isf,"R00000000001
+
+"
+KAS,R00000000001{CrLf}
+KASAS,"R00000000001
+"
+KAU,"R00000000001
+"
+KAU02,"R00000000001
+"
+KCT,"R00000000001
+
+"
+KGU,"R00000000001
+"
+KLB,"R00000000001
+"
+KPT,"R00000000001
+"
+KRUGER,"R00000000001
+"
+KTV,"R00000000001
+
+"
+Kas,"R00000000001
+"
+L-AMN,"R        001R        002R        003R        004R        005R        006R        007R        008
+{L=2}ANALISIS BACTERIOLOGICO DE LIQUIDO AMNIOTICO{L=0}
+"
+L-AMN-FQ,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014
+{L=2}ANALISIS  DE: LIQUIDO AMNIOTICO{L=0}
+"
+L-ASC,"R        001R        002R        003R        004R        005R        006R        007R        008
+{L=2}ANALISIS BACTERIOLOGICO DE LIQUIDO ASCITICO {L=0}
+"
+L-ASC-FQ,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014
+{L=2}ANALISIS  DE: LIQUIDO ASCITICO{L=0}
+"
+L-BIL,"R        001R        002R        003R        004R        005R        006R        007
+{L=2}ANALISIS BACTERIOLOGICO DE LIQUIDO BILIAR{L=0}
+"
+L-BIL-FQ,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014
+{L=2}ANALISIS DE: LIQUIDO BILIAR{L=0}
+"
+L-BRO,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011
+{L=2}ANALISIS BACTERIOLOGICO DE LAVADO BRONQUIAL{L=0} 
+"
+L-PLE,"R        001R        002R        003R        004R        005R        006R        007R        008
+{L=2}ANALISIS BACTERIOLOGICO DE LIQUIDO PLEURAL{L=0}
+"
+L-PLE-FQ,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014
+{L=2}ANALISIS  DE: LIQUIDO   PLEURAL{L=0}
+"
+L-PUN,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019
+{L=2}LIQUIDO DE PUNCION{L=0}
+"
+L-SIN,"R        001R        002R        003R        004R        005R        006R        007R        008
+{L=2}ANALISIS BACTERIOLOGICO DE LIQUIDO SINOVIAL{L=0}
+"
+L-SIN-FQ,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021
+{L=2}ANALISIS  DE: LIQUIDO SINOVIAL{L=0}
+"
+LACTOSA,"R        001R        002
+
+
+   {L=2}ANALISIS DE ALIMENTOS{L=0}
+
+
+
+    "
+LAM,R00000000001{CrLf}{CrLf}{CrLf}
+LAP,"R00000000001
+"
+LAZ,"R00000000001
+{l=2}INVESTIGACION DE LA FRAGILIDAD CAPILAR{l=0} 
+"
+LCR,R        001R        002R        003R        006R        007R        008R        013R        004R        005R        009R        010R        011R        012{CrLf}{FB=1}EXAMEN DE L�QUIDO CEFALORRAQU�DEO{FB=0}{CrLf}               {CrLf}{FB=1}Examen f�sico - qu�mico{FB=0} {CrLf}
+LD1,"R        001R        002R        003
+{L=2}ISOENZIMA 1 DE LACTATO DEHIDROGENASA{L=0}
+                     "
+LDH,R00000000001
+LDHI,"R        001R        002R        003R        004R        005R        006
+{L=2}LACTICO DEHIDROGENASA ISOENZIMAS{L=0}
+"
+LDL-Wi,R00000000001
+LECHE,"R        001R        002R        003
+
+
+    {L=2}          ANALISIS MICROBIOLOGICO DE LECHE {L=00}
+    {L=2}                  RECUENTO DE CELULAS {L=00}
+
+
+
+         {L=03}                    Segun normas FIL.   {L=00}"
+LECHE BA,"R        001R        002R        003R        004R        005
+
+
+     {L=2}        Examen BACTERIOLOGICO{L=0}
+              
+"
+LECHE MA,"R        001
+{L=2}ANALISIS QUIMICO DE LECHE MATERNA{L=0}
+"
+LECHEx4,"R        001R        002R        003R        004R        005
+
+
+    {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=00}
+
+
+
+"
+LECHEyG,"R        001R        002R        003
+
+
+
+    {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+
+
+
+       Segun normas FIL."
+LEIS,"R00000000001
+"
+LEO,"R00000000001
+"
+LEP,"R00000000001
+
+
+{l=1}     La prueba puede resultar positiva entre 5 y 30 dias
+          NOTA : el antigeno TR detecta anticuerpos de Leptospira
+          humana o animal. Reacciona con el suero del enfermo,
+          sea cual fuera el serotipo infectado.{l=0}"
+LEPM,R00000000001
+LEPTOS,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+
+
+{L=1}{GOX=20}{SETLEFT}Test de aglutinacion microscopica
+Tecnica : microplaca.
+Antigenos cultivados en medio : EMJN
+Dilucion inicial : 1/100{L=0}{RESLEFT}"
+LEPTOS-1,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+
+
+               {l=2}DIAGNOSTICO DE LEPTOSPIROSIS{L=0}
+
+
+
+
+     Tecnica : microaglutinacion lisis con serovares
+      de Leptospira interrogans."
+LFQ,"R        001R        002R        003R        004
+{L=2}FISICO QUIMICA DE LIQUIDO PLEURAL{L=0}
+
+"
+LH,R00000000001T        001T        002T        003{CrLf}
+LH-20,"R00000000001
+"
+LH-25,"R00000000001
+"
+LH-30,"R00000000001
+"
+LH-40,"R00000000001
+"
+LH-45,"R00000000001
+"
+LH-60,"R00000000001
+"
+LH-90,"R00000000001
+"
+LH-L30,"R00000000001
+"
+LH-L60,"R00000000001
+"
+LH-LUT,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULO DE LH post LUTEOLIBERINA{L=0}
+
+{L=1}{GOX=20}{SETLEFT}
+Metodo : Electroquimioluminiscencia
+Valores de referencia basales :
+ HOMBRE  : 0 a 25 ml/U/l
+ MUJER   :
+   Fase folicular :  0 a  38 mlU/ml
+   Fase luteal    :  0 a  25 mlU/ml
+   Mitad de ciclo : 14 a 150 mlU/ml
+   Menopausia     :mas de 21 mlU/ml{L-0}{RESLEFT}"
+LIB,R00000000001{CrLf}
+LIG,R        001R        002R        003R        004{CrLf}{FB=1}LIPIDOGRAMA  ELECTROFOR�TICO {FB=0}{CrLf}Soporte: Cellogel{CrLf}Densitometr�a{CrLf}    {CrLf}V00000000001=R00000000003+R00000000002V00000000002=V00000000001/R00000000001V00000000002=V00000000002*F00000000010
+LII,"R00000000001
+
+"
+LIM,"R        001R        002
+{L=2}LISTERIA MONOCITOGENES{L=0}
+
+"
+LINFOTOT,"R00000000001
+"
+LIO,"R00000000001
+"
+LIP,"R00000000001
+"
+LIQ ART,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}ANALISIS Y FISICO-QUIMICO{L=0}
+"
+LIQ ASCI,"R        001R        002R        003R        004
+{L=2}LIQUIDO ASCITICO{L=0}
+"
+LIQ LCR,"R        001R        002R        003R        004R        005
+{L=2}ANALISIS Y FISICO-QUIMICO{L=0}
+"
+LIQ PER,"R        001R        002R        003R        004
+{L=2}LIQUIDO PERITONEAL de DIALISIS{L=0}
+"
+LIQ PUN,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014
+
+
+     {L=2}ANALISIS FISICO-QUIMICO{L=0}
+        {L=2}DE LIQUIDO DE PUNCION{L=0}
+"
+LIQUIDO1,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011
+{L=2}ANALISIS BACTERIOLOGICO Y FISICO-QUIMICO{L=0}
+"
+LIQUIDO2,"R        001R        002T        001R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015
+{L=2}ANALISIS BACTERIOLOGICO Y FISICO-QUIMICO{L=0}
+"
+LIS,R00000000001{CrLf}
+LIS-C,"R00000000001
+"
+LISTE,"R        001
+
+"
+LISTE C,"R        001R        002
+{L=2}INVESTIGACION DE LISTERIA spp: {L=0}
+
+"
+LIT,R00000000001{CrLf}
+LITAS,"R00000000001
+"
+LKM1,R00000000001T        001{CrLf}
+LKM2,"R00000000001
+"
+LMF,"R00000000001R        002
+{L=2}BUSQUEDA DE  LEUCOCITOS EN MATERIA FECAL {L=0}
+"
+LMOC,R00000000001{CrLf}
+LNT,"R00000000001
+"
+LOR,"R00000000001
+"
+vLPA,R00000000001{CrLf}       
+LPN G,"R00000000001
+"
+LPN M,"R00000000001
+"
+CDF,"R        001R        002R        003V        002
+{FB=1}CLEARENCE DE F�SFORO{L=0} V.R. 6,3 a 15,5 ml/minV        001=R        003/F       1440V        003=R        002/R        001V        002=V        003*V        001"
+LR2,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021R        022R        023R        024R        025R        026R        027R        028
+{L=2}ESTUDIO METABOLICO DE LITIASIS RENAL{L=0}
+
+{L=2}DETERMINACIONES EN ORINA DE 24 HS.{L=0}
+
+{L=2}Periodo ""B""{L=0}
+"
+LR3,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021R        022
+{L=2}CLEARENCES E INDICES{L=0}
+
+{L=2}Periodo ""B""{L=0}
+"
+LR4,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011
+{L=2}Periodo ""B""{L=0}
+
+{L=2}PARAMETROS DE META ESTABILIDAD CRISTALINA{L=0}
+"
+LRE,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012T        001R        013R        014R        015T        002R        016R        017R        018R        019R        020R        021R        022R        023R        024R        025
+{L=2}  ESTUDIO METABOLICO DE LITIASIS RENAL      {L=00}
+             
+{L=3}DATOS FISICOS:{L=0}
+"
+LSD,"R00000000001
+"
+LSG,R00000000001{CrLf}
+LSM,R00000000001{CrLf}
+LTI,"R00000000001
+
+"
+MANTECA,"R        001R        002
+
+     {L=2} ANALISIS BROMATOLOGICO {L=0}
+
+
+       
+     (Valores segun articulo 596 CAA)"
+MAO PLAQ,"R00000000001
+"
+MAR,"R00000000001
+"
+MARGARI,"R        001R        002R        003R        004R        005
+
+
+
+     {L=2} ANALISIS BACTERIOLOGICO {L=0}
+
+
+
+         "
+MARIHUA,R        001{CrLf}{L=2}SCREENING DE DROGAS DE ABUSO EN ORINA{L=00}{CrLf}{L=2}Metabolitos de :MARIHUANA {L=00}{CrLf} {CrLf}Detecci�n cuantitativa de  Acido 11-nor Tetrahidro cannabinol{CrLf}               (principal metabolito de marihuana){CrLf}
+MASAS,"R        001R        002R        003
+
+     {L=2} ANALISIS BACTERIOLOGICO {L=0}
+
+
+
+         "
+MATERI-1,"R        001R        002
+
+
+         {L=2}RECONOCIMIENTO DE MATERIAL{L=0}
+
+
+{l=1}{gox=20}Metodo : Reaccion con almidon y titulacion
+             redox con Tiosulfato"
+MATERI-2,"R        001R        002
+
+
+         {L=2}RECONOCIMIENTO DE MATERIAL{L=0}
+
+
+ "
+MATERIAL,"R        001R        002
+
+
+         {L=2}RECONOCIMIENTO DE MATERIAL{L=00}
+"
+MBI,"R00000000001
+"
+MCE,"R        001R        002R        003R        004R        005R        006R        007
+{L=2}ANALISIS MICROBIOLOGICO DE MOCO CERVICAL{L=0}
+
+{L=3}Ex�men microsc�pico en fresco (Directo):{L=0} 
+"
+MEL,R00000000001{CrLf}
+MER,R00000000001{CrLf}
+MET,R00000000001{CrLf}
+MET TOT,"R00000000001
+"
+MFF,"R00000000001
+"
+MG-U,R        001{CrLf}V        001=R        001*IVOL     001V        001=V        001/F00000010000V        001=V        001*F00000000008
+MGS,R00000000001
+MGS-B,"R00000000001
+
+"
+MGS-VA,"R00000000001
+"
+MGU,"R00000000001
+"
+MGU02,"R00000000001
+"
+MHE,"R00000000001
+"
+MIA,"R00000000001
+
+
+
+"
+MIA CRU,"R        001R        002R        003
+{l=2}RELACION  MICROALBUMINURIA / CREATININURIA en orina ocacional{l=0}
+ 
+
+        V00000000002=R00000000002*R00000000003V00000000001=R00000000001/V00000000002"
+MIC,"R        001R        002R        003R        004R        005R        006R        007
+{L=2}EXAMEN MICOLOGICO  DE:{L=0}
+"
+MICROB,"R        001R        002R        003R        004R        005R        006R        007
+
+  {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+     
+
+
+     Valores maximos permitidos segun articulo 1078 CAA
+     --------------------------------------------------
+     Elaboracion artesanal :
+     Rto.bac.aerobias mesofilas  . </=  200000 UFC/g
+     Rto.bac.coliformes            </=     150 UFC/g
+     Rto.bac.coliformes fecales    </=       1 UFC/g
+     Rto.bac.Staphylococcus aureus </=     500 UFC/g
+     Salmonella                     ausencia en 50 g
+     Hongos y levaduras            </=     100 UFC/g
+
+     Elaboracion industrial :
+     Rto.bac.aerobias mesofilas  .  </= 100000 UFC/g
+     Rto.bac.coliformes             </=    100 UFC/g
+     Rto.bac.coliformes fecales  .  </=      1 UFC/g
+     Rto.bac.Staphylococcus aureus  </=    100 UFC/g
+     Salmonella                     ausencia en 50 g
+     Hongos y levaduras          .  </=    100 UFC/g"
+MIE,R00000000001{CrLf}{CrLf}
+MIEL-NIT,"R        001
+
+
+
+    {L=2} ANALISIS  MICROBIOLOGICO   DE    ALIMENTOS{L=0}
+    {L=2}     DETERMINACI�N DE ANTIBIOTICOS EN MIEL {L=0}
+
+    {L=2}                 NITROFURANOS {L=0}  
+
+
+       Sensibilidad del m�todo 0.10 ppb"
+MIH,"R00000000001
+"
+MII,"R00000000001
+"
+MII M2,R00000000001{CrLf}
+MINE FC,R00000000001{CrLf}
+MINE G,R00000000001{CrLf}
+MINE M,R00000000001{CrLf}
+MIO,"R00000000001
+"
+MIO-U,"R00000000001
+"
+MIS,"R        001R        002R        003
+{L=2}EXAMEN MICOLOGICO  DE:{L=0}
+"
+MLI,"R00000000001
+
+"
+MLI A,R00000000001{CrLf}
+MLI G,R00000000001{CrLf}
+MLI M,"R00000000001
+"
+MND,R00000000001
+MOCOMF,"R00000000001
+"
+MOPEG,R00000000001{CrLf}
+MOHO,"R        001
+{L=2}IDENTIFICACION DE CRECIMIENTO DE MOHO{L=0}
+"
+MSE,"R00000000001
+"
+MSH,"R00000000001
+"
+MTA,"R00000000001
+"
+MUC,"R00000000001
+
+"
+MUCOPOLI,"R00000000001
+"
+MUO,"R00000000001
+"
+MYC GAL,"R00000000001
+"
+MYH,"R        001R        002R        003R        004T        001R        005R        006R        007R        008R        009R        010
+{L=2}CULTIVO PARA MYCOPLASMA HOMINIS{L=0}
+"
+MYHO M,"R00000000001
+"
+MYT,"R        001R        002 
+{L=2}Investigacion de Bacterias del genero MICOPLASMA 
+(incluyendo las especies : Micoplasma HOMINIS y UREAPLASMA UREALITICUM)                     
+          "
+MYTU,"R        001R        002R        003R        004R        006R        005R        007R        008R        009R        010R        011R        012R        013R        014
+{L=2}MICOPLASMAS UROGENITALES {L=0}
+"
+MYU,IMYH     000T        001IUUREAL  000
+Man,"R00000000001
+
+"
+Mer,"R00000000001
+"
+Mga,"R00000000001
+
+"
+Mia,"R00000000001
+
+
+
+"
+Mng,"R00000000001
+
+"
+N AH CIS,"R        001
+{L=2}Cuantificacion de n-Acetil-S-2 hidroxietil-L-cisteina {L=1}
+
+Metodologia :
+Cromatografia Liquida de Alta Presion con Derivatizacion
+Precolumna (FMOC)y Deteccion de Fluorescencia.
+
+
+Minima concentracion cuantificable(MCC): 10ug/l"
+NAS,R00000000001{CrLf}
+NAS MF,"R00000000001
+"
+NAS-AGUA,"R00000000001
+"
+NAU,"R00000000001
+"
+NAU02,"R00000000001
+"
+NBT,"R00000000001
+"
+NEF,R00000000001{CrLf}
+NEIS MEN,"R        001R        002
+{L=2}INVESTIGACION DE NEISSERIA MENINGITIDIS{L=0}
+
+"
+NEUB Ac,"R00000000001{L=1}{gox=20}{setleft}NOTA: Valores protectivos: > 40 mg/l.
+Respuesta adecuada post est�mulo > 80 mg/l {L=0}{resleft}"
+NEUTX Ac,"R        001R        002R        003R        004R        005
+{L=2}PRUEBA DE ESTIMULACIONDE ANTICUERPOS PARA:{L=0}
+{L=2}Ac.ANTI-STREPTOCOCO PNEUMONIAE{L=0}
+     {l=1}{gox=20}{setleft}
+Metodo : E.I.A.
+Valores normales: Basal : Negativo hasta 80,00 mUI/ml
+                          Positivo de 80,00 a 125,00 mUI/ml
+                  Post estimulo : Se considera una respuesta
+                  suficiente si triplica el valor basal.{l=0}"
+NH4,"R00000000001
+"
+NICO,"R00000000001
+"
+NIQUEL,R00000000001{CrLf}
+NIQUEL O,"R00000000001
+"
+NOA,R00000000001{CrLf}
+NOF,"R00000000001
+"
+AHV,R        001
+NRO,R00000000001{CrLf}
+NTA,"R00000000001
+"
+NTI,"R00000000001
+"
+NTL,"R00000000001
+
+"
+NTR,"R00000000001
+  "
+NTx,"R00000000001
+{L=01}{gox=20}Valores de referencia :   Riesgo relativo de osteosporosis
+                 Hasta 17,9  nM ECO/mM creat.          1,0 (normal)
+                 de 18 a 37,9  nM ECO/mM creat.        1,4
+                 de 38 a 50,9  nM ECO/mM creat         2,5
+                 de 51 a 66,9 nM ECO/mM creat.         3,8
+                 de 67 a 188  nM ECO/mM creat.        17,3 {L=00}
+
+"
+NU5,"R00000000001
+"
+O11,"R00000000001
+"
+OCL,"R00000000001
+
+ 
+{l=1}{gox=20}COMPUESTOES INVESTIGADOS:
+      Aldrin;alfa HCH;beta HCH;Delta HCH;Endrin;4,4-DDD,DDE,
+      DDT;gamma HCH;Dieldrin;Endosulfan I;Endosulfan II;
+      Heptacloro;Endrin Aldehida y Cetona;Endosulfan sulfato;
+      Metoxicloro;Heptacloro Epoxido.{l=0}"
+OCLO,"R00000000001
+
+
+{l=1}{gox=20}COMPUESTOES INVESTIGADOS:
+      Aldrin;alfa HCH;beta HCH;Delta HCH;Endrin;4,4-DDD,DDE,
+      DDT;gamma HCH;Dieldrin;Endosulfan I;Endosulfan II;
+      Heptacloro;Endrin Aldehida y Cetona;Endosulfan sulfato;
+      Metoxicloro;Heptacloro Epoxido.{l=0}"
+OFO,"R00000000001
+
+"
+OFOS,"R00000000001
+
+
+{l=1}{gox=20}Compuestos investigados :
+        Bolstar,Clorpirifos,Cumafos,Diazinon,Diclorvos,
+        Etoprop,Fensulfotion,Fention,Gution,Metil Paration,
+        Mevinfos,Fosdrin,Naled,Forato,Fenclorfos,Stirofos,
+        Tokution,Tricloronato,Merfos.{l=0}"
+OK4,"R        001R        002
+
+
+     {L=2}CD4: (OKT4-Leu-3a){L=0}"
+OK8,"R        001R        002
+
+
+       CD8 : (OKT8-LEU-2a)
+       {L=1} Valor normal: 1,7 a 2,3 {L=0}"
+OMB,"R00000000001
+"
+OMS9,"R00000000001
+"
+ONCOGEN,"R        001
+{L=2}PROTO-ONCOGEN RET {L=0}
+
+{l=1}{go=20}{setleft}Se aplico un fragmento de 296 pb que comprende al
+exon 11 del gen RET, localizado en el brazo corto
+del cromosoma 10 en la posicion 11.2(10q11.2).
+Se realizo una digestion enzimatica con las enzimas
+de restriccion HhA1 y Rsa1 del fragmento amplificado
+obteniendose el siguiente resultado:{l=0}
+"
+ORGANO,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013
+{L=2}ANALISIS BACTERIOLOGICO DE MATRIAL DE ORGANO{L=0}
+"
+ORI,T        001R        001R        002R        003R        004R        005T        003R        006R        007R        008R        009R        011R        010T        002R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021R        022R        023{CrLf}{L=n}{FB=1}EXAMEN COMPLETO DE ORINA{FB=0}{L=1}
+OSM,R00000000001{CrLf}
+OSM10,"R00000000001
+"
+OSM24,R00000000001{CrLf}
+OSMO,R00000000001{CrLf}
+OST,"R00000000001
+
+
+"
+OSU,"R00000000001
+"
+OVAR-Ac,"R00000000001
+"
+OXA,R00000000001{CrLf}
+OXA-S,R00000000001{CrLf}
+OXA2,R00000000001{CrLf}
+OXALICO,R00000000001{CrLf}
+OXC,"R00000000001{CrLf}L�mite de cuantificaci�n: 5,0 ugr/ml"
+OXC-18,"R00000000001
+"
+OXC-POST,"R00000000001
+"
+P-AMPO,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}EXAMEN BACTERIOLOGICO DE PUNCI�N DE AMPOLLA CUTANEA{L=0}
+"
+PRT,R        001R        002{CrLf}{FB=1}PROTROMBINA G20210A{FB=0}
+P-HER,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}EXAMEN BACTERIOLOGICO DE PUNCION DE HERIDA{L=0}
+"
+P18,"R00000000001
+
+"
+P24 Ag,"R00000000001
+"
+PAF,"R00000000001
+"
+PAI-1,"R00000000001
+{l=2}INHIBIDOR DEL ACTIVADOR TISULAR DEL PLASMINOGENO TIPO 1 (PAI-1){l=0}
+
+"
+PAP,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021R        022
+{l=2}             INFORME CITOLOGICO  ONCOLOGICO{l=0}
+"
+PAPIPCR,"R        001R        002
+{L=2}PAPILOMA VIRUS HUMANO POR PCR{L=0}
+
+
+{L=1}
+Metodo : PCR
+
+Tecnica :
+ Aislamiento y purificacion del ADN viral a partir del taco de parafina.
+Amplificacion del ADN viral aislado por reaccion en cadena de la polimerasa
+empleando iniciadores especificos de la region L1 del genoma del HPV.
+
+ Visualizacion de los productos de amplificacion por electroforecis en
+gel de agarosa al 1,8%, tincion con bromuro de etilio, y exposicion
+del gel a luz ultravioleta mediante transiluminacion.
+{L=0}"
+PAR,"R        001R        002R        003T        001IEAN     000
+{L=2}EXAMEN DE MATERIA FECAL COPROPARASOTOLOGICO{L=0}
+
+{L=3}Ex�men Macroscopico Directo{L=0}
+"
+PARA 123,"R00000000001
+"
+PARASIT,"R00000000001
+"
+PARO G,"R00000000001
+ "
+PARO M,"R00000000001
+"
+PARVO G,R00000000001{CrLf}
+PARVO M,R00000000001{CrLf}{CrLf}
+PAS-HEP,"R00000000001
+"
+PAST-1,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010
+
+
+           {L=2}INVESTIGACION DE SUSTANCIAS{L=0}
+"
+CALC,T        001R        001R        002R        003R        004T        002R        005R        006R        007R        008R        009R        010R        011{CrLf}{FB=1}EXAMEN FISICOQU�MICO DE C�LCULO URINARIO{FB=0}{CrLf}{CrLf}
+PAST-2,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+
+
+           {L=2}INVESTIGACION DE SUSTANCIAS{L=0}
+
+
+   Se identifico el contenido de 3 pastillas en forma
+   generica en grandes grupos dando como resultado :
+
+   La pastilla gris-roja contiene   : Vitaminas del grupo B
+
+   La pastilla blanca-azul contiene : Vitaminas
+
+   La pastilla blanca-amarilla contiene : Minerales
+
+
+"
+PAST-3,"R        001R        002R        003R        004R        005R        006
+
+
+           {L=2}INVESTIGACION DE SUSTANCIAS{L=0}
+"
+PASTILLA,"R        001R        002R        003R        004R        005R        006R        007R        008
+
+
+           {L=2}INVESTIGACION DE SUSTANCIAS{L=0}
+"
+PBA,"R00000000001
+
+"
+PBG,R00000000001
+PBJ,R00000000001{CrLf}{CrLf}M�todo: Electroforesis en gel de agarosa de alta resoluci�n
+PBO,"R00000000001
+
+"
+PBS,R00000000001{CrLf}B.E.I Hasta 30 ug/dl{CrLf}L�mite de cuantificaci�n: 5 ug/dl
+PCFENOL,"R        001R        002
+{L=2}PENTACLOROFENOL en ORINA{L=0}
+
+      "
+PCG,"R        001R        002
+{L=2}PEPTIDO ""C"" - Prueba de GLUCAGON{L=0}
+"
+PCM,"R00000000001
+"
+PCO,R00000000001{CrLf}
+PCR,R00000000001{CrLf}
+PCR-KOCH,R00000000001R        002{CrLf}{CrLf}{FB=1}MYCOBACTERIUM TUBERCULOSIS{FB=0}{CrLf}
+PCR-U,R00000000001{CrLf}
+PDC,"R        001R        002
+{L=2}PUNTA DE CATETER {L=0}
+
+"
+PDF,"R00000000001
+"
+PEC,R00000000001{CrLf}{CrLf}{CrLf}{CrLf}
+PEC18,"R00000000001
+
+
+"
+PECPP,"R00000000001
+
+
+"
+PELO,"R        001R        002R        003
+{L=2}EXAMEN MICOLOGICO DE : PELO{L=0}
+
+{L=3}EXAMEN MICROSCOPICO{L=0}
+{L=1}M�todo: Pevia digesti�n con hidroxido de potasio {L=0}
+"
+PEO,"R00000000001
+
+
+"
+PEROXIDO,"R        001R        002
+{L=2}INDICE DE PEROXIDO {L=0}
+"
+PET,"R        001R        002R        003R        004
+{L=2}PRUEBA DE ESTIMULO DE TSH{L=0}
+
+"
+GEN F V,"R        001R        002
+
+{L=n}{FB=1}Estudio Gen�mico de Factor V ( Leiden){FB=0}{L=1}"
+PG,"R00000000001T        001R        002
+"
+APCC,R        001
+PG-1,"R00000000001
+"
+G6S,R        001{CrLf}
+PG-30,"R00000000001
+"
+PG-ACTH3,"R        001R        002R        003
+{L=2}PRUEBA DE PROGESTERONA POST ESTIMULACION DE ACTH{L=0}
+
+{L=1}{GOX=20}{SETLEFT}
+Metodo : Quimioluiniscencia
+Valores de referencia basal :
+ -FEMENINO
+   Fase folicular                 : 0,20 a 0,70 ng/ml.
+   Fase luteal                    : 4,50 a 20,00 ng/ml.
+   Hasta decima semana de embarazo: hasta 9,00 ng/ml.{L=0}{RESLEFT}"
+PG-C,"R00000000001
+"
+PG2,"R00000000001
+"
+PG3,"R00000000001
+"
+PH,"R00000000001
+"
+PH AGUA,"R00000000001
+"
+PH FV,R00000000001
+PH VACA,"R00000000001
+"
+PHI,"R00000000001
+"
+PHU,R00000000001{CrLf}
+PHY,"R00000000001
+"
+PIEL-BAC,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}EXAMEN BACTERIOLOGICO DE: PIEL{L=0}
+"
+PIEL-MIS,"R        001R        002R        003
+{L=2}EXAMEN MICOLOGICO DE PIEL:{L=0}
+"
+PIP,"R        001R        002
+{L=2}PRUEBA DE INHIBICION DE PRL {L=0}
+"
+vUREAP,"R        001R        002
+{FB=1}G�RMENES ESPECIALES{FB=0}"
+PIRETRO,"R00000000001
+
+
+Se investigo :
+ Permetrina(cis-trans), Cipermetrina
+(cis-trans), Deltametrina, Alfametrina, Decametrina,
+Fenvalerato."
+PIT,"R        001R        002
+{L=2}PRUEBA DE INHIBICION DE TSH{L=0}
+
+"
+PL,R00000000001R        002{CrLf}
+PL-10,R00000000001{CrLf}
+PL-11,"R00000000001
+"
+PL-12,"R00000000001
+"
+PL-15,"R00000000001
+M�todo: Quimioluminiscencia"
+PL-15M,"R00000000001
+"
+PL-17,R00000000001{CrLf}
+PL-18,"R00000000001
+"
+PL-2,"R00000000001
+"
+PL-20,"R00000000001
+"
+PL-25M,"R00000000001
+"
+PL-30M,R00000000001{CrLf}
+PL-3M,"R00000000001
+"
+PL-40,"R00000000001
+"
+PL-45,"R00000000001
+"
+PL-60,"R00000000001
+"
+PL-8,"R00000000001
+"
+PL-8:30,"R00000000001
+"
+PL-9,"R00000000001
+"
+PL-90,"R00000000001
+"
+PL-MAC,R        001{CrLf}{FB=1}{L=2}Investigacion de MACROPROLACTINEMIA{L=0}{CrLf}
+PL-TRH13,"R00000000001
+"
+PL-TRH20,"R00000000001
+"
+PL-V,"R00000000001
+"
+PM1,"R00000000001
+"
+PN CARIN,"R        001R        002
+{L=2}INVESTIGACION DE PNEUMOCYSTIS CARINIS{L=0}
+
+"
+PO2,"R00000000001
+"
+POLLO,"R        001R        002R        003R        004
+
+
+   {L=2}ANALISIS MICROBIOLOGICO DE ALIMENTOS{L=0}
+
+"
+POM,"R00000000001
+"
+POR,"R00000000001
+"
+PORFI,R00000000001
+PORFO,"R00000000001
+"
+POS,"R00000000001
+"
+PPD,R00000000001{CrLf}
+PPV,"R        001R        002R        003
+{L=2}DIAGNOSTICO DE PARVOVIROSIS PORCINA {L=0}
+
+Metodo : Inhibicion de la hemoaglutinacion
+"
+PRENATAL,"R        001R        002R        003R        004R        005R        006R        007R        008R        009T        001R        010R        011R        012R        013R        014
+{L=2}ESTUDIO CITOGENETICO PRENATAL EN VELLOSIDADES CORIONICAS{L=0}
+
+{L=3} DATOS DE LA PACIENTE : {L=0}
+"
+PRI,"R00000000001
+"
+PRO,"R00000000001
+"
+PRO BA M,"R00000000001
+
+
+"
+PRO LCR,"R00000000001
+"
+PRO SOJA,"R00000000001
+"
+PRO-ALIM,"R        001R        002R        003
+{L=2}ANALISIS FISICOQUIMICO DE ALIMENTO BALANCEADO{L=0}
+     "
+PRO-BALA,"R        001R        002R        003
+
+
+
+    {L=2}ANALISIS FISICOQUIMICO DE ALIMENTO{L=0}
+                {L=2}BALANCEADO{L=0}
+
+
+       {L=1}Metodo: AOAC Official Method 981-10{L=0}"
+PRO-C,"R00000000001
+
+"
+PRO-COSM,"R        001R        002R        003R        004R        005R        006
+{L=2}ANALISIS BACTERIOLOGICO DE PRODUCTOS COSMETICOS {L=0}
+       "
+PRO-E,"R00000000001
+
+"
+PRO-F,"R00000000001
+
+"
+PROCOL1,"R00000000001
+{l=1}{gox=20}Interpretacion :    Hombres        Mujeres
+               04 - 11 a�os      136 - 529      149 - 426
+               11 - 14 a�os      118 - 961      113 - 943
+               14 - 18 a�os      110 - 443      130 - 662
+               Adultos            69 - 147       76 - 163"
+PROS STC,"R        001R        002
+{l=2}INHIBIDORES NATURALES DE LA COAGULACION{l=0}
+
+     "
+PROS TLC,"R        001R        002R        003
+{l=2}INHIBIDORES NATURALES DE LA COAGULACION{l=0}
+
+    "
+PROT C,R00000000001{CrLf}{CrLf}
+PROT S,R00000000001{CrLf}
+PROTEINA,"R        001R        002
+
+
+   {L=2}ANALISIS DE ALIMENTOS{L=0}
+
+
+
+     Metodo : KJELDAHL"
+PROTESIS,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013
+{L=2}ANALISIS BACTERIOLOGICO DE MATRIAL DE PROTESIS{L=0}
+"
+PROTOS,"R00000000001
+"
+PRR,"R00000000001
+"
+PRU,R00000000001T        001{CrLf}{CrLf}
+PRU-PAL,"R        001R        002R        003R        004
+
+
+  {L=2}           PRUEBA PAL{L=0}
+                 
+"
+PRu,"R00000000001
+"
+PSA,R00000000001{CrLf}        
+PSA RIA,"R00000000001
+
+"
+PSA_L,R        001T        001T        002   {CrLf}{CrLf}
+PSA-U,"R00000000001
+
+  Valores de referencia:
+                          Hasta  2,800 ng/ml.
+       Sensibilidad 0,005 ng/ml."
+PSICOFAR,"R        001R        002R        003R        004
+{L=2}INVESTIGACION DE PSICOFARMACOS{L=0}
+"
+PSL,"R00000000001V        001
+{L=01}{GOX=20}Relaci�n PSA libre/ PSA total: 
+                     Es mayor de 15 % en la HBP y/o en las no Ca P.
+                     Aumenta en la HBP y/o en las no Ca P
+                     Es relevante con utilidad diagn�stica cuando el
+                     PSA total es entre 2 ng/ml y 20 ng/ml.    {L=00}  V        001=R        001/IPSA     001V        001=V        001*F00000000100"
+PT LIQ,"R        001R        002R        003R        004R        005
+{L=2}PROTEINOGRAMA DE LIQUIDO CEFALORRAQUIDEO{L=0}
+{L=2}PREVIA CONCENTRACION{L=0}
+"
+PTC,R00000000001{CrLf}
+PTG,R        001T        001R        002T        002R        003T        003R        004T        004R        005T        005R        006T        007R        007T        006R        008T        008R        009{CrLf}{L=n}{FB=1}PROTEINOGRAMA ELECTROFORETICO{FB=0}{L=00}{CrLf}V00000000001=R00000000001-R00000000002V        003=R        002/V        001V        002=V        003*F        100
+PTH-I,"R00000000001
+"
+PTH-M,"R00000000001
+"
+PTL,"R00000000001
+{l=1}{gox=20}Metodo: Electroforesis de alta resolucion con coloracion violeta acida"
+PTO,R        001R        002{CrLf}{L=2}{FB=1}PROTEINOGRAMA ELECTROFOREFICO urinario {L=00}{FB=0}{CrLf}          {CrLf}M�todo : Electroforesis en gel de agarosa de alta resoluci�n{CrLf}             
+PXE,"R        001R        002V        001R        003R        004R        005R        006V        002R        007
+{L=2}PROTEINOGRAMA ELECTROFORETICO{L=0}
+V00000000001=R00000000001-R00000000002V00000000002=R00000000002/V00000000001V00000000002=V00000000002*F00000000100"
+Pir,"R00000000001
+"
+Plo,"R00000000001
+
+"
+Pro,"R00000000001
+"
+QIM,"R00000000001
+M�todo: cin�tica con sustrato crom�geno 25�C                                        Ni�os mayores de 7 d�as y adultos: m�s der 6,0 U/grs de m. fecal"
+QIM-C,"R00000000001
+"
+QUESO,"R        001R        002R        003R        004R        005
+
+
+
+    {L=2}ANALISIS FISICOQUIMICO DE PRODUCTOS{L=0}
+                {L=2}LACTEOS{L=0}
+
+"
+QUESO GR,"R        001R        002
+
+
+
+  {L=2}ANALISIS FISICOQUIMICO DE PRODUCTOS{L=0}
+                {L=2}LACTEOS{L=0}
+
+
+
+{L=1}{gox=20} Valores de referencia de acuerdo al
+       articulo 608 C.A.A
+
+    Queso doble crema   60,00 % de grasas sobre extrato seco
+
+    Queso graso 40,00 - 59,90 % de grasas sobre extrato seco
+
+    Semi graso  25,00 - 39,90 % de grasas sobre extrato seco
+
+    Queso magro 10,00 - 24,90 % de grasas sobre extrato seco{L=0}"
+QUESO HU,"R        001R        002
+
+
+
+  {L=2}ANALISIS FISICOQUIMICO DE PRODUCTOS{L=0}
+                {L=2}LACTEOS{L=0}
+
+
+
+
+{l=1}{gox=20}Valores de referencia de acuerdo al
+      articulo 609 C.A.A
+
+    Queso pasta blanda o queso fresco de 45,00 - 55,00 % de agua
+
+    Queso pasta semidura   36,00 - 44,00 % de agua
+
+    Queso pasta dura       27,00 - 35,90 % de agua{L=0}"
+R A LACT,R00000000001{CrLf}{CrLf}
+R A-SIRO,"R00000000001
+"
+R ABEJA,"R00000000001
+"
+R ACARO,"R00000000001
+"
+R AJI,"R00000000001
+"
+R ALAMO,"R00000000001
+"
+R ALGO,"R00000000001
+"
+R ALMEN,R00000000001{CrLf}
+R ALTER,R00000000001{CrLf}
+R AMARA,"R00000000001
+"
+R AMBRO,"R00000000001
+"
+R AMOXI,"R00000000001
+"
+R ARBOL,"R00000000001Incluye: Arce, Abedul, Roble, Olmo, Nogal"
+R ARBUST,"R00000000001
+"
+R ARCE,"R00000000001
+"
+R ARTEMI,"R00000000001
+"
+R ASP-FL,"R00000000001
+"
+R ASP-FU,"R00000000001
+"
+R ASP-NI,R00000000001{CrLf}
+R ASPER,R00000000001{CrLf}
+R AVENA,R00000000001
+R AVISPA,"R00000000001
+"
+R B LACT,R00000000001{CrLf}
+R BANANA,R00000000001{CrLf}
+R BOVI-C,"R00000000001
+"
+R BROMUS,R00000000001{CrLf}
+R CAB-E,"R00000000001
+"
+R CACAO,R00000000001
+R CAMAR,"R00000000001
+"
+R CANDI,R00000000001{CrLf}
+R CARDO,"R00000000001
+"
+R CASEIN,R00000000001
+R CEBADA,R00000000001
+R CEBADI,"R00000000001
+"
+R CEFAL,"R00000000001
+"
+R CENTEN,R00000000001
+R CERDO,"R00000000001
+"
+R CEREAL,"R00000000001
+"
+R QUENO,R00000000001
+R CHOCO,"R00000000001
+
+"
+R CITRIC,R00000000001
+R CLADO,R00000000001{CrLf}
+R COMPU,"R00000000001
+"
+R CON-E,"R00000000001
+"
+R CUCARA,"R00000000001
+"
+R CYNO,"R00000000001
+"
+R DER FA,R00000000001{CrLf}
+R DER PT,"R00000000001
+"
+R DURAZ,R00000000001{CrLf}
+R EUCAL,"R00000000001
+"
+R FRESNO,R00000000001
+R FRUTIL,"R00000000001
+
+"
+R GAN-PL,"R00000000001
+
+"
+R GANSO,"R00000000001
+"
+R GATO-E,R00000000001{CrLf}
+R GATO-S,"R00000000001
+"
+R GIRAS,"R00000000001
+"
+R GLUTEN,"R00000000001
+"
+R GRA-MA,"R00000000001
+"
+R GRA-ME,"R00000000001
+"
+R GRAMI,"R00000000001
+"
+R H-CLAR,"R00000000001
+"
+R H-YEMA,"R00000000001
+"
+R HARINA,"R00000000001
+"
+R HO-COL,"R00000000001
+"
+R HO-NE,"R00000000001
+"
+R HONGOS,"R00000000001
+"
+R HUEVO,"R00000000001
+"
+R I-BOVI,"R00000000001
+"
+R I-POR,"R00000000001
+"
+R INSU,"R00000000001
+"
+R KIWI,R00000000001{CrLf}
+R LACTOA,R00000000001
+R LACTOG,R00000000001
+R LACTOS,"R00000000001
+"
+R LANA,"R00000000001
+"
+R LATEX,"R00000000001
+
+"
+R LECHE,R00000000001{CrLf}
+R LEVAD,"R00000000001
+"
+R LIGUS,"R00000000001
+"
+R LOLLU,R00000000001{CrLf}
+R MAIZ,"R00000000001
+"
+R MANDA,"R00000000001
+"
+R MANI,R00000000001{CrLf}
+R MANZAN,"R00000000001
+"
+R MARIS,"R00000000001{CrLf}Incluye: Mejill�n, Camar�n."
+R MAYONE,"R00000000001
+"
+R MERLUZ,"R00000000001
+"
+R MOSQUI,"R00000000001
+"
+R MUCOR,"R00000000001
+"
+R NARAN,"R00000000001
+"
+R NUEZ,R00000000001{CrLf}
+R O-ETIL,"R00000000001
+"
+R OLMO,"R00000000001
+"
+R PARAIS,"R00000000001
+"
+R PEN-I,R00000000001
+R PEN-NO,"R00000000001
+"
+R PEN-O,R00000000001
+R PER-C,"R00000000001
+"
+R PER-E,R00000000001{CrLf}
+R PER-P,"R00000000001
+"
+R PESCA,"R00000000001{CrLf}Incluye: Bacalao, At�n, Salm�n, Trucha, Platija."
+R PIM-B,"R00000000001
+"
+R PINO,"R00000000001
+"
+R PLATAN,R00000000001{CrLf}
+R PLUMAS,"R00000000001
+"
+R POA P,R00000000001{CrLf}
+R POLEN,R00000000001{CrLf}
+R POLLO,"R00000000001
+"
+R POLVO,"R00000000001
+"
+R QUESO,"R00000000001
+"
+R RAYGRA,"R00000000001
+"
+R SAUCE,"R00000000001
+"
+R SOJA,R00000000001{CrLf}
+R SORGO,"R00000000001
+"
+R TABACO,"R00000000001
+"
+R TABANO,"R        001
+"
+R TILO,R00000000001{CrLf}
+R TOMATE,"R00000000001
+"
+R TOXOID,"R00000000001
+"
+R TRICOF,"R00000000001
+"
+R TRIGO,R00000000001{CrLf}
+R VACA C,"R00000000001
+"
+R VACA-E,"R00000000001
+"
+R VALNOR,"{L=01}           Valores de referencia:
+                                                                          Expresado en grados
+          < 0,5  UI/ml              {GoX=35}No significativo   {GoX=60} Grado 0 (cero)
+          0,51 a 1,00 UI/ml      Bajo                               Grado 1 (uno)
+          1,10 a 5,00 UI/ml      Moderado                      Grado 2 (dos)
+          5,1 a 25,00  UI/ml     Elevado                          Grado 3 (tres)
+          25,00 a 75,00 UI/ml  Muy elevado                    Grado 4 (cuatro)
+          > 75,00 UI/ml           Marcadamente elevado     {L=00}"
+RAN,"R00000000001
+"
+RCL,"R00000000001
+"
+RCO,"R00000000001
+"
+RDC,"R        001R        002R        003R        004R        005
+{FB=1}EXAMEN BACTERIOLOGICO DE ORINA - UROCULTIVO{FB=0}"
+RDC-1CH,"R        001R        002R        003R        004T        001R        005R        006R        007R        008R        009R        010R        011R        012
+{L=2}EXAMEN BACTERIOLOGICO DE ORINA - UROCULTIVO{L=0}
+{L=3}Primer chorro miccional {L=0}
+
+{L=3}Ex�men f�sico - qu�mico{L=0} 
+"
+RDC-SON,"R        001R        002R        003R        004T        001R        005R        006R        007R        008R        009R        010R        011R        012
+{L=2}EXAMEN BACTERIOLOGICO DE ORINA - UROCULTIVO{L=0}
+{L=3}Material tomado de sonda vesical{L=0}
+
+{L=3}Ex�men f�sico - qu�mico{L=0} 
+"
+RDCyTIP,"R        001R        002R        003
+
+              {L=2}       ANALISIS BACTERIOLOGICO {L=0}
+                      
+"
+RDL,"R00000000001
+"
+vMYCOP,R        001R        002{CrLf}{FB=1}G�RMENES ESPECIALES{FB=0}
+RE BCR,"R        001R        002R        003
+{L=2}REORDENAMIENTO BCR/ABL{L=0}
+
+{L=1}T�cnica :
+Transcripci�n reversa de RNA aislado del especimen
+seguido de amplificacion con dos juegos de primers(nesting).
+Se amplific� el ARN  mensajero con primers para la traslocaci�n
+(9;22)(q34;q11) gel de fusi�n p120 M-bcr y p 190 cr. 
+En presencia de la traslocaci�n el producto obtenido  es de 210 pb.
+En las reacciones de control de PCR se amplifica una parte del ARN mensajero del gen abl normal.{L=0}
+
+
+"
+RECEF,"R        001R        002
+
+{L=2}              DETERMINACION DE RECEPTORES PARA
+                    ESTEROIDES EN TUMORES MAMARIOS{L=0}
+
+
+{L=1}    Metodo: Saturacion con esteroides tritiados
+         NOTA: Se consideran ""POSITIVOS"" los valores
+               superiores a 1 fmol/mg. y ""NEGATIVOS""
+               los valores inferiores a 1 fmol/mg.{L=0}"
+REL,R        001R        002R        003V        001{CrLf}{l=2}Determinacion de la RELACION  CALCIO / CREATININA {CrLf}en Orina de 24 horas{L=0}{CrLf}V        002=R        002*R        003V        001=R        001/V        002V        001=V        001*F     100000
+REL 2H,"R        001R        002R        003V        001
+{L=2}Determinacion de la RELACION CALCIO / CREATININA 
+en Orina de 2 horas{l=0}
+V        001=R        001/R        002V        001=V        001*F00000000100"
+REL MIA,R        001R        002R        003V        001{CrLf}{l=2}Determinacion de la RELACION  MICROALBUMINURIA / CREATININURIA{CrLf}en Orina de 24 horas{l=0}{CrLf}{CrLf}        V00000000002=R00000000002*R00000000003V00000000001=R00000000001/V00000000002V        001=V        001*F00000001000
+REL-OOC,"R        001R        002V        002
+{FB=1}DETERMINACI�N DE LA RELACI�N CALCIO/CREATININA EN ORINA OCASIONAL{FB=0}
+V        001=R        001/R        002V        002=V        001*F        100"
+REN-POST,"R00000000001
+"
+RENINA,R00000000001{CrLf}
+RENINA P,"R00000000001
+"
+RENINAMA,R00000000001{CrLf}
+RENINAPE,"R00000000001
+"
+RET,R00000000001{CrLf}
+RETC,"R        001R        002R        003
+{L=2}RECUENTO DE RETICULOCITOS{L=0}
+{L=3}Por Citometr�a de flujo{L=0}
+
+               "
+RGB,"R00000000001
+"
+MARIH,T        001R        001R        002R        003{CrLf}{FB=1}DETECCI�N DE DROGAS{CrLf}{FB=1}OBSERVACIONES:{FB=0}Todo resultado positivo se deber�a confirmar con t�cnica de espectrometr�a de masa.
+RGO,"R        001R        002R        003
+{L=2}RESISTENCIA GLOBULAR OSMOTICA{L=0}
+
+Se observa hemolisis en :
+
+Valor normal  :  Tubo 10
+Concentracion 4,5"
+RGR,"R00000000001
+"
+RGR HIPO,"R00000000001
+"
+RICOTTA,"R        001R        002R        003
+{L=2}INVESTIGACION DE LISTERIA{L=0}
+"
+RNA,"R00000000001
+"
+RNP,R00000000001{CrLf}
+ROSA BEN,"R00000000001
+"
+ROV,"R00000000001
+"
+MONOTEST,"R00000000001
+"
+RPCA,R        001{CrLf}{FB=1}Resistencia a la Prote�na C reactiva{FB=0}{CrLf}
+RPQ,R00000000001{CrLf}
+RPQ NEU,"R00000000001
+"
+RPQC,"R        001R        002
+{l=2}Par�metros Plaquetarios: Por citometr�a de flujo{l=0}
+"
+RPS,"R00000000001
+"
+RTI,"R00000000001
+"
+RTO-ELE,"
+
+     Par�metros Plaquetarios :
+         Por citometr�a de flujo
+"
+RUA,"R00000000001T        001T        002
+
+"
+RUG,"R00000000001
+"
+PTH,"R        001
+"
+PROT CC,"R        001
+"
+RUG AV,"R00000000001
+{L=1}{GOX=20}{setleft}Valores de referencia :
+Avidez superior a 60% significa avidez alta de la IgG
+anti Rubeola, reinfecci�n o respuesta secundaria
+Avidez entre 50 y 60% zona gris
+Avidez inferior a 50% significa avidez baja de la IgG
+anti Rubeola, primoinfecci�n o respuesta primaria {L=0}{resleft}"
+RUM,"R00000000001
+
+
+"
+Rel,
+S-ECO,"R        001R        002
+{L=2}INVESTIVACION SEROLOGIA PARA ESCHERICHIA COLI O157 {L=0}
+  "
+S-NASO,"R        001R        002R        003R        004R        005R        006IZNC     000
+{L=2}EXAMEN BACTERIOLOGICO SECRECION NASOFARINGEA{L=0}      
+
+{l=3}Ex�men microsc�pico de la reacci�n inflamatoria {L=0}  
+{L=1}M�todo: coloraci�n previa con Giemsa - Azul de metileno    {L=00}
+"
+S-OIDO,"R        001T        001R        002R        003R        004R        005R        006R        007R        008
+{L=2}EXAMEN BACTERIOLOGICO DE SECRECION DE OIDO{L=0}
+"
+S-SALMO,"R        001R        002
+{L=2}SEROLOGIA PARA SALMONELLA {L=0}
+
+"
+S-SHIGEL,"R        001R        002
+{L=2}SEROLOGIA PARA SHIGELLA {L=0}
+
+"
+S70,"R00000000001
+"
+SAL,"R00000000001
+
+
+"
+CV,"R        001R        002
+{L=n}{FB=1}CARGA VIRAL ADN-HPV{FB=0}{L=1}
+"
+SALIVA,"R        001R        002R        003R        004R        005R        006R        007R        008
+{L=2}COMPOSICION QUIMICA DE LA SALIVA{L=0}
+"
+SALIVAS,"R        001R        002R        003R        004R        005
+{L=2}COMPOSICION QUIMICA DE LA SALIVA{L=0}
+"
+SARA G,"R00000000001
+"
+SARA M,"R00000000001
+"
+SAT,R00000000001{CrLf}
+SAUR,"R        001R        002
+{L=2}INVESTIGACION DE STAPHYILOCCOCUS AUREUS:{L=0}
+"
+SBB,"R00000000001
+{L=2}Busqueda de Streptococo Beta hemolitico Grupo B{L-0}
+"
+SBO,"R00000000001
+"
+SBR-L,R00000000001{CrLf}
+SBRQ,"R00000000001
+"
+SCL,"R00000000001
+"
+CHPCR,R        001R        002T        001{CrLf}{CrLf}{FB=1}CHLAMYDIA TRACHOMATIS-PCR{FB=0}
+DAO,R        001{CrLf}
+SCR,"R        001R        002R        003R        004
+{L=2}SCREENING  NEONATAL PARA ENFERMEDADES METABOLICAS CONGENITAS {L=0}
+
+{l=1}{gox=20}{setleft}
+NOTA: El 95 % de los Screening neonatales procesados,
+presentan valores de TSH, Tripsina, Galactosa y Fenilalanina
+dentro de los intervalos establecidos como normales.
+La existencia de valores levemente superiores a los rangos
+implantados suelen carecer de significacion clinica.
+Se sugiere en estos casos, repetir la determinacion con
+una nueva muestra.{l=0}{resleft}"
+TEST RAP,"R        001
+"
+SCR-1,"R        001R        002R        003
+{L=2}SCREENING  NEONATAL PARA ENFERMEDADES METABOLICAS CONGENITAS {L=0}
+
+{L=1}{GOX=20}{setleft}
+NOTA: El 95 % de los Screening neonatales procesados,
+presentan valores de TSH,Galactosa y Fenilalanina
+dentro de los intervalos establecidos como normales.
+La existencia de valores levemente superiores a los rangos
+implantados suelen carecer de significacion clinica.
+Se sugiere en estos casos, repetir la determinacion con
+una nueva muestra.{L=0}{resleft}"
+SDH,"R00000000001
+"
+SEL,R00000000001{CrLf}
+SEN-HON,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010
+
+
+
+
+        {L=2}SUSCEPTIBILIDAD A LOS AGENTES ANTIFUNGIDOS{L=0}
+
+         Metodo : por difunsion en agar de Shadomy modificado
+"
+SEO,"R00000000001
+"
+SER,R00000000001{CrLf}
+SERINA,"R00000000001
+"
+SERPLAQ,R00000000001{CrLf}
+SFE,"R        001R        002R        003
+{l=2}ESTE ES UN ESPERMOGRAMA  SECCIONES de FERTILIDAD{l=0} 
+"
+SIA,"R00000000001
+"
+SIFILIS,"R00000000001T        001
+"
+SILICE,"R00000000001
+"
+SIM,"R        001R        002R        003R        004
+{L=2}TEST DE SIMMS-HUBNER{L=0}
+"
+SIM2,"R        001R        002R        003R        004R        005R        006R        007R        008
+{L=2}TEST DE SIMMS-HUBNER{L=0}
+
+"
+SOBREVID,"R        001R        002R        003
+{L=2}TEST DE SOBREVIDA{L=0}
+
+Porcentaje de zoides progrecivos totales :"
+SOC,R00000000001{CrLf}
+vCULT,R        001R        002R        003R        004R        005{CrLf}{FB=1}CULTIVO DE G�RMENES COMUNES{FB=0}
+SOM,R00000000001{CrLf}
+SOM-I,R00000000001{CrLf}
+SRV G,"R00000000001
+"
+SRV M,"R00000000001
+"
+SSB,"R        001R        002
+{L=2}INVESTIGACION DE STREPTOCCOCUS AGALACTIAE {L=00}
+    
+Enriquecimiento en medios liquidos , aislamiento e identificacion."
+CUMMOL,T        001R        001T        002ICTM     000T        003IUUM     000T        004IMHM     000{CrLf}{FB=1}G�RMENES ESPECIALES{FB=0}
+STM,R00000000001{CrLf}
+vSTREPTO,R00000000001R        002R        003{CrLf}{FB=1}G�RMENES COMUNES{FB=0}{CrLf}
+ALB/ CRE,R        001R        002V        002{CrLf}{FB=1}COCIENTE MICROALB�MINA-CREATININA EN ORINA{FB=0}{CrLf}V        001=R        001*F        100V        002=V        001/R        002
+SUD,"R        001R        002R        003
+{L=2}TEST DEL SUDOR{L=0}
+
+
+{L=1}{GOX=20}{SETLEFT}M�todo:
+  Iontoforesis con pilocarpina y posterior recoleccion
+  directa de sudor sobre papel de filtro
+Valor Normal:
+  Hasta 5 a�os: para ambos electrolitos hasta 50 mEq/l.
+  M�s de 5 a�os: para ambos electrolitos hasta 65 mEq/l.{L=0}{RESLEFT}"
+SULFHID,"R00000000001
+
+"
+SUT,"R00000000001
+"
+SWIN,"R00000000001R        002R        003R        004R        005R        006
+{L=n}{FB=1}SWIM UP DAGN�STICO
+M�todo: Estudio Funcional de Capacitaci�n y Migraci�n Esperm�tica in vitro"
+SWIN DOW,"R        001
+
+
+
+         {L=2}SWIN DOWN{L=0}
+
+         Metodo de migracion  sedimentacion
+         Medio de cultivo HTF de IRVINE CINTIFIC
+         con gradiente de PERCOLL de dos concentraciones
+
+         Cantidad de zoides recuperados :"
+SWIN PER,"R00000000001
+        "
+MYCPCR,"R        001R        002
+{FB=1}MYCOPLASMA HOMINIS-PCR{FB=0}"
+T-LISIS,"R        001R        002
+{L=2}TIEMPO DE LISIS DE GLOBULINAS {L=0}
+   "
+T120,"R00000000001
+"
+T13,"R00000000001
+"
+T20,"R00000000001
+"
+T25,"R00000000001
+"
+T28,"R00000000001
+"
+T3,R00000000001{CrLf}
+T3-C,"R00000000001
+
+"
+T3-DJ,"R00000000001
+
+"
+T3-NG,"R00000000001
+"
+T30,"R00000000001
+"
+T3L,"R00000000001
+"
+vT4,"R00000000001
+
+"
+T4-C,R00000000001{CrLf}
+T4-DJ,"R00000000001
+"
+T40,"R00000000001
+"
+T45,"R00000000001
+"
+T4L,R00000000001{CrLf}
+T4RQ,"R00000000001
+"
+T60,"R00000000001
+"
+T72,"R00000000001
+"
+T90,"R00000000001
+"
+TAL,"R00000000001
+
+"
+UREPCR,"R        001R        002
+{FB=1}UREAPLASMA UREALITICUM-PCR{FB=0}"
+TAN Ac,"R        001R        002R        003R        004R        005
+{L=2}PRUEBA DE ESTIMULACION DE ANTICUERPOS PARA:{L=0}
+{L=2}Ac. ANTI-TOXOIDE TETANICO{L=0}
+
+      {l=1}{gox=20}{setleft}
+Metodo : E.I.A.
+Valores normales : Basal : Negativo o positivo bajo hasta 3,00 mUI/ml
+                   Post estimulo : Se considera respuesta
+                   suficiente si triplica el valor basal.{l=0}{resletf}"
+TANB Ac,"R        001
+{L=2}Ac. ANTI-TOXOIDE TETANICO{L=0}
+"
+TBC,"R00000000001
+"
+vTBC-PCR,"R        001R        002
+{L=2}DETECCION DEL GENOMA DE MYCOBACTERIUM TUBERCULOSIS{L=0}
+{l=1}{gox=20}{setleft}Tecnica :
+ 1- Aislamiento y purifucacion del ADN bacteriano.
+ 2- Amplificacion por reaccion en cadena de la polimerasa
+    del ADNc copia utilizando iniciadores(primers)especificos
+    de la secuencia de insercion IS6110 (fragmentos)
+    amplificacion de ADN de 123 bp)
+ 3- Analisis por electroforesis en gel de agarosa al 1,8%,
+    tincion con bromuro de etidio y exposicion del gel a
+    luz ultravioleta mediante transiluminacion.{l=0}{resleft}"
+TBG,"R00000000001
+"
+TBII,"R00000000001
+"
+TCM,"R00000000001
+"
+TCO,"R00000000001
+"
+TCS,"R00000000001
+"
+TCSTROUT,"R00000000001
+"
+CTM,R        001
+TDB,"R        001R        002
+{L=2}TEST DE DEGRANULACION DE BASOFILOS (TDBH){L=0}
+            
+{l=1}Metodo: Test de degranulacion de basofilos humanos{l=0}
+{L=1}{gox=20}{setleft}Valores de referencia:
+Se considera TDBH POSITIVO a valores superiores al 30 %
+Se considera TDBH NEGATIVO a valores inferiores al 24 %
+Los valores comprendidos entre el 24 y 30 % deben ser
+considerados con precaucion, estudiando antecedente cli-
+nico del paciente.{L=0}{resleft}"
+TDH,"R00000000001
+{l=1}{gox=20}{SETLEFT}Valores de referencia:
+Se considera TDBH POSITIVO a valores superiores al  30 %
+Se considera TDBH NEGATIVO a valores inferiores al  24 %
+Los valores comprendidos entre el 24 % y 30 % deben
+ser considerados con precaucion, estudiando antece-
+dente clinico del paciente.{l=0}{RESLEFT}"
+TDP,"R00000000001
+"
+TDR,"R00000000001
+"
+TE2,"R00000000001
+"
+TE3,"R00000000001
+"
+TE4,"R00000000001
+"
+TE6,"R00000000001
+"
+TEB,R00000000001{CrLf}
+TEL,R00000000001{CrLf}{CrLf}
+TEL60,"R00000000001
+"
+TEO,"R00000000001
+"
+TEP,"R00000000001
+"
+TES,R00000000001{CrLf}
+TES ACTH,"R        001R        002
+{L=2}PRUEBA DE TESTOSTERONA POST ESTIMULACION ACTH{L=0}
+"
+TES-2-4,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULACION GONADAL {L=0}
+{L=2}PARA TESTOSTERONA POST 5000 U DE HCG {L=0}
+
+{l=1}{gox=20}{SETLEFT}
+Metodo : Quimioluminiscencia
+Valor normal basal : de 3,00 a 15,00 ugr/ml.{L=0}{RESLEFT}"
+TES-HCG,"R        001R        002R        003
+{L=2}PRUEBA DE ESTIMULACION GONADAL{L=0}
+{L=2}PARA TESTOSTERONA POST 5000 U DE HCG {L=0}
+
+{l=1}{gox=20}{SETLEFT}
+Metodo :Quimioluminiscencia
+Valor normal basal : de 3,00 a 15,00 ugr/ml.{L-0}{RESLEFT}"
+TEST CLE,"R        001R        002
+
+
+
+      {L=2} TEST DE CLEMENS{L=0}
+
+"
+TEST HIP,"R00000000001
+"
+TEST LI,"R        001R        002R        003
+{L=2}ESPECTROFOTOMETRIA DE LIQUIDO AMNIOTICO{L=0}
+         
+Resultado   :
+
+{L=1}{GOX=20}{SETLEFT}Valores dentro del grafico de Lilley
+ 4 - de alto riesgo
+ 3 - incierto de alto riesgo
+ 2 - incierto de bajo riesgo
+ 1 - no riesgo (zona baja){L=0}{RESLEFT}"
+TEo,"R00000000001
+"
+TG,"R00000000001
+"
+TGL,R00000000001{CrLf}{CrLf}La realizaci�n del perfil lip�dico con un ayuno estandar no prolongado refleja mejor el verdadero estado metab�lico y es un mejor predictor del RCV.Se actualiza el valor de referencia correspondiente a triglic�ridos a partir de Septiembre 2022
+TGL 17,"R00000000001
+"
+TGL 20,"R00000000001
+"
+TGO-Bi,R00000000001
+TGO-C,"R00000000001
+
+"
+TGO-E,"R00000000001
+
+"
+TGP-Bi,R00000000001{CrLf}
+TGP-C,"R00000000001
+
+"
+TGP-E,"R00000000001
+
+"
+TGP-F,"R00000000001
+
+"
+TID,R00000000001{CrLf}{FB=1}DETECCION DE ANTIGENOS DE ESTREPTOCOCO BETA HEMOLITICO{CrLf}Grupo A (S.PYOGENES){FB=0}{CrLf}
+TIOSULFA,R00000000001
+TIP,"R        001R        002R        003R        004R        005
+{L=2}TIPIFICACI�N DE G�RMENES{L=0}
+Por cultivos en medios diferenciales y pruebas bioquimicas
+"
+TIP CEPA,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013
+
+
+
+       {L=2}TIPIFICACION DE CEPA{L=0}
+
+"
+TNBT,"R00000000001
+"
+TORO,"R        001R        002
+
+
+
+    {L=2}ANALISIS DE SEMEN DE TORO{L=0}
+
+       Descongelado en estufa a 37�C
+       Metodo : Observacion microscopica
+
+
+        Espermatozoides viables con movilidad"
+TOXINA,"R00000000001
+{l=2}INVESTIGACION DE CLOSTRIDIUM DIFFICILE Y TOXINA{l=0}
+"
+TPHA,"R00000000001
+"
+TPO,"R00000000001
+"
+TPO-U,"R00000000001
+"
+CC,R        001{CrLf}
+TPR,R        001R        002R        003R        004{CrLf}{CrLf}A partir de marzo de 2023 se actualizan los valores de referencia correspondiente al Tiempo y Consumo de Protrombina.
+NOTA,R        001
+TPRCPN,R        001R        002R        003R        004{CrLf}{CrLf}
+TQI,R00000000001{CrLf}
+TQM,"R00000000001
+"
+TRA,R00000000001{CrLf}{CrLf}
+vTRAB,R00000000001{CrLf}
+TRF,R00000000001{CrLf}
+TRF-ORI,"R00000000001
+"
+TRI,"R00000000001
+"
+TRICHO,"R00000000001
+"
+TROMB-IN,"R00000000001
+"
+TROPO,R00000000001{CrLf}
+TRY,"R00000000001
+"
+TSA,"R00000000001
+
+"
+TSH,R00000000001R        002{CrLf}
+TSH SC,"R00000000001
+"
+TSH-TRH,"R        001R        002
+{L=n}{FB=1} PRUEBA DE ESTIMULACION HIPOFISIARIA DE TSH CON TRH-200 ugr.
+   
+     M�todo: Quimioluminiscencia
+"
+TSN,"R00000000001
+
+"
+TSU,"R00000000001
+"
+TSU-25,"R00000000001
+"
+TSU-30,"R00000000001
+"
+TSU-60,"R00000000001
+"
+TSU-TRH,"R        001R        002
+{L=2}PRUEBA DE ESTIMULACION HIPOFISIARIA {L=0}
+{L=2}DE TSH ULTRASENSIBLE CON TRH-200 ugr.{L=0}
+ 
+  {L=1}{gox=20}{SETLEFT}
+Metodo: Electro quimioluminiscencia            
+Valor normal basal: de 0,500 a 5,000 uU/ml.{L=0}{RESLEFT}"
+TTB,"R        001R        002R        003
+{L=2}TEST DE TRANSFORMACION BLASTICA{L=0}
+
+{l=1}{gox=20}{SETLEFT}Valor de referencia:
+Cuando el indice deproliferacion relativo es mayor de 2,0 significa sensibilidad a la droga
+estudiada.{l=0}{RESLEFT}"
+TTE,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010T        002R        011R        012R        013R        014R        015R        016T        003R        017R        018R        019R        020R        021T        001R        022R        023R        024R        025R        026R        027R        028
+{L=2}TRIPLE TEST{L=0}
+{L=2}SCREENING PRENATAL para S.D. y D.C.T.N.{L=0}
+
+Procesamiento de datos con SOFTWARE AFP/SMS
+"
+TTP,"R00000000001
+"
+TTR,R00000000001{CrLf}
+TTR IN,"R00000000001
+"
+TTR PAR,"R00000000001
+"
+TVV,R00000000001T        001{CrLf}
+TX QUI,"R00000000001
+
+"
+TX-ACAP,R00000000001            
+TX-AVI,"R00000000001
+
+"
+TX-FC,"R00000000001
+"
+MUL,R        001{CrLf}
+TX-MCAP,R00000000001 
+TX-ME,R00000000001{CrLf} 
+TX2,"R00000000001
+{L=1}{GOX=20}{SETLEFT}La disminuci�n en 2 o m�s titulos en un test de
+Toxoplasmosis con 2 Mercaptoetanol respecto
+al test sin 2 Mercaptoetanol infiere la presencia 
+de anticuerpos IgM.{l=0}{RESLEFT}"
+TXA,"R00000000001
+"
+coca ori,
+TXC G,"R00000000001
+
+"
+TXC M,R00000000001
+TXG,"R00000000001
+"
+TXH,"R00000000001{L=1}{GOX=20}{SETLEFT}
+En personas normales hasta 1/128 .
+Valores superiores NO significan per se infecci�n aguda.
+Puede ayudar a tipificar una infecci�n aguda duplicaci�n
+de t�tulo en quince d�as; IgM espec�fica positiva o
+baja avidez de IgG por el antigeno.{L=0}{RESLEFT}"
+TXI,R00000000001{CrLf}{CrLf}
+TXM,"R00000000001
+
+"
+TXME,"R00000000001
+"
+TXS,"R00000000001
+"
+Tpr,R00000000001{CrLf}
+U3 RNP,"R00000000001
+"
+UR-U,R        001{CrLf}V        001=R        001*IVOL     001V        001=V        001/F00000001000
+URE,R00000000001{CrLf}
+URE-C,"R00000000001
+
+"
+URE-E,"R00000000001
+
+"
+URE-F,"R00000000001
+
+"
+URE-L,"R00000000001
+
+"
+URM,"R00000000001
+"
+URO,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014
+{l=2}UROCITOGRAMA HORMONAL {l=0}
+                 "
+URP,"R00000000001
+"
+URU,R00000000001{CrLf}
+URU02,"R00000000001
+"
+URU12,"R00000000001
+"
+UURE Ac,"R        001R        002
+{L=2}Anticuerpos Anti-MYCOPLASMA HOMINIS - UREAPLASMA UREALYTICUM{L=0}
+
+"
+UUREAL,"R        001R        002R        003T        001R        004R        005R        006R        007R        008R        009
+{L=2}CULTIVO PARA UREAPLASMA UREALITICUM{L=0}
+"
+U�A-BAC,"R        001R        002R        003R        004R        005R        006R        007R        008R        009
+{L=2}EXAMEN BACTERIOLOGICO DE : U�A {L=0}
+
+"
+U�A-MIS,"R        001R        002R        003
+{L=2}EXAMEN MICOLOGICO DE : U�A{L=0}
+"
+V25,R00000000001{CrLf}{CrLf}
+VAC,"R00000000001
+"
+VAL,R00000000001{CrLf}{CrLf}{CrLf}
+VANAD A,"R00000000001
+
+"
+VARI G,R00000000001{CrLf}M�todo: Enzimoinmunensayo                                                                                               L�mite: de 50 a 100 mUI/ml{CrLf}                                                                                                                                                 Positivo: mayor de 100 mUI/ml {CrLf}
+VARI M,R00000000001
+VB1,R00000000001{CrLf}
+VB2,R00000000001{CrLf}{CrLf}
+VB6,"R00000000001
+"
+VD3,R00000000001{CrLf}
+VDRL,R00000000001{CrLf}{CrLf}
+VDK,"R00000000001
+"
+VDR,"R00000000001
+"
+VDR LCR,"R00000000001
+"
+VIA,R00000000001{CrLf}
+VIC,R00000000001{CrLf}
+VIE,R00000000001{CrLf}
+VIGABAT,"R00000000001
+{L=1}{GOX=20}{SETLEFT}Valores terapeuticos del GABA: de 40 mmol/l a 45 mmol/l.
+Rango terapeutico tentativo (sin uniformidad
+en la literatura) : de 70 mmoles/l a 190 mmoles/l.{L=0}{RESLEFT}
+
+"
+VIR,"R        001R        002
+{L=2}EXAMEN VIROLOGICO{L=0}
+"
+VIRRESP,"R        001R        002
+{L=2}INVESTIGACION DE ANTIGENOS VIRALES RESPIRATORIOS{L=0}
+
+"
+VKA,"R        001R        002R        003
+{L=2}VAN DE KAMER{L=0}
+
+        "
+VLD,V        001{CrLf}V        001=IPLP     002/F          5
+VO1,"R00000000001
+"
+VO3,"R00000000001
+"
+VOL,T        001R00000000001
+VOL 12,"R00000000001
+"
+VOL 2,"R00000000001
+"
+VPM 18,"R00000000001
+
+
+
+"
+VSR SB,"R00000000001
+"
+VZM,R00000000001{CrLf}
+Vol,"R00000000001
+
+"
+Vol 12,"R00000000001
+
+"
+Gen Prot,R        001R        002{L=n}{FB=1}Estudio Gen�mico del Gen Protrombina{FB=0}{L=1}
+WBL,"T        002R        001R        002R        003R        004T        003R        005R        006R        007R        008T        001R        009R        010R        011R        012R        013      {L=2}Investigacion de anticuerpos especificos{L=0}
+           {L=2}contra el virus HIV - serotipo 1:{L=0}
+                {L=2}Metodo Western Blot{L=00}
+
+   Genes       Proteinas                    Resultado
+"
+WEIL FE,"R        001R        002R        003
+
+
+
+         {L=2} TEST DE WEIL FELIX {L=0}
+
+
+         {L=1}Tecnica : Aglutinacion en tubo{L=0}
+
+"
+WIA,"R00000000001
+"
+WIB,"R00000000001
+"
+WID,R00000000001R        002R        003R        004{CrLf}{FB=1}REACCI�N DE WIDAL{CrLf}M�todo: Aglutinaci�n de part�culas{CrLf}{CrLf}T�tulos de 1/40 a 1/80: sospecha de enfermedad.{CrLf}T�tulos > 1/80: alta probabilidad de enfermedad cuando est�n acompa�ados de sintomatolog�a cl�nica.
+WIH,"R00000000001
+"
+WRIGTH,"R00000000001
+
+"
+WRIGTH2M,"R00000000001
+
+"
+XAN,"R00000000001
+
+"
+XIL,"R        001R        002R        003
+{L=2}TEST DE LA XILOSA{L=0}
+                    
+Resultado:
+
+
+       "
+GEN DE P,"R        001R        002
+{L=n}{FB=1}Estudio Gen�mico de Protrombina {FB=0}{L=1}"
+XIO,"R        001R        002
+{L=2}TEST DE LA XILOSA EN ORINA{L=0}
+                 {L=1}{GOX=20}{SETLEFT}Valores de referencia :
+  En ni�os : 16% a 33% de la dosis ingerida
+  En adultos con dosis de 5gr : > 1,2 gr/5hs.{L=0}{RESLEFT}"
+ZIN,R00000000001{CrLf}{CrLf}
+ZINC ESP,"R00000000001
+"
+ZINC-B,"R00000000001
+
+"
+ZNC,"R00000000001
+"
+ZND,R00000000001{CrLf}
+ZNO,"R00000000001
+"
+ZNa,"R00000000001
+
+"
+fen,R00000000001
+pCO,R00000000001{CrLf}
+VCUMMOL,"R        001R        002R        003R        004
+{FB=1}G�RMENES ESPECIALES{FB=0}
+"
+CUMPCR,R        001R        002R        003R        004{CrLf}{FB=1}G�RMENES ESPECIALES{FB=0}{CrLf}
+ATBCUM,"R        001R        002{FB=1}
+                    DETERMINACI�N DE RESISTENCIA A ANTIMICROBIANOS 
+                                    PARA UREAPLASMAS y MYCOPLASMAS{FB=0}
+
+{L=1}M�todo: Identificaci�n de los pl�smidos Tet (M y O) y erm-B que
+{L=1}otorgan resistencia a las tetraciclinas y eritromicinas respectivamente.
+"
+BRCA,"R        001
+{L=2}BR CA1 - BR CA (PANEL ASHKENAZI){L=0}
+"
+CMVPCR,R        001R        002{CrLf}{FB=1}DETECCI�N CITOMEGALOVIRUS PCR{FB=0}
+CMV,"T        004R        001R        002
+{FB=1}CITOMEGALOVIRUS-PCR{FB=0}"
+STRPA,R        001R        002R        003{L=2}G�rmenes Comunes{L=0}{CrLf}
+LIST IGM,"R        001
+"
+CA 19-9,"R        001
+"
+MINE Ag,"
+"
+DRG,"R        001R        002R        003R        004R        005R        006R        007
+{FB=1}TEST INMUNOL�GICO PARA LA DETECCI�N DE DROGAS DE ABUSO{FB=0}
+
+{FB=1}Grupos de drogas analizadas y umbrales m�nimos de detecci�n.{FB=0}
+Benzodiazepinas: 300 ng/ml
+Coca�na: 300 ng/ml 
+Anfetamina/metanfetamina: 1000 ng/ml
+Opi�ceos: 300 ng/ml
+Barbit�ricos: 300 ng/ml
+Tetrahidrocanabinol: 50 ng/ml
+
+M�todo utilizado: Ensayo inmunol�gico con anticuerpos monoclonales espec�ficos ligados a una fase s�lida como m�todo de screening.
+La presencia de un metabolito debe confirmarse por Espectrometr�a de Masas"
+TEL-COL,"R        001
+"
+ALT,"R        001
+"
+CLA,"R        001
+"
+DER,R        001{CrLf}
+TIBC,"R        001
+"
+HBc ANTI,"R        001
+"
+GLIC IgM,"R        001
+"
+GLIC IgG,R        001
+ASSA,R        001{CrLf}{CrLf}
+ASSB,R        001{CrLf}
+Rast Lec,R        001{CrLf}
+Rast Tri,R        001
+DER FA,R        001
+HP IgG,"R        001
+"
+HP IgA,"R        001
+"
+vCOPRO,R        001R        002R        003{CrLf}{FB=1}EXAMEN DE MATERIA FECAL. COPROPARASITOL�GICO{CrLf}{CrLf}
+TEST G,R        001{CrLf}{FB=1}TEST DE GRAHAM
+CPK,"R        001
+"
+BCL,R        001{CrLf}
+REN,R        001{CrLf}
+DND,"R        001
+
+"
+LKM,"R        001
+"
+HH,R        001R        002R        003R        004{CrLf}{CrLf}{L=n}{FB=1}AN�LISIS DEL GEN HFE{FB=0}{L=1}{CrLf}{CrLf}
+APD IgA,R        001{CrLf}
+APD IgG,R        001{CrLf}
+GCELI,"R        001R        002R        003R        004R        005R        006
+{L=n}{FB=1}ESTUDIO G�NETICO DE ENFERMEDAD CEL�ACA{FB=0}{L=1}
+
+"
+% protro,
+Ag P24,"R        001
+"
+ALZ,R        001R        002R        003R        004R        005R        006{CrLf}{FB=1}GEN�MICA PREDICTIVA: ENFERMEDAD DE ALZHEIMER{FB=0}
+JAK2,T        001R        001R        002R        003R        004{CrLf}{FB=1}Estudio del Gen JAK2{FB=0} - Mutaci�n V617F (rs77375493 G>T)
+INSU-120,"R        001
+"
+GLU-U,"R        001
+"
+AADN,"R        001
+M�todo: I.F. sobre Crithidia Luciliae"
+Inter,R        001
+FUNGI,R        001R        002{FB=1}FUNGIGRAMA{FB=0}{CrLf}
+RR,"R        001
+"
+TXC,R        001{CrLf}
+PIK3CA,R        001{CrLf}{FB=1}GEN PIK3CA. PANEL DE MUTACIONES FRECUENTES EN EXONES 9 Y 20.{FB=0}
+ASCA G,R        001{CrLf}{CrLf}Los valores de referencia se modificaron a partir  de Octubre del 2025
+C1Q-An,"R        001
+"
+COPIA,"R        001             
+
+
+
+
+                                                                                    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"
+ALZH,"
+{L=n}{FB=1}Gen�mica Predictiva- Enfermedad de Alzheimer{FB=0}{L=1}
+
+{L=n}{FB=1}Polimorfismos analizados{FB=0}{L=1}:
+"
+PB,"R        001
+"
+RPO,"R        001
+"
+RPI,"R        001
+"
+RESPCEF,"R        001
+"
+REA,"R        001
+"
+EST,R        001
+IgM,"R        001
+"
+SWUP,"
+SWIM UP DIAGN�STICO"
+LEPTOSP,"R        001
+"
+PINMUN,"R        001R        002R        003R        004R        005R        006R        007R        008
+{FB=1}INVESTIGACI�N DEL PERFIL INMUNOFENOTIPICO
+Material examinado: Sangre perif�rica
+M�todo: CITOMETRIA DE FLUJO
+Tecnolog�a: Cit�metro FACSCalibur - Becton dickinson
+
+{FB=1}TRATAMIENTO DE LA MUESTRA
+- Lisado de eritrocitos con cloruro de amonio
+- Incubaci�nde los leucocitos aislados con el panel de anticuerpos monoclonales, conjugados con fluoresce�na (FITC), 
+Ficoeritrina (PE), Protein peridinclorofilica (PelCP) o Tandem (PeCya) y APC.
+Se adquiere la muestra en un cit�metro de flujo FACSCalibur de cuatro colores utilizando para el an�lisis los software Infinicyt 1.7
+
+{FB=1}RESULTADOS ANAL�TICOS DEL PERFIL ANTIG�NICO DE LA POBLACI�N CELULAR, 
+{FB=1}SEG�N CARACTER�STICAS DE TAMA�O Y COMPLEJIDAD CITOPLASM�TICA
+
+{FB=1}POBLACIONES CELULARES
+"
+PINOB,R        001R        002
+CyP2c19,"T        002R        001T        003R        002T        004R        003R        004R        005T        001
+ESTUDIO DEL GEN CYP2C19"
+CyP2c196,R        001R        002
+IGF-I,"R        001
+
+"
+TXO,"R        001
+"
+ADRE,R        001{CrLf}{CrLf}M�todo: HPLC
+SEDURI,"R        001
+"
+AAPD GLI,"R        001
+"
+CELIAQ,"R        001R        002R        003R        004R        005R        006R        007{CrLf}{CrLf}{L=n}{FB=1} ESTUDIO DE HAPLOTIPOS DQ2,5 / DQ8 EN RELACI�N A ENFERMEDAD CELIACA.{FB=0}{L=1}"
+PRENATIN,"R        001R        002
+
+{L=n}{FB=1}Nota: Los resultados representan unicamente un �ndice de riesgo y no constituyen un diagn�stico. La sensibilidad en la detecci�n de S D por estos dos marcadores es de aproximadamente un 80 % de los afectados. Con el agregado de los datos ecogr�ficos la sensibilidad alcanza el 89% de detecci�n."
+ATO,R        001R        002R        003
+KPTT,R        001{CrLf}
+R ARROZ,"R        001
+"
+vUPM,"R        001R        002R        003R        004R        005
+{FB=1}EXAMEN BACTERIOLOGICO DE ORINA - UROCULTIVO{FB=0}
+"
+vUSM,"R        001R        002R        003R        004R        005
+{FB=1}EXAMEN BACTERIOL�GICO DE ORINA - UROCULTIVO{FB=0}
+"
+CDC SUP,"R        001R        002R        003R        004
+"
+GEN 2021,"R        001
+"
+AMOXI,"R        001
+"
+RAST CEF,"R        001
+"
+ABP,R        001{CrLf}
+LEIDEN,R        001R        002{CrLf}{FB=1}FACTOR V LEIDEN - Mutaci�n G691A{FB=0}{CrLf}
+PRO/CRE,R        001R        002V        001{CrLf}V        002=R        001*F       1000V        001=V        002/R        002
+CORSAL8H,R        001{CrLf}
+CORSAL 1,R        001{CrLf}
+COLI,"R        001
+"
+PLA,R        001
+VZG,R        001{CrLf}
+HBV-CARG,"R        001R        002{CrLf}{FB=1}CARGA VIRAL HEPATITIS B{FB=0}{CrLf}COBAS /ampliprep - COBAS Taqman (Versi�n 2.0) {CrLf}Se informan UI/ml consenso internacional. Equivalencia UI/ml = 5,82 copias/ml{CrLf}"
+TXINMU,R        001
+UUM,R        001
+MHM,R        001
+HEMC,R        001R        002R        003R        004R        005T        006R        006R        007R        008T        002R        009R        010R        011R        012R        013R        014{CrLf}{FB=1}HEMOGRAMA{FB=0}{CrLf}{FB=1}Contador hematol�gico Mythic 22 AL{FB=0}V00000000001=R00000000001*F00000010000V00000000002=R00000000004*F00000000100V00000000003=R00000000003*F00000000010V00000000005=R00000000002*F00000100000V        005=V        005/R        001V00000000006=V00000000003*F00000001000V        006=V        006/R        001V00000000007=V00000000003*F00000000100V00000000007=V00000000007/R00000000002V00000000010=R00000000005*R00000000004V00000000011=R00000000006*R00000000004V00000000012=R00000000007*R00000000004V00000000013=R00000000008*R00000000004V00000000014=R00000000009*R00000000004V00000000015=R00000000010*R00000000004V00000000016=R00000000011*R00000000004
+vCARIOT,"T        001R        001T        002{CrLf}{FB=1}AN�LISIS CITOGEN�TICO{FB=0}EL PRESENTE ESTUDIO NO DESCARTA LA PRESENCIA DE MICRODELECIONES CROMOS�MICAS, PATOLOG�AS G�NICAS O DE CAUSA NO GEN�TICA."
+LUCI,T        003R        006R        007R        008T        002R        001R        002R        003R        004R        005T        001IGGT-Bi  000{CrLf}{FB=1}HEPATOGRAMA COMPLETO {FB=0}{CrLf}
+vCARIOTB,"T        001R        001T        002
+{FB=1}AN�LISIS CITOGEN�TICO{FB=0}EL PRESENTE ESTUDIO NO DESCARTA LA PRESENCIA DE MICRODELECIONES CROMOS�MICAS, PATOLOG�AS G�NICAS O DE CAUSA NO GEN�TICA."
+v1COA,R        001T        002R        002T        003R        003T        004R        004T        005R        005T        006R        006T        001IPLA     000R        007{CrLf}{L=n}{FB=1}COAGULOGRAMA  {L=0}
+BCR-ABL,T        001R        001R        002R        003{CrLf}{FB=1}DETECCI�N CUALITATIVA DE BCR-ABL (t 9;22) {FB=0}
+HER2,R        001T        001T        002R        002R        003R        004R        005T        003R        006{CrLf}{FB=1}DETECCI�N DE AMPLIFICACI�N DE Her-2 / neu POR FISH{FB=0}
+RcACH,R        001
+FVD,"R        001T        001R        002R        003R        005R        006R        004R        007R        008R        009{CrLf}{FB=1}BALANCE DEL CONTENIDO Y DE LA RESPUESTA INFLAMATORIA VAGINAL (BACOVA-ERIGE){FB=0}{CrLf}{CrLf}{CrLf}{L=1}La Direcci�n T�cnica del Laboratorio ha implementado el Manual de Procedimientos BACOVA MPB 2018 del PROGRAMA DE SALUD SEXUAL Y REPRODUCTIVA-PROSAR, de la Fundaci�n Bioqu�mica Argentina FBA (www.fba.org.ar/prosar ) para el estudio de la disfunci�n vaginal en consenso con la FASGO-FFyB UBA."
+relPSA,V        002V        001=IPSA_L   001/IPSA     001V        002=V        001*F        100
+FVL,R        001R        002R        003{CrLf}{FB=1}FACTOR V DE LEIDEN{FB=0}
+DPYD,R        001T        001{CrLf}{FB=1}GEN DPYD - METABOLISMO 5-FLUOROURACILO{FB=0}
+CPK-MB,R        001
+STREPTO,R        001R        002R        003R        004R        005R        006{CrLf}{FB=1}INVESTIGACI�N DE STREPTOCOCO BETA HEMOL�TICO{FB=0}
+UROCITO,R        001R        002R        003R        004R        005R        006R        007R        008R        009{CrLf}{FB=1}UROCITOGRAMA{FB=0}{CrLf}
+AMOG,R        001
+HE4,R        001
+P53,R        001R        002{CrLf}{FB=1}ESTUDIO p53 INMUNOHISTOQU�MICA{FB=0}
+VLDL,R        001
+TRIP,R        001
+HIV 4TA,R        001
+PAP-A,R        001{CrLf}
+EBM,R        001
+FREE HCG,R        001
+BARTO M,R        001
+vNOT,R00000000001
+INTER,R00000000001
+SER-U,R        001
+vCARIOT2,T        001R        001R        002R        003{CrLf}{FB=1}ESTUDIO CITOGEN�TICO{FB=0}
+IA-2A,R        001A partir del 31/07/25 cambi� la metodolog�a.
+v1COVID,R        001R        002R        003T        001{CrLf}{FB=1}DETECCI�N ARN VIRAL SARS-COV-2{FB=0}
+vSARSIgG,R        001T        001{CrLf}{FB=1}ANTICUERPOS ANTI SARS-CoV-2 ELISA IgG (COVID 19){FB=0}{CrLf}
+AABP,R        001
+SARS IgM,"R        001El m�todo permite conocer la situaci�n inmunol�gica del paciente, NO utilizar para fines diagn�sticos"
+AGP4,R        001{CrLf}
+SARS TOT,R        001
+CELIAQ1,R        001R        002R        003R        004R        005R        006T        001R        007{CrLf}{FB=1}TEST GEN�TICO PARA ENFERMEDAD CEL�ACA{FB=0}
+DIMD,R        001{CrLf}
+cHCO3,R        001
+BE,R        001
+PHS,R        001
+BNP,R        001
+AcSARS G,R        001T        001{CrLf}
+NEOKIT,R        001R        002
+HIVPROVI,R        001{CrLf}
+AcSARS M,R        001T        001
+PTB,R        001{CrLf}{FB=1}PROTROMBINA 20210{FB=0}{CrLf}{CrLf}Estudio de variante G20210 en el gen del factor II (Protrombina).
+TRCOVID,R        001T        001{CrLf}{FB=1}TEST R�PIDO DE ANT�GENO SARS-COV-2{FB=0}
+ELAS,R        001
+FVL1,R        001{CrLf}{FB=1}FACTOR V DE LEIDEN{FB=0}{CrLf}Detecci�n de mutaci�n G691A en el gen del factor V.
+COTID,R        001{CrLf}
+COVING,R        001R        002R        003T        001{CrLf}{FB=1}SARS-COV-2 VIRAL RNA DETECTION{FB=0}{CrLf}
+AcPneu,"R        001{CrLf}Nota: el m�todo dosa anticuerpos dirigidos a los serotipos: 1-5, 6B, 7F, 8, 9N, 9V, 10A, 11A, 12F, 14, 15B, 17F, 18C, 19A,{CrLf}19F, 20, 22F, 23F, Y 33F. {CrLf}Se recomienda evaluar cin�tica de anticuerpos post-vacunaci�n teniendo en cuenta el contexto cl�nico e inmunol�gico."
+FA1AT,R        001{CrLf}{CrLf}
+TOPI,R        001{CrLf}
+COVPOOL,R        001R        002R        003T        001{CrLf}{FB=1}DETECCI�N ARN VIRAL SARS-COV-2{FB=0}
+FENIT,R        001{CrLf}
+MGNSO,R        001{CrLf}
+vJAK2V6F,T        001R        001R        002{CrLf}{FB=1}Estudio del Gen JAK2{FB=0} - Mutaci�n V617F
+NOTE,R        001
+RENPIE,R        001
+ALDDEPIE,R        001
+CALPROT,R        001
+SARS IgG,"R        001El m�todo permite conocer la situaci�n inmunol�gica del paciente, NO utilizar para fines diagn�sticos"
+GONO,R        001{CrLf}{FB=1}INVESTIGACI�N NEISSERIA GONORRHOEAE{FB=0}
+ASCOV2S,R        001{CrLf}
+vSARSIgM,R        001{CrLf}
+PBU,R        001
+GLOB,R        001
+HBSAg.,R        001
+HCV.,R        001
+RELAG,R        001
+VETT4,R        001
+AcCOV2,"R        001{CrLf}El m�todo permite conocer la situaci�n inmunol�gica del paciente, NO utilizar para fines diagn�sticos.{CrLf}El Laboratorio participa del Subprograma Serologia COVID 19 perteneciente al : PROGBA CEMIC (Programa Internacional Buenos Aires de Aseguramiento Externo de Calidad en Analisis Clinicos)"
+T3.,R        001
+TOXOIgM,R        001
+HIV 4TA.,R        001{CrLf}
+CHAGAS,R        001
+TOXOIgG,R        001{CrLf}Interpretaci�n Zona Gris: Se recomienda solicitar Acs Anti Toxoplasma IgM  o extraer una segunda muestra en un tiempo razonable.
+AcCO2IgM,"R        001{CrLf}{CrLf}{CrLf}El m�todo permite conocer la situaci�n inmunol�gica del paciente, NO utilizar para fines diagn�sticos"
+T4L.,R        001
+HBS Ac.,R        001
+FSH.,R        001T        001
+GLUT PE,R        001
+WES-HIV,R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011{FB=1}Anticuerpos Anti HIV. M�todo confirmatorio WESTERN BLOT{FB=0}
+T4.,R        001
+SOD,R        001
+vCARIO2A,T        001R        001R        002R        003{CrLf}{FB=1}ESTUDIO CITOGEN�TICO{FB=0}
+RUG.,R        001
+ADDIS,R        001R        002R        003R        004R        005R        006R        007R        008{CrLf}{FB=1}RECUENTO DE ADDIS{FB=0}{CrLf}{L=1}M�todo: Recuento de elementos figurados en c�mara
+DHEAS.,R        001
+vCOVID,R        001R        002R        003T        001{CrLf}{FB=1}DETECCI�N ARN VIRAL SARS-COV-2{FB=0}
+BCRABLc,R        001R        002R        003R        004R        005{CrLf}{FB=1}TRASLOCACI�N T(9-22) Y GEN DE FUSI�N BCR-ABL (p.210) CUANTIFICACI�N{FB=0}
+vXFRA,R        001R        002R        003T        001{CrLf}{FB=1}ESTUDIO DE FRAGILIDAD DEL CROMOSOMA X{FB=0}
+ASCA IgA,R        001
+R BLOMIA,R        001
+PADRE,R        001R        002
+PG.,R        001R        002{CrLf}{CrLf}{CrLf}{CrLf}
+HIJA,R        001R        002
+HIJO,R        001R        002
+MADRE,R        001R        002
+TRCOVING,R        001T        001{CrLf}{FB=1}SARS-COV-2 RAPID ANTIGEN TEST{FB=0}
+AC ORG,R        001R        002T        001{CrLf}{FB=1}�CIDOS ORG�NICOS{FB=0}{CrLf}{CrLf}{L=1}M�TODO: GC-MS- cromatografia gaseosa con detector MS
+HISC,T        001R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011{CrLf}{FB=1}ESTUDIO DE SEGREGACI�N FAMILIAR - AN�LISIS DE HAPLOTIPOS HLA{FB=0}{CrLf}
+LIT.,R        001
+HLAIA,T        001T        002R        001R        002T        003R        003R        004T        004{CrLf}{FB=1}ESTUDIO HLA CLASE I LOCUS A{FB=0}{CrLf}
+HLAIB,T        001T        002R        001R        002T        003R        003R        004T        004{CrLf}{FB=1}ESTUDIO HLA CLASE I LOCUS B{FB=0}{CrLf}
+CAI.,R        001
+VZ PCR,R        001R        002{CrLf}{FB=1}DETECCI�N VIRUS VARICELA Z�STER{FB=0}
+HLAIC,T        001T        002R        001R        002T        003R        003R        004T        004{CrLf}{FB=1}ESTUDIO HLA CLASE I LOCUS C{FB=0}{CrLf}
+HLADR,T        001T        002R        001R        002T        003R        003R        004T        004{CrLf}{FB=1}ESTUDIO HLA DR O HLA CLASE II{FB=0}{CrLf}
+EB PCR,R        001R        002{CrLf}{FB=1}DETECCI�N VIRUS EPSTEIN BARR{FB=0}
+CYFRA 21,R        001{CrLf}
+ATG A.,R        001
+CARIO2A,T        001R        001R        002R        003{CrLf}{FB=1}ESTUDIO CITOGEN�TICO DE ALTA RESOLUCI�N{FB=0}
+CARIOT2,T        001R        001R        002R        003{CrLf}{FB=1}ESTUDIO CITOGEN�TICO{FB=0}
+HPV,"R        001R        002{CrLf}{FB=1}PAPILOMA VIRUS HUMANO (HPV){FB=0}{CrLf}{CrLf}{CrLf}{FB=1}El laboratorio participa del programa ""Estudio Interlaboratorio sobre la Prueba de Virus Papiloma Humano (HPV) en Contexto de Tamizaje de C�ncer Cervicouterino�, organizado por ANLIS-""Dr. Carlos G. Malbr�n"".{FB=0}{CrLf}{CrLf}{FB=1}El laboratorio ha participado, en ediciones anteriores, del programa de control de calidad externo del CAP (College of American Pathologists) para la detecci�n y tipificaci�n de HPV.{FB=0}"
+TIPH,R        001
+CLCR,R        001R        002R        003R        004R        005R        006{CrLf}{CrLf}{L=2}{FB=1}CULTIVO DE L�QUIDO CEFALORRAQU�DEO {FB=0}{L=0}{CrLf}{CrLf}
+BOHB,R        001
+ENT,R        001R        002{CrLf}{CrLf}{FB=1}DETECCI�N ENTEROVIRUS (GENOMA){FB=0}
+DISF,R        001{CrLf}Metodo: Microscopia
+COA,R00000000001R        002R        003R        004R        005R        006R        007{CrLf}{L=n}{FB=1}COAGULOGRAMA  {L=0}{CrLf}{CrLf}{CrLf}A partir de marzo de 2023 se actualizan los valores de referencia correspondiente al Tiempo y Consumo de Protrombina.
+MPL,R        001R        002R        003{CrLf}{FB=1}MACROPROLACTINA{FB=0}
+MUT,R        001R        002R        003R        004R        005T        001{CrLf}{CrLf}{FB=1}B�SQUEDA DE VARIANTE GEN�TICA FAMILIAR{FB=0}{CrLf}{CrLf}
+A5-HIA,R        001
+ANTI RI,R        001{CrLf}
+MPL.,R        001{CrLf}{CrLf}{FB=1}INVESTIGACI�N DE MACROPROLACTINEMIA{FB=0} (MPRO)
+IND IGG,R        001R        002R        003{CrLf}{FB=1}INDICE IGG LCR-SUERO{FB=0}{CrLf}
+HMCR,R        001R        002R        003{CrLf}{FB=1} HEMOCROMATOSIS - MUTACIONES GEN HFE{FB=0}{CrLf}{CrLf}
+ANTI YO,R        001{CrLf}
+CALR,R        001{CrLf}{CrLf}{FB=1}SECUENCIACI�N EX�N 9 GEN CALR{FB=0}
+AATG-U.,R        001
+BARBIT,R        001R        002R        003{CrLf}{FB=1}DETECCI�N DE DROGAS{CrLf}M�todo: Ensayo inmunol�gico con acs monoclonales espec�ficos{CrLf}{FB=1}Observaciones: Todo resultado positivo se deber�a confirmar con t�cnica de espectrometr�a de masa.
+ANG 2,R        001
+MPLGEN,R        001{CrLf}{CrLf}{FB=1}SECUENCIACI�N EX�N 10 GEN MPL{FB=0}
+CREA-U,R        001
+RSTRA,R        001{CrLf}
+AZMF,R        001R        002{CrLf}{FB=1}AZ�CARES REDUCTORES EN MATERIA FECAL{FB=0}
+"3alfaAG",R        001T        001
+MoM,R        001
+TROPO-T,R        001
+MoM FB,R        001
+PCA,R        001T        001
+FHCG,R        001
+PRO BNP,"R        001{CrLf}Valores de referencia corresponden al percentilo 97,5 % de la poblaci�n sana"
+HLADQA1,T        001T        002R        001R        002T        004{CrLf}{FB=1}ESTUDIO HLA DQA1 (HLA CLASE II){FB=0}{CrLf}
+A FTA,R        001
+HLADQB1,T        001T        002R        001R        002T        003R        003R        004T        004{CrLf}{FB=1}ESTUDIO HLA DQB1 (HLA CLASE II){FB=0}{CrLf}
+ZIE,R        001
+AZF,T        001R        001R        002T        002R        003R        004T        003R        005R        006T        004R        007R        008R        009{CrLf}{FB=1}AZF. ESTUDIO DE MICRODELECIONES EN EL CROMOSOMA Y{FB=0}{CrLf}
+JAK2E12,R        001{CrLf}{CrLf}{CrLf}{FB=1}JAK2 MUTACIONES EN EL EX�N 12{FB=0}
+HPYAg,"R        001
+"
+COR-U.,R        001{CrLf}
+T414,T        001R        001R        002R        003R        004{CrLf}{FB=1}TRASLOCACI�N t(4;14). IgH/FGFR3{FB=0}
+TEB.,R        001{CrLf}
+T1416,T        001R        001R        002R        003R        004{CrLf}{FB=1}TRASLOCACI�N (14 ; 16) IGH/CMAF{FB=0}
+T1420,T        001R        001R        002R        003R        004{CrLf}{FB=1}TRASLOCACI�N IGH/MAFB - T(14;20){FB=0}
+TEL.,R        001{CrLf}
+GLAE.,"R        001
+"
+ALB-U.,"R        001
+"
+CRMF,R        001R        002{CrLf}{FB=1}AZUCARES REDUCTORES EN MATERIA FECAL{FB=0}
+TGL.,R        001{CrLf}
+HGY.,R        001A partir del 26 de marzo del 2025 se cambia la metodolog�a de Hemoglobina Glicosilada.
+CORSAL12,R        001{CrLf}
+PLP.,R        001R        002R        003R        004R        005{L=n}{FB=1}PERFIL LIPOPROTEICO{FB=0}{L=00}{CrLf}La realizaci�n del perfil lip�dico con un ayuno estandar no prolongado refleja mejor el verdadero estado metab�lico y es un mejor predictor del RCV
+CORSAL23,R        001{CrLf}
+IGA.,R        001
+RHV,R        001R        002{CrLf}{FB=1}DETECCI�N ARN RHINOVIRUS{FB=0}
+newHPV,R        001R        002ITIPH    000{CrLf}{FB=1}PAPILOMA VIRUS HUMANO (HPV){FB=0}{CrLf}
+INFAag,"R        001R        002{CrLf}{FB=1}INFLUENZA A , ant�geno{FB=0}"
+INFBag,"R        001R        002{CrLf}{FB=1}INFLUENZA B , ant�geno{FB=0}"
+ARS,R        001
+AC ORG.,R        001
+ABI.,R        001
+AgAdv,R        001
+HIV-WEST,"R        001 {CrLf}{FB=1}HIV-WESTERN BLOT{FB=0}{CrLf}Se utilizaron para la interpretaci�n los criterios sugeridos por el CDC{CrLf}Se eval�an las siguientes bandas virales: {CrLf}HIV-1 gp160, gp110/120, p68, p55, p52, gp41,{CrLf}p40, p34, p24/25, p18."
+ACYL.,R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021R        022R        023R        024R        025R        026R        027R        028R        029R        030R        031R        032R        033R        034R        035R        036R        037R        038R        039R        040R        041R        042R        043R        044R        045R        046R        047R        048{CrLf}{CrLf}{FB=1}ACILCARNITINAS{FB=0}{CrLf}{CrLf} Metodologia: Espectrometr�a de masa en Tandem (FIA-MS/MS){CrLf}
+AMIO.,R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016R        017R        018R        019R        020R        021R        022R        023R        024R        025R        026R        027R        028R        029R        030R        031R        032R        033R        034R        035R        036R        037R        038R        039R        040R        041R        042R        043{CrLf}{FB=1} AMINOACIDOS SERICOS {FB=0}{CrLf}M�todo: HPLC{CrLf}
+AgVSR,R        001
+"21 OHLAS",R        001{CrLf}
+VETGERM,R        001R        002R        003R        004R        005R        006{CrLf}{FB=1}G�RMENES COMUNES{FB=0}
+VETOSM,R        001R        002R        003R        004R        005{CrLf}{FB=1}EXAMEN BACTERIOL�GICO DE ORINA - UROCULTIVO{FB=0}{CrLf}
+GONPCR,R        001R        002T        001{CrLf}{FB=1}NEISSERIA GONORRHOEAE{FB=0}
+TRIPT,R        001{CrLf}
+ABO,R        001R        002
+MGEN,R        001R        002{CrLf}{FB=1}MYCOPLASMA GENITALIUM{FB=0}
+NIETA,R        001R        002
+ABAC,R        001R        002R        003R        004R        005R        006{CrLf}{FB=1}TEST GEN�TICO PARA SENSIBILIDAD A ABACAVIR (HLA B 5701){FB=0}
+Anti adr,R        001{CrLf}
+SNP,R        001El panel incluye los siguientes ant�genos: {CrLf}Anfifisina-CV2-PNMA2(Ma2/Ta)-Ri- Yo - Hu- Recoverina - SOX-1-Titina-ZiC4-GAD65-Tr(DNER){CrLf}
+INMU-SUE,R        001{CrLf}{FB=1}INMUNOFIJACI�N EN SUERO{CrLf}M�todo: Inmunofijaci�n en gel de agarosa con antisueros IgG IgA IgM Kappa y Lambda{CrLf}
+PIK3CAe,"R        001{CrLf}{CrLf}{CrLf}{FB=1}GEN PIK3CA. PANEL DE MUTACIONES AMPLIADO -  EXONES 1, 4 Y 7.{FB=0}"
+AcTOXTET,R        001
+DYT1,R        001{CrLf}{FB=1}DISTON�A DE TORSI�N TEMPRANA (DYTI){FB=0}
+MEA,R        001{CrLf}{FB=1}MOSAICO PARA ENCEFALITIS AUTOINMUNE{FB=0}{CrLf}Incluye los ant�genos: NMDAR-AMPAR1-AMPAR2-CASPR2-LGI1-GABARB1/B2
+CLLAMBD,R        001{CrLf}{FB=1}CADENAS LIVIANAS LIBRES LAMBDA en suero
+Ind K/L,R        001{CrLf}
+AcPNEU,R        001{CrLf}
+HEMC.,R        001{CrLf}{FB=1}HEMOGRAMA{FB=0}{CrLf}{FB=1}Contador hematol�gico Mythic 22 AL{FB=0}
+XFRA,R        001R        002T        001T        002{CrLf}{FB=1}ESTUDIO MOLECULAR FRAGILIDAD CROMOSOMA X{FB=0}
+CARIO,T        001R        001R        002R        003{CrLf}{FB=1}ESTUDIO CITOGEN�TICO EN SANGRE PERIF�RICA{FB=0}
+ANTI Xa,R        001{CrLf}
+LACOS,R        001{CrLf}
+LEV,R        001{CrLf}{CrLf}
+AMM,R        001{CrLf}
+AQP4,R        001{CrLf}
+JAK2V617,R        001R        002{CrLf}{FB=1}ESTUDIO DEL GEN JAK2{FB=0} - Mutaci�n V617F
+CLKLO,R        001{CrLf}{FB=1}CADENAS LIVIANAS EN ORINA( kappa lambda){FB=0}{CrLf}
+HE4.,R        001{CrLf}
+psecolin,R        001{CrLf}
+EXOMA,R        001
+VETCOPR,R        001R        002R        003R        004R        005R        006R        007{CrLf}{L=2}{FB=1} COPROCULTIVO{FB=0}{L=0}{CrLf}  {CrLf}{FB=1}EXAMEN EN FRESCO:{FB=0}{CrLf}
+TRIPTOF,R        001{CrLf}
+R LATEX.,R        001{CrLf}{CrLf}
+MTHFR,R        001R        002R        003{CrLf}{FB=1}METILEN TETRAHIDROFOLATO REDUCTASA (MTHFR){FB=0}{CrLf}
+P HEPAT,"R        001{CrLf}El panel incluye: M2 (Mitocondrial M2), Sp100 (Ant�geno nuclear soluble), SLA (Ant�geno hep�tico soluble) , gp210, LKM tipo 1 (Ant�geno de{CrLf}microsomas hep�tico- renales tipo 1) y LC1 (Ant�geno citosol hep�tico)"
+HSVqPCR,R        001R        002R        003{CrLf}{FB=1}VIRUS DEL HERPES SIMPLEX (HSV I/II)-qPCR{FB=0}{CrLf}
+PRP,R        001R        002V        002T        001{CrLf}{CrLf}{FB=1}PLASMA RICO EN PLAQUETAS - INFORME DE CONTROL DE CALIDAD{FB=0}{CrLf}{CrLf}{CrLf}{CrLf}V        001=R        002/R        001V        002=V        001*F        100
+HIST DEG,R        001{CrLf}
+C1Q-IF,R00000000001{CrLf}
+FR Turbi,R        001{CrLf}
+PRU-12HS,R        001{CrLf}
+HAD,R        001{CrLf}
+HLA Ac,R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011{FB=1}Estudio de especificidad de anticuerpos anti- HLA Clase I y Clase II.{FB=0}{CrLf}{FB=1}Muestra analizada: suero{CrLf}{FB=1}Se realiz� la determinaci�n de la Especificidad de anticuerpos anti HLA I y II utilizando el ensayo de fase s�lida Luminex.{FB=0}{CrLf} {FB=1}Estudio realizado con reactivos marca Immucor.Se consideran positivos valores de MFI mayores a 750{FB=0}
+DEN-NS1,R        001{CrLf}
+APO A,R        001{CrLf}
+AGAD,R        001{CrLf}
+ZN T8,R        001{CrLf}
+APO B,R        001{CrLf}
+LPA,R        001{CrLf}
+MODY,R        001R        002T        001{CrLf}{FB=1}AN�LISIS DEL GEN GCK - MODY2{FB=0}
+CMV QUI,R        001{CrLf}{CrLf}{CrLf}
+DAO-GEN,T        001R        001R        002R        003R        004{CrLf}{FB=1}DAO- Estudio gen�tico AOC1{CrLf}
+DIRET,R        001R        002{CrLf}{FB=1}ESTUDIO MICOL�GICO{FB=0}
+HAV/IGG,R        001{CrLf}
+COVID,R        001R        002R        003T        001{CrLf}{FB=1}DETECCI�N ARN VIRAL SARS-COV-2{FB=0}
+DMDMLPA,R        001R        002R        003T        001{CrLf}{FB=1}DISTROFIA DE DUCHENNE-BECKER (MLPA){FB=0}
+RIKE IgM,R        001{CrLf}
+DGEO,R        001R        002T        001{CrLf}{FB=1}DELECI�N 22q11 - SINDROME DI GEORGE{FB=0}
+TRAB,R        001
+FAL-O.,R        001
+DENGPCR,R        001R        002T        001{CrLf}{CrLf}{FB=1}DETECCI�N ARN VIRUS DEL DENGUE{FB=0}
+TENIA,R        001Nota: Resultados positivos pueden deberse a reacci�n cruzada con Echinococcus spp.
+E3L.,"R        001Valores de referencia:{CrLf}- Semana 14 de embarazo: 0,16 ng/ml{CrLf}- Semana 15 de embarazo: 0,39 ng/ml{CrLf}- Semana 16 de embarazo:  0,62 ng/ml{CrLf}- Semana 17 de embarazo:  0,85 ng/ml{CrLf}- Semana 18 de embarazo:  1,08 ng/ml{CrLf}- Semana 19 de embarazo:  1,31 ng/ml{CrLf}- Semana 20 de embarazo:  1,54 ng/ml"
+CAR-LyT,R        001R        002R        003T        001{CrLf}{FB=1}CARNITINA LIBRE Y TOTAL{FB=0}{CrLf}M�todo: ESI-MS/MS ionizaci�n por electrospray con detector MS/MS{CrLf}
+TESTDENG,"R        001R        002R        003{CrLf}{FB=1}PRUEBA DE DETECCI�N R�PIDA PARA DENGUE NS1 Ag, AcIgG, AcIgM{FB=0}"
+BRU M,R        001{CrLf}
+HUNT,R        001R        002T        001T        002{CrLf}{FB=1}DETECCI�N DE EXPANSI�N DE TRIPLETE CAG - GEN HTT (Corea de Huntington){FB=0}{CrLf}{CrLf}
+IGE LAG,R        001{CrLf}
+INM,T        001R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015{CrLf}{FB=1}INMUNOFENOTIPO EN LEUCEMIAS{FB=0}{CrLf}{CrLf}{FB=1}INMUNOFENOTIPIFICACI�N{FB=0}
+ANTI M2,R        001{CrLf}
+AGP4.,R        001{CrLf}
+AMOG.,R        001
+INMUNOSP,"R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012{CrLf}{CrLf}{FB=1}INMUNOFENOTIPO EN LEUCEMIAS{FB=0}{CrLf}{CrLf}{FB=1}INMUNOFENOTIPIFICACI�N{FB=0}{CrLf}{CrLf}{FB=1}Metodolog�a{FB=0}{CrLf}Se utiliz� un panel de anticuerpos monoclonales conjugados en forma directa con diferentes fluorocromos {CrLf}FITC,PE, PerCP, PerCP Cy5.5, PE Cy7, APC, APC H7. La adquisici�n y an�lisis de los resultados fueron {CrLf}realizados con un cit�metro de flujo FACSCanto II utilizando los softwares FacsDIVA e Infinicyt 1.7.{CrLf}{FB=1}Referencias signos{FB=0}: Positivo +, Positivo D�bil +-, Positivo Moderado Homog�neo ++, Positivo Intenso Homog�neo +++,{CrLf}Positivo Parcial -/+, (% de positividad en c�lula patol�gica, Positivo Heterog�neo +/++ � ++/+++, Negativo - )"
+SUIG,R        001R        002R        003R        004{CrLf}{FB=1}SUBCLASES INMUNOGLOBULINA G (IgG1 - IgG2 - IgG3 - IgG4){FB=0}{CrLf}{CrLf}{L=1}M�todo: Nefelometr�a
+HCV GEN,R        001{CrLf}{FB=1}HEPATITIS C (GENOTIPO){FB=0}
+TT-MUCO,R        001R        002R        003{CrLf}
+CARMO,T        001R        001R        002R        003{CrLf}{FB=1}ESTUDIO CITOGEN�TICO{FB=0}
+NIPT,R        001
+VETDIREC,R        001R        002R        003R        004{CrLf}{FB=1}ESTUDIO MICOL�GICO{FB=0}
+ACAN,R        001R        002{CrLf}{FB=1}DETECCI�N ACANTHAMOEBA{FB=0}
+VETMICO,R        001R        002R        003R        004{CrLf}{FB=1}ESTUDIO MICOL�GICO{FB=0}
+VETDIRET,R        001R        002{CrLf}{FB=1}ESTUDIO MICOL�GICO{FB=0}
+MGNSO.,R        001{CrLf} A partir de abril 2024 cambiaron las unidades del presente estudio.
+PLP,R        001R        002R        003R        004R        005V        006V        004V        002{CrLf}{L=n}{FB=1}PERFIL LIPOPROTEICO{FB=0}{L=00}V        001=R        002/R        004V        003=R        003*F        100V        002=V        003/R        004V        005=R        004+R        005V        004=R        003-V        005V        006=R        003-R        004V        007=R        003-V        005
+CULT,R        001R        002R        003R        004R        005{CrLf}{FB=1}CULTIVO DE G�RMENES COMUNES{FB=0}
+COPRO,R        001R        002R        003{CrLf}{FB=1}EXAMEN DE MATERIA FECAL. COPROPARASITOL�GICO{FB=0}{CrLf}{CrLf}
+TX AVI,R        001{CrLf}
+HV6 IgG,R        001{CrLf}
+HDLfast,R        001
+PARCIAL,R        001R        002R        003R        004R        005{CrLf}{FB=1}CULTIVO DE G�RMENES COMUNES{FB=0}
+USM,R        001T        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011{CrLf}{FB=1}EXAMEN BACTERIOL�GICO DE ORINA - UROCULTIVO{FB=0}{CrLf}
+UPM,R        001T        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011{CrLf}{FB=1}EXAMEN BACTERIOL�GICO DE ORINA - UROCULTIVO{FB=0}{CrLf}
+MUE,R        001
+IGE.,R        001{CrLf}
+GANGLI,R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012{CrLf}{FB=1}PANEL DE GANGLIOSIDOS{FB=0}{CrLf}  M�todo: LIA
+CALCa,T        002R        001R        002R        003R        004R        005R        006T        001R        007R        008R        009R        010R        011R        012R        013R        014R        015{CrLf}{FB=1}EXAMEN FISICOQU�MICO DE C�LCULO URINARIO{FB=0}{CrLf}{CrLf}
+nHPV,R        001R        002ITIPH    000T        001{CrLf}{FB=1}PAPILOMA VIRUS HUMANO (HPV){FB=0}{CrLf}
+VETZND,R00000000001{CrLf}
+VETZNC,R00000000001{CrLf}
+VETCalc,T        002R        001R        002R        003R        004R        005R        006T        001R        007R        008R        009R        010R        011R        012R        013R        014R        015R        016{CrLf}{FB=1}EXAMEN FISICOQU�MICO DE C�LCULO URINARIO{FB=0}{CrLf}{CrLf}
+LSDM2,R        001
+EBVCAG,R        001{CrLf}{CrLf}
+RPCA.,R        001
+EBNAM,R        001{CrLf}
+VETBRK,R        001{CrLf}
+EBVCAM,R        001
+CAH67,R        001
+VETANT2,R        001R        002R        003{CrLf}{FB=1}ANTIBIOGRAMA{FB=0}
+MFC,R        001R        002R        003R        004R        005R        006R        007R        008R        009{CrLf}{L=2}{FB=1} COPROCULTIVO{FB=0}{L=0}{CrLf}  {CrLf}{FB=1}EXAMEN EN FRESCO:{FB=0}{CrLf}
+ANT2,R        001R        002R        003{CrLf}{FB=1}ANTIBIOGRAMA{FB=0}
+INM1,T        001R        001R        002R        003R        004R        005R        006R        007R        008R        009R        010R        011R        012R        013R        014R        015{CrLf}{FB=1}INMUNOFENOTIPO EN LEUCEMIAS{FB=0}{CrLf}{CrLf}{FB=1}INMUNOFENOTIPIFICACI�N{FB=0}
+C50.,R        001{CrLf}
+VETINS,R        001
+CLKLcual,R        001{CrLf}{FB=1}CADENAS LIVIANAS EN SUERO( kappa lambda){FB=0}{CrLf}
+AMMo,"R        001{CrLf} {CrLf}Valores > a 8,5 mmol/mol de creat. son considerados evidencia de d�ficit de Vitamina B12"
+VETFRC,R        001{CrLf}
+CMV AV.,R        001{CrLf}
+MER.,R        001{CrLf}
+R PEN,R        001{CrLf}
+VETCDS,R        001R        002{CrLf}{FB=1}AN�LISIS BACTERIOL�GICO DE SANGRE: HEMOCULTIVO{FB=0}
+STE,R        001T        001{CrLf}{FB=1}DISTROFIA MIOT�NICA DE STEINERT TIPO 1{FB=0}{CrLf}{CrLf}{L=1}Muestra: sangre EDTA{CrLf}M�todo: PCR- Electroforesis capilar{CrLf}Segmento amplificado: regi�n (CTG)n en el extremo 3� no traducido del gen DMPK
+PRW,T        001R        001R        002R        003R        004T        002{CrLf}{FB=1}SINDROME PRADER WILLI/ANGELMAN (MS-MLPA){FB=0}
+REN.,R        001{CrLf}
+VETTXG,R        001{CrLf}{CrLf}Prueba: IFI diluciones realizadas a partir de 1/50   hasta 1/ 800
+FGe,"R        001{CrLf}{FB=1}Nota{FB=0}: Este resultado estima la filtraci�n. No deber�a ser resultado en personas con �ndice de masa corporal extremo( En adultos IMC<18,5 kg/m2 o >40kgm2 y en menores de 18 a�os IMC <pecentil 5), embarazadas, internados o sospecha de curso de lesi�n renal aguda. {CrLf}Se sugiere  referencia al especialista en menores de 18 a�os con FGe <60 ml/min/1.73m2 y en adultos con FGe <45ml/min/1.73 m2"
+HCV G,R        001
+VETT4L,R        001
+CIT (sem,R        001R        002
+VETPLP,R        001R        002R        003R        004R        005{CrLf}{L=n}{FB=1}PERFIL LIPOPROTEICO{FB=0}{L=00}
+VETCOR,R        001{CrLf}
+VETHEMP,"R        001R        002R        003R        004R        005T        001{CrLf}{FB=1}PANEL HEMOPAR�SITOS CANINOS{FB=0} - H. canis,  A. platys,  B. vogeli,  E. canis{CrLf}{CrLf}"
+VETBRK.,R        001
+VETRAE,R        001{CrLf}
+SMD,R        001{CrLf}{FB=1}SINDROME MILLER DIEKER (DELECI�N 17P13.3 FISH){FB=0}
+VETEHR,R        001R        002T        001{CrLf}
+VETHZC,R        001R        002T        001{CrLf}
+VETHEMP1,"R        001R        002R        003T        001{CrLf}{FB=1}PANEL HEMOPAR�SITOS CANINOS{FB=0} - H. canis,  E. canis{CrLf}{CrLf}"
+VETCA-Bi,R        001
+VETAFO,R        001{CrLf}
+VETT3,R        001
+VETAMS,R        001{CrLf}
+VETMGS,R        001
+VETTSH,R        001
+VETLIP,R        001{CrLf}
+VETE2,R        001
+VETB12,R        001{CrLf}
+COBALTO,R        001{CrLf}
+LIG.,R        001R        002R        003R        004R        005R        006{FB=1}LIPIDOGRAMA  ELECTROFOR�TICO {FB=0}{CrLf}M�todo: Electroforesis en gel de agarosa{CrLf}
+CLE.,R        001
+VETFOS,R        001{CrLf}
+C1Q-IF.,R        001
+COBALT-O,R        001{CrLf}
+EOS,
+VETURE,R        001
+Ac Trepo,R        001A partir del mes de mayo 2025 se modifica el m�todo.
+VETION,R        001R        002R        003{CrLf}{FB=1}IONOGRAMA PLASM�TICO{FB=0}{CrLf}               M�todo: Electrodo ion selectivo
+ANCA,R        001{CrLf}Se sugiere confirmar el resultado con MPO y PR3.
+PEC.,R        001{CrLf}El valor de referencia se modific�a a partir del 01/07/2025
+VETCOL,R        001
+APCC.,R        001
+VETTGL,R        001
+DIST2,R        001T        001{CrLf}{FB=1}DISTROFIA MIOT�NICA DE STEINERT TIPO 1{FB=0}{CrLf}{CrLf}{L=1}Muestra: sangre EDTA{CrLf}M�todo: Amplificaci�n por PCR y TP-PCR fluorescente. Detecci�n por electroforesis capilar.{CrLf}Segmento amplificado: motivo repetitivo (TG)n(TCTG)n(CCTG)n del gen CNBP.
+LAG,
+IPOR,R        001
+VETUPC,R        001R        002R        003
+PORFI-U,R        001
+EBVCA G.,R        001{CrLf}
+XINDIV,{CrLf}
+VEGF,R        001
+EBVCA M.,R        001{CrLf}
+ASCA IgG,R        001
+INFAPCR,R        001R        002{CrLf}{FB=1}DETECCI�N INFLUENZA A - PCR{FB=0}
+INFBPCR,R        001R        002{CrLf}{FB=1}DETECCI�N INFLUENZA B - PCR{FB=0}
+VETFEN,R        001
+VETBILT,R        001R        002R        003
+VETNA,R        001
+LSDM1,R        001
+VETAUR,R        001
+VETMET,R        001R        002{CrLf}METANEFRINAS FRACCIONADAS PLASM�TICAS
+VETPTG,R        001R        002R        003R        004R        005R        006R        007R        008{CrLf}{L=n}{FB=1}PROTEINOGRAMA ELECTROFORETICO{FB=0}{L=00}{CrLf}{CrLf}M�todo: Electroforesis Capilar
+CAT P,R        001R        002
+VETSDMA,R        001
+VETFAL,R        001{CrLf}
+PAI4G5G,R        001R        002{CrLf}{FB=1}POLIMORFISMO DEL INHIBIDOR DEL ACTIVADOR DEL PLASMIN�GENO{FB=0}{CrLf}
+FRIED,R        001T        001{CrLf}{FB=1}ATAXIA DE FRIEDREICH {FB=0}{CrLf}{CrLf}{L=1}Muestra: sangre EDTA{CrLf}M�todo: TP-PCR y  electroforesis capilar{CrLf}Segmento amplificado: regi�n (GAA)n en el gen FXN
+VETPG,R        001{CrLf}
+FHCG-R,R        001R        002
+IGFBP-3.,R        001
+YINDIV,{CrLf}
+LT TCR,"R        001R        002R        003R        004R        005R        006{CrLf}{FB=1}LINFOCITOS T TCR alfa-beta, TCR gamma-delta{FB=0}{CrLf}     Material: sangre EDTA{CrLf}     M�todo: citometr�a de flujo"
+PAP-A-R,R        001R        002
+ARS-AGUA,R        001{CrLf}{FB=1}ARS�NICO EN AGUA{FB=0}
+ZON,R        001R        002{CrLf}{FB=1}ZONULINA{FB=0}
+ZZZ,R        001R        002R        003R        004R        005V        002V        004V        006{CrLf}{L=n}{FB=1}PERFIL LIPOPROTEICO{FB=0}{L=00}V        001=R        002/R        004V        003=R        003*F        100V        002=V        003/R        004V        005=R        004+R        005V        004=R        003-V        005V        006=R        003-R        004V        007=R        003-V        005
+SBMA,R        001T        001{CrLf}{FB=1}Atrofia Muscular Espino-Bulbar (SBMA){FB=0}{CrLf}{CrLf}{L=1}Muestra: sangre EDTA{CrLf}M�todo: PCR- Electroforesis capilar{CrLf}Segmento amplificado: regi�n (CAG)n del gen AR
+IFNG,R        001{CrLf}
+CMVQ,R        001R        002R        003{CrLf}{FB=1}CITOMEGALOVIRUS (CARGA VIRAL){FB=0}{CrLf}
+LT DN,"R        001R        002{CrLf}{FB=1}LINFOCITOS T TCR alfa-beta, dobles negativos{FB=0}{CrLf}     Material: sangre EDTA{CrLf}     M�todo: citometr�a de flujo"
