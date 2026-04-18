@@ -393,9 +393,7 @@ class StatisticsService:
             )
             .annotate(
                 order_count=Count("pk"),
-                completed_count=Count(
-                    "pk", filter=Q(study__status="completed")
-                ),
+                completed_count=Count("pk", filter=Q(study__status="completed")),
             )
             .order_by("-order_count")[:limit]
         )

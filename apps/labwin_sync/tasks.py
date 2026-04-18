@@ -232,9 +232,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                 max_numero = numero
 
                     except Exception as e:
-                        logger.error(
-                            "Error processing protocol %s: %s", numero, e
-                        )
+                        logger.error("Error processing protocol %s: %s", numero, e)
                         errors.append(
                             {
                                 "type": "study",
@@ -533,9 +531,7 @@ def _get_or_create_study_with_practices(
     study = Study.objects.filter(protocol_number=protocol_number).first()
     if study:
         # Study exists — add any new practices that aren't already linked
-        existing_codes = set(
-            study.study_practices.values_list("code", flat=True)
-        )
+        existing_codes = set(study.study_practices.values_list("code", flat=True))
         for row in deters_rows:
             abrev = row["ABREV_FLD"].strip()
             if abrev in existing_codes:

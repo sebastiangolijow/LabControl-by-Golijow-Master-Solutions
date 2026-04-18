@@ -146,7 +146,9 @@ class BaseTestMixin:
         study = Study.objects.create(**defaults)
 
         # Create StudyPractice records
-        practice_list = practices or ([practice] if practice else [self.create_practice()])
+        practice_list = practices or (
+            [practice] if practice else [self.create_practice()]
+        )
         for i, p in enumerate(practice_list):
             StudyPractice.objects.create(
                 study=study,

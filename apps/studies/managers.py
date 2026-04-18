@@ -44,15 +44,11 @@ class StudyQuerySet(LabClientQuerySet):
 
     def with_results(self):
         """Return studies that have at least one practice with results."""
-        return self.filter(
-            study_practices__result__gt=""
-        ).distinct()
+        return self.filter(study_practices__result__gt="").distinct()
 
     def without_results(self):
         """Return studies where no practice has results yet."""
-        return self.exclude(
-            study_practices__result__gt=""
-        ).distinct()
+        return self.exclude(study_practices__result__gt="").distinct()
 
     def ordered_by(self, user):
         """Return studies ordered by a specific user."""

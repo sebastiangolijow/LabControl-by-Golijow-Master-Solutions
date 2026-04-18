@@ -221,7 +221,10 @@ class MVPFullScenarioTest(BaseTestCase):
         ), f"Study {str(study.pk)} not found in results list. Available IDs: {result_ids}"
         assert new_result["status"] == "completed"
         assert new_result["results_file"] is not None
-        assert new_result["study_practices"][0]["practice_detail"]["name"] == "Complete Blood Count"
+        assert (
+            new_result["study_practices"][0]["practice_detail"]["name"]
+            == "Complete Blood Count"
+        )
         print(f"✓ Patient sees {len(results)} results (new result visible)")
         print(
             f"  New result: {new_result['study_practices'][0]['practice_detail']['name']} - {new_result['status']}"

@@ -295,7 +295,10 @@ class TestStudyListAPI(BaseTestCase):
         response = client.get(f"/api/v1/studies/{study.pk}/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["study_practices"]) == 1
-        assert response.data["study_practices"][0]["practice_detail"]["name"] == "Hepatograma"
+        assert (
+            response.data["study_practices"][0]["practice_detail"]["name"]
+            == "Hepatograma"
+        )
 
 
 # ===========================================================================
