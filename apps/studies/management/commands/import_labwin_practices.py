@@ -262,9 +262,7 @@ class Command(BaseCommand):
 
                 except Exception as e:
                     errors += 1
-                    self.stdout.write(
-                        self.style.ERROR(f"  Error {item['code']}: {e}")
-                    )
+                    self.stdout.write(self.style.ERROR(f"  Error {item['code']}: {e}"))
 
         self.stdout.write(f"\n{'='*60}")
         self.stdout.write(self.style.SUCCESS("IMPORT COMPLETE"))
