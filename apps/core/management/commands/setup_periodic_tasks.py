@@ -98,6 +98,59 @@ class Command(BaseCommand):
                 self.style.WARNING("○ Already exists: Sync LabWin Results")
             )
 
+        # Fetch FTP PDFs every 30 minutes
+        from django_celery_beat.models import IntervalSchedule
+
+        every_30_min, _ = IntervalSchedule.objects.get_or_create(
+            every=30,
+            period=IntervalSchedule.MINUTES,
+        )
+
+        task4, created4 = PeriodicTask.objects.get_or_create(
+            name="Fetch FTP PDFs",
+            defaults={
+                "task": "apps.labwin_sync.tasks.fetch_ftp_pdfs",
+                "interval": every_30_min,
+                "enabled": True,
+            },
+        )
+        if created4:
+            self.stdout.write(
+                self.style.SUCCESS("✓ Created: Fetch FTP PDFs (Every 30 min)")
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING("○ Already exists: Fetch FTP PDFs")
+            )
+
+        # Cleanup FTP PDFs weekly Sunday 3 AM
+        weekly_sunday_3am, _ = CrontabSchedule.objects.get_or_create(
+            minute="0",
+            hour="3",
+            day_of_week="0",
+            day_of_month="*",
+            month_of_year="*",
+        )
+
+        task5, created5 = PeriodicTask.objects.get_or_create(
+            name="Cleanup FTP PDFs",
+            defaults={
+                "task": "apps.labwin_sync.tasks.cleanup_ftp_pdfs",
+                "crontab": weekly_sunday_3am,
+                "enabled": True,
+            },
+        )
+        if created5:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "✓ Created: Cleanup FTP PDFs (Weekly Sunday 3 AM)"
+                )
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING("○ Already exists: Cleanup FTP PDFs")
+            )
+
         self.stdout.write(self.style.SUCCESS("\n✓ Periodic tasks setup complete!"))
         self.stdout.write(
             "\nYou can manage these tasks in Django Admin -> Periodic Tasks"
