@@ -10,7 +10,9 @@ from django_celery_beat.models import CrontabSchedule, IntervalSchedule, Periodi
 
 
 class Command(BaseCommand):
-    help = "Create or update Celery Beat periodic tasks for LabWin sync and FTP PDF fetch"
+    help = (
+        "Create or update Celery Beat periodic tasks for LabWin sync and FTP PDF fetch"
+    )
 
     TASKS = [
         {
@@ -65,6 +67,8 @@ class Command(BaseCommand):
                 )
 
             status = "created" if created else "updated"
-            self.stdout.write(f"  {'+'if created else '~'} {task_def['name']} — {status}")
+            self.stdout.write(
+                f"  {'+'if created else '~'} {task_def['name']} — {status}"
+            )
 
         self.stdout.write(self.style.SUCCESS("\nPeriodic tasks configured!"))
