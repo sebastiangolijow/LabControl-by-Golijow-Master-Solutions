@@ -9,6 +9,7 @@ import os
 
 from django.conf import settings
 from django.conf.urls.static import static
+from django.shortcuts import redirect
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -29,7 +30,19 @@ router = routers.DefaultRouter()
 # Default to 'admin/' in development, but should be changed in production
 ADMIN_URL = os.getenv("ADMIN_URL", "admin/")
 
+def password_reset_redirect(request, uidb64, token):
+    """Redirect password reset confirmation to the frontend SPA."""
+    frontend_url = settings.FRONTEND_URL
+    return redirect(f"{frontend_url}/set-password?uid={uidb64}&token={token}")
+
+
 urlpatterns = [
+    # Password reset confirm — redirects to frontend SPA
+    path(
+        "api/v1/auth/password/reset/confirm/<str:uidb64>/<str:token>/",
+        password_reset_redirect,
+        name="password_reset_confirm",
+    ),
     # Admin panel (customizable URL for security, restricted to superusers)
     path(ADMIN_URL, admin_site.urls),
     # API endpoints
