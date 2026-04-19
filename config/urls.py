@@ -30,6 +30,7 @@ router = routers.DefaultRouter()
 # Default to 'admin/' in development, but should be changed in production
 ADMIN_URL = os.getenv("ADMIN_URL", "admin/")
 
+
 def password_reset_redirect(request, uidb64, token):
     """Redirect password reset confirmation to the frontend SPA."""
     frontend_url = settings.FRONTEND_URL
