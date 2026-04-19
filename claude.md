@@ -536,6 +536,12 @@ sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 "cd /opt/labcontrol && docke
 - **Use `sshpass -p '39872327Seba.'`** for all SSH/SCP/rsync commands to the deploy user
 - Backup exists at `/opt/labcontrol/backups/2026-03-22-working-config/`
 
+## TODO
+
+- Get full LabWin DB from lab (PACIENTES, MEDICOS, NOMEN populated)
+- Populate `Practice.reference_range` with clean data once available
+- Optionally compress background images to WebP (TODO in FRONTEND.md)
+
 ## Known Issues
 
 **None** - All features working, 374/374 tests passing.
