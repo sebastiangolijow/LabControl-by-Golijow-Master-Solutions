@@ -1422,9 +1422,7 @@ class SyncSkipsPetsTests(BaseTestCase):
     @override_settings(LABWIN_USE_MOCK=True)
     def test_pet_paciente_row_is_skipped(self):
         """If the source row maps to a pet, sync skips it: no User, no Study."""
-        from apps.labwin_sync.connectors.mock import (
-            SAMPLE_PACIENTES, SAMPLE_DETERS,
-        )
+        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS, SAMPLE_PACIENTES
 
         # Inject a pet PACIENTES row + matching DETERS into the mock fixtures.
         # Use a fresh NUMERO so we don't collide with existing fixtures.
@@ -1432,7 +1430,7 @@ class SyncSkipsPetsTests(BaseTestCase):
         SAMPLE_PACIENTES[pet_numero] = {
             "NUMERO_FLD": pet_numero,
             "NOMBRE_FLD": "171029,FALUCHO",  # source format for a pet
-            "HCLIN_FLD": "",                  # no DNI
+            "HCLIN_FLD": "",  # no DNI
             "SEXO_FLD": 1,
             "FNACIM_FLD": "",
             "MUTUAL_FLD": 0,
@@ -1446,18 +1444,20 @@ class SyncSkipsPetsTests(BaseTestCase):
             "EMAIL_FLD": "",
             "DEBEBONO_FLD": "",
         }
-        SAMPLE_DETERS.append({
-            "NUMERO_FLD": pet_numero,
-            "ABREV_FLD": "GLU",
-            "RESULT_FLD": "100",
-            "RESULTREP_FLD": "100",
-            "VALIDADO_FLD": "1",
-            "FECHA_FLD": "20260415",
-            "HORA_FLD": "10:00",
-            "ORDEN_FLD": 1,
-            "OPERADOR_FLD": "",
-            "SUCURSAL_FLD": "",
-        })
+        SAMPLE_DETERS.append(
+            {
+                "NUMERO_FLD": pet_numero,
+                "ABREV_FLD": "GLU",
+                "RESULT_FLD": "100",
+                "RESULTREP_FLD": "100",
+                "VALIDADO_FLD": "1",
+                "FECHA_FLD": "20260415",
+                "HORA_FLD": "10:00",
+                "ORDEN_FLD": 1,
+                "OPERADOR_FLD": "",
+                "SUCURSAL_FLD": "",
+            }
+        )
 
         try:
             result = sync_labwin_results(lab_client_id=1, full_sync=True)

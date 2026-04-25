@@ -198,17 +198,57 @@ def map_practice(nomen_row):
 # pet/vet flag to LabWin, replace this with that signal.
 import re as _re
 
-PET_NAME_ALLOWLIST = frozenset({
-    'AFRIKA', 'ALFREDITO', 'ASILA', 'AYUN', 'BABI', 'BACHI', 'BART',
-    'BENDI', 'BLACKY', 'BOCHI', 'BRIDA', 'CANELA', 'CAÑITO', 'CHIQUI',
-    'CHIQUITIN', 'CHOCOLATE', 'CIRA', 'COBI', 'DRAKO', 'FALUCHO',
-    'FRIDA', 'GORDO', 'HARU', 'INCA', 'INDIO', 'JUANITO', 'KATA',
-    'LOBITO', 'MIKI', 'MORENA', 'NALA', 'NEGRITA', 'NILO', 'NYMERIA',
-    'PEPA', 'PERA', 'PININA', 'PIREW', 'PRETA', 'TIGRESA', 'TINI',
-    'TRUFA', 'WANA', 'WILLOW', 'ZAMBA',
-})
+PET_NAME_ALLOWLIST = frozenset(
+    {
+        "AFRIKA",
+        "ALFREDITO",
+        "ASILA",
+        "AYUN",
+        "BABI",
+        "BACHI",
+        "BART",
+        "BENDI",
+        "BLACKY",
+        "BOCHI",
+        "BRIDA",
+        "CANELA",
+        "CAÑITO",
+        "CHIQUI",
+        "CHIQUITIN",
+        "CHOCOLATE",
+        "CIRA",
+        "COBI",
+        "DRAKO",
+        "FALUCHO",
+        "FRIDA",
+        "GORDO",
+        "HARU",
+        "INCA",
+        "INDIO",
+        "JUANITO",
+        "KATA",
+        "LOBITO",
+        "MIKI",
+        "MORENA",
+        "NALA",
+        "NEGRITA",
+        "NILO",
+        "NYMERIA",
+        "PEPA",
+        "PERA",
+        "PININA",
+        "PIREW",
+        "PRETA",
+        "TIGRESA",
+        "TINI",
+        "TRUFA",
+        "WANA",
+        "WILLOW",
+        "ZAMBA",
+    }
+)
 
-_PET_NUMERIC_LAST_NAME_RE = _re.compile(r'^\d+[-]?$')
+_PET_NUMERIC_LAST_NAME_RE = _re.compile(r"^\d+[-]?$")
 
 
 def is_pet_candidate(first_name, last_name, dni):
@@ -218,14 +258,14 @@ def is_pet_candidate(first_name, last_name, dni):
     Used by sync to skip pet PACIENTES rows on import. Matches a small
     subset (~120) of all PACIENTES with numeric last_name + empty dni.
     """
-    last = (last_name or '').strip()
-    dni_clean = (dni or '').strip()
-    first = (first_name or '').strip()
+    last = (last_name or "").strip()
+    dni_clean = (dni or "").strip()
+    first = (first_name or "").strip()
     if not _PET_NUMERIC_LAST_NAME_RE.match(last):
         return False
     if dni_clean:
         return False
-    if ' ' in first:
+    if " " in first:
         return False
     return first.upper() in PET_NAME_ALLOWLIST
 
