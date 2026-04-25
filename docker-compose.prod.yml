@@ -66,7 +66,16 @@ services:
     networks:
       - labcontrol_network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
+      # The slim Python image has no curl/wget. Use http.client (stdlib) to
+      # hit the /health/ endpoint, which is exempt from SSL redirect (see
+      # config/settings/prod.py SECURE_REDIRECT_EXEMPT).
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import http.client,sys;
+          c=http.client.HTTPConnection('localhost',8000,timeout=5);
+          c.request('GET','/health/');
+          sys.exit(0 if c.getresponse().status==200 else 1)"
       interval: 30s
       timeout: 10s
       retries: 3
@@ -93,7 +102,10 @@ services:
     networks:
       - labcontrol_network
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost/ || exit 1"]
+      # nginx default server name is `_` which makes wget's URL parser fail
+      # ("bad address '_'"). Use nc to verify the SSL port is listening — if
+      # nginx accepts a TCP connect on 443 it's serving requests.
+      test: ["CMD-SHELL", "nc -z localhost 443 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -166,6 +178,18 @@ services:
         condition: service_healthy
     networks:
       - labcontrol_network
+    healthcheck:
+      # celery beat has no HTTP server. PID 1 in this container is the beat
+      # process (run as `python /home/appuser/.local/bin/celery -A config beat ...`),
+      # so verify PID 1's cmdline still contains "beat". `pidof celery` doesn't
+      # work because the executable name is `python3.11` — celery is just argv[1].
+      test:
+        - CMD-SHELL
+        - tr '\0' ' ' < /proc/1/cmdline | grep -q beat || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   postgres_data:

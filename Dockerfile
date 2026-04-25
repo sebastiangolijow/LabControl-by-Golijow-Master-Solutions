@@ -57,9 +57,10 @@ RUN python manage.py collectstatic --noinput || echo "Collectstatic skipped"
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health/', timeout=5)" || exit 1
+# Healthchecks are defined per-service in docker-compose.yml. The same image
+# runs as web (HTTP server), celery_worker (no server), and celery_beat
+# (no server) — they need different liveness probes. Defining HEALTHCHECK
+# here would make celery_* containers fail because they have no port 8000.
 
 # Run gunicorn for production
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--threads", "2", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-"]

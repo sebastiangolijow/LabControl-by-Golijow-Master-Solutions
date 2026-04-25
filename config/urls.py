@@ -20,6 +20,7 @@ from rest_framework import routers
 
 # Import custom admin site (restricted to superusers only)
 from config.admin import admin_site
+from apps.core.views import health
 
 # API Router
 router = routers.DefaultRouter()
@@ -38,6 +39,10 @@ def password_reset_redirect(request, uidb64, token):
 
 
 urlpatterns = [
+    # Liveness probe used by docker-compose + external monitors.
+    # Exempt from SSL redirect (see SECURE_REDIRECT_EXEMPT in prod settings)
+    # so internal HTTP healthchecks don't get bounced to https.
+    path("health/", health, name="health"),
     # Password reset confirm — redirects to frontend SPA
     path(
         "api/v1/auth/password/reset/confirm/<str:uidb64>/<str:token>/",

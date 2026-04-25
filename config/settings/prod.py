@@ -22,6 +22,10 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 # Security Settings - CRITICAL for production
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Exempt /health/ from the SSL redirect so docker-compose's internal HTTP
+# healthcheck (which talks to localhost:8000 plain HTTP, not behind nginx)
+# gets a real 200 back instead of a 301 to https.
+SECURE_REDIRECT_EXEMPT = [r"^health/$"]
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000  # 1 year
