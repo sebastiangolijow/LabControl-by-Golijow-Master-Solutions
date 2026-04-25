@@ -19,7 +19,9 @@ class StudyFilter(django_filters.FilterSet):
     class Meta:
         model = Study
         fields = {
-            "status": ["exact"],
+            # `in` lookup lets the frontend pass status__in=pending,in_progress
+            # (used by the "upcoming studies" tab in ResultsView).
+            "status": ["exact", "in"],
             "patient": ["exact"],
             "ordered_by": ["exact"],
         }
