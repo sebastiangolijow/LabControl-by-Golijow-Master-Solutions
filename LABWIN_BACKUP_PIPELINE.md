@@ -185,7 +185,7 @@ LOCAL_ARCHIVE_DIR = Path(r"C:\labcontrol_backup\archive")  # Rotación local
 GBAK_EXE = r"C:\Program Files\Firebird\Firebird_2_5\bin\gbak.exe"
 LABWIN_DB = r"C:\sistema\LabWin4\Basedat\BASEDAT.FDB"  # Verificado en PC del lab 2026-04-24
 FIREBIRD_USER = "SYSDBA"
-FIREBIRD_PASSWORD = "masterkey"  # TODO: cambiar si el lab cambio el SYSDBA
+FIREBIRD_PASSWORD = "REPLACE_WITH_REAL_SYSDBA_PASSWORD"  # See backup_lab_guide.md §"Where to get the password"
 
 # VPS SFTP
 VPS_HOST = "72.60.137.226"
@@ -864,5 +864,5 @@ La BBDD era más chica de lo estimado originalmente (se asumían 2–5 GB por la
 3. ~~**Ancho de banda del lab:**~~ ✅ **Resuelto 2026-04-24** — 70 MB sostiene 3.2 MB/s (22 s total). Impacto mínimo, viable a cualquier hora.
 4. **Retención en el VPS:** ¿30 días en `/srv/labwin_backups/processed/` es suficiente? ¿Backup de los backups a S3 / almacenamiento externo?
 5. **Multi-sede futura:** si el cliente tiene más de un lab, cada uno necesita su `backup_user` y su `lab_client_id`. El diseño actual asume un único lab.
-6. **Password de SYSDBA en el script:** `upload_backup.py` tiene `"masterkey"` hardcodeado. Si el lab cambia el password, hay que editar el script. ¿Vale la pena mover a un archivo `.env` en la PC del lab o registrarlo en una variable de entorno de Windows?
+6. ~~**Password de SYSDBA en el script:**~~ ✅ **Resuelto** — la versión productiva del script (ver `backup_lab_guide.md`) lee el password desde `upload_backup.config.ini` con permisos NTFS restrictivos, no más hardcoding. El snippet inline en este doc usa un placeholder `REPLACE_WITH_REAL_SYSDBA_PASSWORD` para que sea obvio que hay que reemplazarlo. Source of truth del valor: 1Password → "LabControl LabWin SYSDBA".
 7. **Task Scheduler:** pendiente de configurar en la PC del lab para automatizar el upload a las 02:00 AM. Por ahora se corre manual.

@@ -1571,7 +1571,7 @@ LABWIN_FDB_HOST=localhost         # In prod: "firebird" (docker service name)
 LABWIN_FDB_PORT=3050
 LABWIN_FDB_DATABASE=              # Path to .fdb file on Firebird server
 LABWIN_FDB_USER=SYSDBA
-LABWIN_FDB_PASSWORD=masterkey
+LABWIN_FDB_PASSWORD=<from 1Password: "LabControl LabWin SYSDBA">
 LABWIN_SYNC_BATCH_SIZE=500
 LABWIN_DEFAULT_LAB_CLIENT_ID=1
 ```
