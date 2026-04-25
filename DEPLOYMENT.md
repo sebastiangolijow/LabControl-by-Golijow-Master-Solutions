@@ -16,8 +16,10 @@
 6. [SSL Certificates](#ssl-certificates)
 7. [Application Architecture](#application-architecture)
 8. [Deployment Decisions](#deployment-decisions)
-9. [Updating the Application](#updating-the-application)
-10. [Troubleshooting](#troubleshooting)
+9. [FTP Server Configuration](#-ftp-server-configuration)
+10. [LabWin Backup Ingestion Pipeline](#-labwin-backup-ingestion-pipeline)
+11. [Updating the Application](#updating-the-application)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -93,8 +95,7 @@ cd backups/2026-03-22-working-config
 - **Provider**: Hostinger VPS
 - **Server IP**: `72.60.137.226`
 - **OS**: Ubuntu Linux
-- **User**: `deploy@srv879400`
-- **Root Access**: Available via `root@72.60.137.226`
+- **User**: `deploy@72.60.137.226` (password auth, used for **all** deployment operations — see [SSH Access](#ssh-access))
 
 ### Application Location
 ```
@@ -467,10 +468,12 @@ The VPS runs a vsftpd FTP server that receives PDF result files from LabWin. Doc
 | **Host** | `72.60.137.226` |
 | **Port** | `21` |
 | **User** | `labwin_ftp` |
-| **Password** | `LabWinFTP2026!` |
+| **Password** | *See 1Password → "LabControl LabWin FTP user". Mirrored on the server in `.env.production` as `LABWIN_FTP_PASSWORD` and in `/etc/vsftpd.userlist`.* |
 | **Directory** | `/results` |
 | **Protocol** | FTP (plain, no TLS) |
 | **Passive Mode** | Yes (ports 30000-30100) |
+
+> When sharing the password with the lab team, send it via 1Password share-link or another out-of-band channel — never paste it into Slack/email.
 
 ### File Naming Convention
 
@@ -507,13 +510,13 @@ shell: /usr/sbin/nologin (FTP only, no SSH)
 
 `docker-compose.prod.yml` has `extra_hosts: ["host.docker.internal:host-gateway"]` on `web` and `celery_worker` services.
 
-`.env.production` settings:
+`.env.production` settings (see `.env.production.template` for the canonical schema):
 ```env
 LABWIN_FTP_USE_MOCK=False
 LABWIN_FTP_HOST=host.docker.internal
 LABWIN_FTP_PORT=21
 LABWIN_FTP_USER=labwin_ftp
-LABWIN_FTP_PASSWORD=LabWinFTP2026!
+LABWIN_FTP_PASSWORD=<from 1Password: "LabControl LabWin FTP user">
 LABWIN_FTP_DIRECTORY=/results
 LABWIN_FTP_USE_TLS=False
 ```
@@ -521,18 +524,22 @@ LABWIN_FTP_USE_TLS=False
 ### Testing FTP Manually
 
 ```bash
+# Pre-requisite: export the FTP password from 1Password
+export LABWIN_FTP_PASSWORD='...'   # from 1Password → "LabControl LabWin FTP user"
+
 # From local machine
 ftp 72.60.137.226
-# Login: labwin_ftp / LabWinFTP2026!
+# Login: labwin_ftp / $LABWIN_FTP_PASSWORD
 # cd results
 # put 100001.pdf
 
-# From inside Docker container
+# From inside Docker container (uses the same env var Django reads)
 docker compose -f docker-compose.prod.yml exec web python -c "
+import os
 from ftplib import FTP
 ftp = FTP()
 ftp.connect('host.docker.internal', 21)
-ftp.login('labwin_ftp', 'LabWinFTP2026!')
+ftp.login('labwin_ftp', os.environ['LABWIN_FTP_PASSWORD'])
 ftp.cwd('/results')
 print(ftp.nlst())
 ftp.quit()
@@ -545,6 +552,91 @@ ftp.quit()
 - **API**: `POST /api/v1/labwin-sync/fetch-pdfs/`
 - **CLI**: `python manage.py fetch_ftp_pdfs [--delete] [--cleanup]`
 - **Scheduled**: Can be added to Celery Beat for automatic fetching
+
+---
+
+## 💾 LabWin Backup Ingestion Pipeline
+
+### Why This Exists
+
+The lab's PC running LabWin (Firebird 2.5) has **no public IP** and cannot accept inbound connections. The VPS therefore cannot pull data from the Firebird service directly. Instead, the lab PC **pushes** a nightly backup to the VPS via SFTP, and the VPS restores it into a local Firebird container that the existing `labwin_sync` connector reads from.
+
+This pipeline is what makes `LABWIN_USE_MOCK=False` viable in production.
+
+### Architecture Summary
+
+```
+PC Lab ─[02:00 AM  gbak + gzip + SFTP]─► VPS /srv/labwin_backups/incoming/
+                                              │
+                                              │ (Celery Beat 04:00 AM)
+                                              ▼
+                                    import_uploaded_backup task
+                                              │
+                                              ├─► gbak -r → firebird container
+                                              └─► sync_labwin_results()
+```
+
+See **[`LABWIN_BACKUP_PIPELINE.md`](./LABWIN_BACKUP_PIPELINE.md)** for the complete design doc: component-by-component implementation plan, security considerations, failure modes, and phased rollout.
+
+### SFTP Credentials (for lab team)
+
+| Setting | Value |
+|---------|-------|
+| **Host** | `72.60.137.226` |
+| **Port** | `22` |
+| **User** | `backup_user` |
+| **Auth** | SSH key (no password) |
+| **Upload dir** | `/incoming/` (chroot) |
+| **Protocol** | SFTP |
+
+**Note:** Distinct from the FTP credentials above. FTP is for PDF results pull-from-lab (Phase 13); SFTP is for DB backups push-from-lab (this section).
+
+### VPS Directory Layout
+
+```
+/srv/labwin_backups/
+├── incoming/     ← backup_user SFTP chroot (writable)
+├── processed/    ← successfully ingested backups (rotated > 30 days)
+└── failed/       ← backups that failed to restore (kept for debugging)
+```
+
+### Docker Services
+
+A new `firebird` service is added to `docker-compose.prod.yml` to host the restored database:
+
+```yaml
+firebird:
+  image: jacobalberty/firebird:2.5-ss
+  container_name: labcontrol_firebird
+  volumes:
+    - firebird_data:/firebird/data
+    - /srv/labwin_backups/incoming:/backups/incoming:ro
+  networks: [labcontrol_net]
+  # Not exposed to host — only reachable via docker network
+```
+
+`.env.production` additions:
+```env
+LABWIN_USE_MOCK=False
+LABWIN_FDB_HOST=firebird              # docker service name
+LABWIN_FDB_PORT=3050
+LABWIN_FDB_DATABASE=/firebird/data/BASEDAT.FDB
+LABWIN_FDB_USER=SYSDBA
+LABWIN_FDB_PASSWORD=<see secrets vault>
+FIREBIRD_SYSDBA_PASSWORD=<same as above>
+```
+
+### Triggering Backup Ingestion
+
+- **Scheduled**: Celery Beat runs `import_uploaded_backup` at 04:00 AM daily
+- **CLI manual**: `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only]`
+- **Admin UI**: (future) button in Django Admin → SyncLog view
+
+### Status
+
+**Current state:** Designed but not yet implemented. The LabControl codebase still runs with `LABWIN_USE_MOCK=True` in production.
+
+**To enable:** Follow the phased plan (A through F) in `LABWIN_BACKUP_PIPELINE.md`. Estimated effort: 3–5 days of dev + a 2-hour onsite visit to the lab.
 
 ---
 
@@ -562,10 +654,10 @@ cd /Users/cevichesmac/Desktop/labcontrol-frontend
 npm run build
 
 # 3. LOCAL: Copy built files to server
-scp -r dist/* root@72.60.137.226:/opt/labcontrol/frontend/dist/
+sshpass -p "$DEPLOY_SSH_PASSWORD" scp -r dist/* deploy@72.60.137.226:/opt/labcontrol/frontend/dist/
 
 # 4. SERVER: Restart Nginx to clear cache
-ssh root@72.60.137.226 "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml restart nginx"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml restart nginx"
 
 # 5. BROWSER: Hard refresh (Ctrl+Shift+R) or open incognito to see changes
 ```
@@ -577,10 +669,10 @@ cd /Users/cevichesmac/Desktop/labcontrol-frontend
 tar -czf dist.tar.gz dist/
 
 # Upload tarball
-scp dist.tar.gz root@72.60.137.226:/tmp/
+sshpass -p "$DEPLOY_SSH_PASSWORD" scp dist.tar.gz deploy@72.60.137.226:/tmp/
 
 # Extract on server
-ssh root@72.60.137.226
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 cd /opt/labcontrol/frontend
 rm -rf dist/*
 tar -xzf /tmp/dist.tar.gz --strip-components=1
@@ -588,7 +680,7 @@ rm /tmp/dist.tar.gz
 exit
 
 # Restart nginx
-ssh root@72.60.137.226 "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml restart nginx"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml restart nginx"
 ```
 
 ### Backend Updates
@@ -607,13 +699,13 @@ python manage.py makemigrations
 
 # 4. LOCAL: Copy updated files to server (be selective!)
 # Copy specific app:
-scp -r apps/users/* root@72.60.137.226:/opt/labcontrol/apps/users/
+sshpass -p "$DEPLOY_SSH_PASSWORD" scp -r apps/users/* deploy@72.60.137.226:/opt/labcontrol/apps/users/
 
 # Copy multiple files:
-scp apps/users/views.py apps/users/serializers.py root@72.60.137.226:/opt/labcontrol/apps/users/
+sshpass -p "$DEPLOY_SSH_PASSWORD" scp apps/users/views.py apps/users/serializers.py deploy@72.60.137.226:/opt/labcontrol/apps/users/
 
 # 5. SERVER: Rebuild and restart containers
-ssh root@72.60.137.226
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 cd /opt/labcontrol
 
 # Rebuild the image (if you changed requirements.txt or Dockerfile)
@@ -638,10 +730,10 @@ When you update `.env.production`:
 # Edit /Users/cevichesmac/Desktop/labcontrol/.env.production
 
 # 2. LOCAL: Copy to server
-scp .env.production root@72.60.137.226:/opt/labcontrol/
+sshpass -p "$DEPLOY_SSH_PASSWORD" scp .env.production deploy@72.60.137.226:/opt/labcontrol/
 
 # 3. SERVER: Recreate containers (restart doesn't reload env vars!)
-ssh root@72.60.137.226
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 cd /opt/labcontrol
 docker compose -f docker-compose.prod.yml stop web celery_worker
 docker compose -f docker-compose.prod.yml rm -f web celery_worker
@@ -660,26 +752,20 @@ When you update Nginx config:
 # Edit /Users/cevichesmac/Desktop/labcontrol/nginx/conf.d/labcontrol.conf
 
 # 2. LOCAL: Copy to server and restart Nginx
-sshpass -p '39872327Seba.' scp \
+sshpass -p "$DEPLOY_SSH_PASSWORD" scp \
   /Users/cevichesmac/Desktop/labcontrol/nginx/conf.d/labcontrol.conf \
   deploy@72.60.137.226:/opt/labcontrol/nginx/conf.d/labcontrol.conf
 
-sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
   "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml restart nginx"
 
 # 3. Verify nginx restarted successfully
-sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
   "docker logs labcontrol_nginx --tail 20"
 
 # 4. Test configuration (optional)
-sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
   "docker exec labcontrol_nginx nginx -t"
-```
-
-**Alternative using root** (if deploy user lacks permissions):
-```bash
-scp nginx/conf.d/labcontrol.conf root@72.60.137.226:/opt/labcontrol/nginx/conf.d/
-ssh root@72.60.137.226 "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml restart nginx"
 ```
 
 ### Full Application Redeployment
@@ -688,7 +774,7 @@ If you need to redeploy everything:
 
 ```bash
 # 1. SERVER: Backup database first!
-ssh root@72.60.137.226
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 docker exec labcontrol_db pg_dump -U labcontrol_user labcontrol_db > /tmp/backup.sql
 
 # 2. LOCAL: Build frontend
@@ -697,14 +783,14 @@ npm run build
 
 # 3. LOCAL: Copy everything to server
 cd /Users/cevichesmac/Desktop/labcontrol
-rsync -avz --exclude 'node_modules' --exclude '.git' --exclude '__pycache__' \
-  . root@72.60.137.226:/opt/labcontrol/
+sshpass -p "$DEPLOY_SSH_PASSWORD" rsync -avz --exclude 'node_modules' --exclude '.git' --exclude '__pycache__' --exclude '.env.production' \
+  . deploy@72.60.137.226:/opt/labcontrol/
 
 cd /Users/cevichesmac/Desktop/labcontrol-frontend
-rsync -avz dist/ root@72.60.137.226:/opt/labcontrol/frontend/dist/
+sshpass -p "$DEPLOY_SSH_PASSWORD" rsync -avz dist/ deploy@72.60.137.226:/opt/labcontrol/frontend/dist/
 
 # 4. SERVER: Rebuild and restart
-ssh root@72.60.137.226
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 cd /opt/labcontrol
 docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d
@@ -728,10 +814,10 @@ docker compose -f docker-compose.prod.yml run --rm web python manage.py collects
 # Or open incognito/private window
 
 # Restart Nginx
-ssh root@72.60.137.226 "docker compose -f /opt/labcontrol/docker-compose.prod.yml restart nginx"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "docker compose -f /opt/labcontrol/docker-compose.prod.yml restart nginx"
 
 # Check if files were actually updated
-ssh root@72.60.137.226 "ls -la /opt/labcontrol/frontend/dist/"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "ls -la /opt/labcontrol/frontend/dist/"
 ```
 
 #### 2. Environment Variables Not Loading
@@ -741,7 +827,7 @@ ssh root@72.60.137.226 "ls -la /opt/labcontrol/frontend/dist/"
 **Solution**:
 ```bash
 # Restart doesn't reload env vars - must recreate!
-ssh root@72.60.137.226
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 cd /opt/labcontrol
 docker compose -f docker-compose.prod.yml stop web
 docker compose -f docker-compose.prod.yml rm -f web
@@ -755,11 +841,11 @@ docker compose -f docker-compose.prod.yml up -d web
 **Solution**:
 ```bash
 # Find what's using port 8443
-ssh root@72.60.137.226 "sudo lsof -i :8443"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "sudo lsof -i :8443"
 
 # If it's a stuck container
-ssh root@72.60.137.226 "docker ps -a | grep 8443"
-ssh root@72.60.137.226 "docker stop <container_id>"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "docker ps -a | grep 8443"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "docker stop <container_id>"
 ```
 
 #### 4. SSL Certificate Expired or Invalid
@@ -770,7 +856,7 @@ ssh root@72.60.137.226 "docker stop <container_id>"
 
 1. **Check certificate expiration**:
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 "sudo certbot certificates"
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "sudo certbot certificates"
 
    # Or check what nginx is actually serving
    echo | openssl s_client -connect labmolecuar-portal-clientes-staging.com:8443 \
@@ -780,7 +866,7 @@ ssh root@72.60.137.226 "docker stop <container_id>"
 
 2. **Verify nginx is using correct certificate path**:
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
      "grep ssl_certificate /opt/labcontrol/nginx/conf.d/labcontrol.conf"
 
    # Should show:
@@ -790,7 +876,7 @@ ssh root@72.60.137.226 "docker stop <container_id>"
 
 3. **Check certificate files inside nginx container**:
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
      "docker exec labcontrol_nginx ls -la /etc/letsencrypt/live/labmolecuar-portal-clientes-staging.com/"
 
    # Files should be recent (check dates)
@@ -798,7 +884,7 @@ ssh root@72.60.137.226 "docker stop <container_id>"
 
 4. **Renew certificate**:
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 
    # Stop Traefik to free port 80
    docker stop root-traefik-1
@@ -826,13 +912,13 @@ ssh root@72.60.137.226 "docker stop <container_id>"
 **Solution**:
 ```bash
 # Check if database container is running
-ssh root@72.60.137.226 "docker ps | grep labcontrol_db"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "docker ps | grep labcontrol_db"
 
 # Check database logs
-ssh root@72.60.137.226 "docker logs labcontrol_db --tail 50"
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "docker logs labcontrol_db --tail 50"
 
 # Test database connection
-ssh root@72.60.137.226
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 docker exec -it labcontrol_db psql -U labcontrol_user -d labcontrol_db
 # Should open PostgreSQL prompt
 \q  # to exit
@@ -856,7 +942,7 @@ docker exec -it labcontrol_db psql -U labcontrol_user -d labcontrol_db
 
 2. **Verify Nginx uses $http_host header**:
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
      "grep -A 5 'location /api/' /opt/labcontrol/nginx/conf.d/labcontrol.conf"
 
    # Should show: proxy_set_header Host $http_host;
@@ -865,19 +951,19 @@ docker exec -it labcontrol_db psql -U labcontrol_user -d labcontrol_db
 
 3. **Verify media volume is mounted**:
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
      "docker exec labcontrol_nginx ls -la /app/media/"
    ```
 
 4. **Verify files exist on server**:
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
      "docker exec labcontrol_web ls -la /app/media/profile_pictures/"
    ```
 
 5. **Check nginx logs**:
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
      "docker logs labcontrol_nginx --tail 50 | grep media"
    ```
 
@@ -895,7 +981,7 @@ docker exec -it labcontrol_db psql -U labcontrol_user -d labcontrol_db
 
 1. **Verify nginx has location block for /django-admin** (no trailing slash):
    ```bash
-   sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 \
+   sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 \
      "grep -A 3 'location = /django-admin' /opt/labcontrol/nginx/conf.d/labcontrol.conf"
 
    # Should show:
@@ -934,18 +1020,37 @@ docker exec -it labcontrol_db psql -U labcontrol_user -d labcontrol_db
 
 ### SSH Access
 
+All deployment operations use the **`deploy`** user. There is no separate root SSH workflow — `deploy` has `sudo` for tasks that need it (e.g. `certbot renew`).
+
+#### Where the password lives
+
+The `deploy` SSH password is **not** stored in any file in this repo (including `.env.production`). It lives in:
+
+- **Team 1Password vault** → entry name **"LabControl VPS deploy user"**
+- (Reference noted in `.env.production.template` under "Deployment operator secrets")
+
+Operators should pull it from 1Password and export it in their shell:
+
 ```bash
-# Root access
-ssh root@72.60.137.226
+# Once per shell session
+export DEPLOY_SSH_PASSWORD='...'   # from 1Password
 
-# Deploy user (requires password)
-ssh deploy@72.60.137.226
-# Password: 39872327Seba.
-
-# Using sshpass (for automated deployments)
-sshpass -p '39872327Seba.' ssh deploy@72.60.137.226 "command"
-sshpass -p '39872327Seba.' scp local_file deploy@72.60.137.226:/remote/path
+# Or, if you use 1Password CLI:
+export DEPLOY_SSH_PASSWORD=$(op read "op://Engineering/LabControl VPS deploy user/password")
 ```
+
+After exporting, every `sshpass -p "$DEPLOY_SSH_PASSWORD" …` snippet in this guide works as-is.
+
+```bash
+# Interactive shell (will prompt for the password unless you pre-export it)
+ssh deploy@72.60.137.226
+
+# Automated / scripted (recommended for all deploy commands in this guide)
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226 "command"
+sshpass -p "$DEPLOY_SSH_PASSWORD" scp local_file deploy@72.60.137.226:/remote/path
+```
+
+> **Future hardening**: switch `deploy` to SSH key auth and remove password access entirely. The `sshpass` workflow is a leftover from initial bring-up.
 
 ### Docker Commands
 
@@ -973,7 +1078,7 @@ docker compose -f docker-compose.prod.yml ps
 
 ```bash
 # Connect to database
-ssh root@72.60.137.226
+sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 docker exec -it labcontrol_db psql -U labcontrol_user -d labcontrol_db
 
 # Backup database

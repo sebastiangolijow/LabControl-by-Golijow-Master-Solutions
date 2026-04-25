@@ -1566,8 +1566,8 @@ with get_connector() as connector:
 ### Configuration
 
 ```env
-LABWIN_USE_MOCK=True              # Set False for production
-LABWIN_FDB_HOST=localhost
+LABWIN_USE_MOCK=True              # Set False for production (requires backup pipeline — see below)
+LABWIN_FDB_HOST=localhost         # In prod: "firebird" (docker service name)
 LABWIN_FDB_PORT=3050
 LABWIN_FDB_DATABASE=              # Path to .fdb file on Firebird server
 LABWIN_FDB_USER=SYSDBA
@@ -1576,12 +1576,41 @@ LABWIN_SYNC_BATCH_SIZE=500
 LABWIN_DEFAULT_LAB_CLIENT_ID=1
 ```
 
+### Production Data Ingestion — Backup Pipeline
+
+**⚠️ IMPORTANTE:** En producción el VPS **no puede conectarse directo** al Firebird de la PC del laboratorio (la PC no tiene IP pública ni puertos abiertos). Los datos llegan vía un pipeline de backups nocturnos:
+
+```
+PC Lab ─[gbak + SFTP nightly]─► VPS /srv/labwin_backups/incoming/
+                                     │
+                                     ▼
+                             Celery task: import_uploaded_backup
+                                     │
+                                     ├─► gbak -r en contenedor Firebird (docker)
+                                     └─► sync_labwin_results() (flow existente)
+```
+
+Este flow se dispara vía Celery Beat a las 04:00 AM (después del upload del lab a las 02:00 AM), y reemplaza el schedule standalone de `sync_labwin_results` en producción.
+
+**Ver guía completa:** [`LABWIN_BACKUP_PIPELINE.md`](./LABWIN_BACKUP_PIPELINE.md) — arquitectura, plan de implementación por fases, seguridad, y modos de fallo.
+
+**Componentes nuevos requeridos para `LABWIN_USE_MOCK=False` en prod:**
+- Usuario SFTP `backup_user` con chroot en el VPS
+- Servicio `firebird` en `docker-compose.prod.yml` (jacobalberty/firebird:2.5-ss)
+- Task `apps.labwin_sync.tasks.import_uploaded_backup`
+- Script `deployment/lab_workstation/upload_backup.py` instalado en la PC del lab
+
 ### Management Command
 
 ```bash
 python manage.py sync_labwin              # Incremental sync (from last cursor)
 python manage.py sync_labwin --full       # Full sync (ignore cursor)
 python manage.py sync_labwin --use-celery # Run via Celery worker
+
+# Production only (after backup pipeline is live — see LABWIN_BACKUP_PIPELINE.md):
+python manage.py import_backup            # Restore latest .fbk.gz + sync
+python manage.py import_backup --restore-only
+python manage.py import_backup --sync-only
 ```
 
 ### Idempotency
@@ -1685,6 +1714,27 @@ python manage.py fetch_ftp_pdfs --lab-client-id 1 # Specify lab client
 3. **Optional delete**: `delete_after_download=False` by default for safety
 4. **Cleanup task**: Separate task to clean up FTP files after verification
 5. **Mock connector**: In-memory PDFs matching DETERS NUMERO_FLDs for testing
+
+#### First Lab Upload Test (2026-04-22)
+
+Lab team performed a first end-to-end FTP push test from their LabWin machine. Four files landed on the VPS at `10:16`:
+
+- `220197-39592918-SIRI,FRANCO.pdf` + `.txt`
+- `231316-33678470-GALARZA,CINTIA SOLEDAD.pdf` + `.txt`
+
+Auth and transfer worked. **Two mismatches with the current implementation** need to be resolved before `fetch_ftp_pdfs` can pick these up:
+
+1. **Upload directory** — Files arrived in the chroot root (`/`), not `/results`. Our task reads from `LABWIN_FTP_DIRECTORY=/results`. Fix: ask lab to `cd results` before uploading, or change the env var.
+2. **Filename format** — Files are named `{NUMERO}-{DNI}-{NAME}.pdf` (e.g. `220197-39592918-SIRI,FRANCO.pdf`). The task currently expects `{NUMERO}.pdf`. Fix: either have the lab export just `{NUMERO}.pdf`, or update the connector to extract the protocol number as the first dash-separated segment.
+
+Verified via:
+```bash
+sshpass -p '...' ssh deploy@72.60.137.226 "docker exec labcontrol_web python -c \"
+from ftplib import FTP
+import os; ftp = FTP(); ftp.connect('host.docker.internal', 21); ftp.login('labwin_ftp', os.environ['LABWIN_FTP_PASSWORD'])
+ftp.retrlines('LIST')
+\""
+```
 
 ### Future Phases
 
