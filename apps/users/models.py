@@ -49,10 +49,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Profile information
     first_name = models.CharField(_("first name"), max_length=150, blank=True)
     last_name = models.CharField(_("last name"), max_length=150, blank=True)
-    phone_number = models.CharField(_("phone number"), max_length=20, blank=True)
+    # max_length=50 (was 20) — real lab data has phones with annotations like
+    # "+54 9 2212 22-8438 ( HIJA)" or "2344406674 (cel en sisa)" that exceed 20
+    phone_number = models.CharField(_("phone number"), max_length=50, blank=True)
     dni = models.CharField(
         _("DNI"),
-        max_length=20,
+        max_length=50,
         blank=True,
         help_text=_("Documento Nacional de Identidad"),
     )

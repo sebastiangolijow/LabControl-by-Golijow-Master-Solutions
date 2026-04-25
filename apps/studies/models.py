@@ -327,7 +327,10 @@ class StudyPractice(BaseModel):
         verbose_name = _("study practice")
         verbose_name_plural = _("study practices")
         ordering = ["order", "code"]
-        unique_together = [["study", "practice"]]
+        # No unique_together on (study, practice): real LabWin data has the
+        # same ABREV_FLD repeated multiple times within a single protocol
+        # (e.g. INDIV practice appears 3× when 3 individual measurements are
+        # taken). Each DETERS row → its own StudyPractice row.
 
     def __str__(self):
         return f"{self.study.protocol_number} - {self.practice.name}"

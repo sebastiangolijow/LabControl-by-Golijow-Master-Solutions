@@ -486,6 +486,64 @@ class SyncTaskTests(BaseTestCase):
             log = SyncLog.objects.order_by("-started_at").first()
             self.assertGreater(log.error_count, 0)
 
+    def test_sync_drops_duplicate_email_for_new_patient(self):
+        """When a PACIENTES email collides with an existing user, the new
+        patient is created with email=None instead of erroring the whole row.
+
+        Real-data case: spouses/family members share an email address; both
+        appear as separate PACIENTES rows but our User.email is unique=True.
+        """
+        from apps.labwin_sync.tasks import _get_or_create_patient
+
+        # Pre-existing user squatting on the email
+        User.objects.create_user(
+            email="shared@family.com",
+            first_name="Existing",
+            last_name="User",
+            role="patient",
+            lab_client_id=1,
+        )
+
+        sync_log = SyncLog.objects.create(status="started", lab_client_id=1)
+        counters = {
+            "patients_created": 0,
+            "patients_updated": 0,
+            "doctors_created": 0,
+            "doctors_updated": 0,
+            "practices_created": 0,
+            "studies_created": 0,
+            "studies_updated": 0,
+            "study_practices_created": 0,
+        }
+        # Synthetic PACIENTES row mirroring the real shape, with same email
+        pac_row = {
+            "NUMERO_FLD": 999001,
+            "NOMBRE_FLD": "GARCIA, MARIA",
+            "HCLIN_FLD": "99999001",  # DNI
+            "SEXO_FLD": 2,
+            "FNACIM_FLD": "19850101",
+            "MUTUAL_FLD": 0,
+            "MEDICO_FLD": 0,
+            "NUMMEDICO_FLD": 0,
+            "CARNET_FLD": "",
+            "TELEFONO_FLD": "",
+            "CELULAR_FLD": "",
+            "DIRECCION_FLD": "",
+            "LOCALIDAD_FLD": "",
+            "EMAIL_FLD": "shared@family.com",  # Same as existing user
+        }
+
+        # Should not raise — should create the patient with email=None
+        new_pk = _get_or_create_patient(pac_row, 1, sync_log, counters)
+
+        self.assertIsNotNone(new_pk)
+        self.assertEqual(counters["patients_created"], 1)
+        new_user = User.objects.get(pk=new_pk)
+        self.assertIsNone(new_user.email)
+        # Names preserved in source casing (mapper doesn't titlecase)
+        self.assertEqual(new_user.first_name.upper(), "MARIA")
+        self.assertEqual(new_user.last_name.upper(), "GARCIA")
+
 
 # ======================
 # Model Tests

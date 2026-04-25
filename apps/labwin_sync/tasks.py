@@ -345,10 +345,21 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
             counters["patients_updated"] += 1
             return user.pk
 
-    # Create new patient
+    # Create new patient.
+    # Email is unique on User; if another patient already has this email
+    # (common: spouses, family members sharing one address), drop the email
+    # for the new row instead of failing the whole study import.
+    email = fields.get("email")
+    if email and User.objects.filter(email=email).exists():
+        logger.info(
+            "Patient email %s already taken — creating new patient with email=None",
+            email,
+        )
+        email = None
+
     with transaction.atomic():
         user = User.objects.create_user(
-            email=fields.get("email"),
+            email=email,
             first_name=fields.get("first_name", ""),
             last_name=fields.get("last_name", ""),
             dni=fields.get("dni", ""),
