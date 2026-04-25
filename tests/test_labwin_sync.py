@@ -1213,6 +1213,7 @@ class MapStudyIsPaidIsValidatedTests(BaseTestCase):
     def setUp(self):
         super().setUp()
         import uuid as _uuid
+
         self.fake_pk = _uuid.uuid4()
 
     def test_defaults_to_paid_validated(self):
@@ -1245,8 +1246,12 @@ class SyncIsPaidIsValidatedTests(BaseTestCase):
         s3 = Study.objects.get(protocol_number="LW-100003")
 
         self.assertTrue(s1.is_paid, "Insurance patient (DEBEBONO='') should be paid")
-        self.assertTrue(s2.is_paid, "Already-paid patient (DEBEBONO='0') should be paid")
-        self.assertFalse(s3.is_paid, "Owes-bono patient (DEBEBONO='1') should be UNPAID")
+        self.assertTrue(
+            s2.is_paid, "Already-paid patient (DEBEBONO='0') should be paid"
+        )
+        self.assertFalse(
+            s3.is_paid, "Owes-bono patient (DEBEBONO='1') should be UNPAID"
+        )
 
     @override_settings(LABWIN_USE_MOCK=True)
     def test_sync_sets_is_validated_true_for_all_imported(self):
@@ -1270,12 +1275,15 @@ class SyncIsPaidIsValidatedTests(BaseTestCase):
         # Simulate the lab marking 100003 as paid in the source DB.
         # Mutate the in-memory mock fixture so the next sync sees DEBEBONO_FLD='0'.
         from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES
+
         original = SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"]
         SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = "0"
         try:
             sync_labwin_results(lab_client_id=1, full_sync=True)
         finally:
-            SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = original  # don't leak across tests
+            SAMPLE_PACIENTES[100003][
+                "DEBEBONO_FLD"
+            ] = original  # don't leak across tests
 
         s3.refresh_from_db()
         self.assertTrue(
@@ -1331,10 +1339,13 @@ class FetchFTPPDFFilenameParsingTests(BaseTestCase):
         class DashedNamedFTP(MockFTPConnector):
             def list_pdf_files(self):
                 return ["220197-39592918-SIRI,FRANCO.pdf"]
+
             def download_file(self, filename):
                 return b"%PDF-1.4 fake content"
 
-        with patch("apps.labwin_sync.tasks.get_ftp_connector", return_value=DashedNamedFTP()):
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector", return_value=DashedNamedFTP()
+        ):
             result = fetch_ftp_pdfs(lab_client_id=1)
 
         self.assertEqual(result["files_matched"], 1)
@@ -1349,10 +1360,13 @@ class FetchFTPPDFFilenameParsingTests(BaseTestCase):
         class UnmatchedFTP(MockFTPConnector):
             def list_pdf_files(self):
                 return ["999999-12345-NOBODY.pdf"]
+
             def download_file(self, filename):
                 return b"%PDF-1.4"
 
-        with patch("apps.labwin_sync.tasks.get_ftp_connector", return_value=UnmatchedFTP()):
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector", return_value=UnmatchedFTP()
+        ):
             result = fetch_ftp_pdfs(lab_client_id=1)
 
         self.assertEqual(result["files_skipped"], 1)
