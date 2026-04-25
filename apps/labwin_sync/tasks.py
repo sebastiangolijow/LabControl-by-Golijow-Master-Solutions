@@ -213,6 +213,11 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                 )
                                 practice_cache[abrev] = practice_pk
 
+                        # Per-study flags derived from PACIENTES row.
+                        # is_validated=True because the connector only fetches
+                        # validated DETERS (VALIDADO_FLD='1').
+                        is_paid = mappers.map_is_paid(pac_row)
+
                         # Create/update study and its practices
                         _get_or_create_study_with_practices(
                             numero,
@@ -223,6 +228,8 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                             lab_client_id,
                             sync_log,
                             counters,
+                            is_paid=is_paid,
+                            is_validated=True,
                         )
 
                         # Track cursor (use max fecha/numero from this group)
@@ -513,6 +520,8 @@ def _get_or_create_study_with_practices(
     lab_client_id,
     sync_log,
     counters,
+    is_paid=True,
+    is_validated=True,
 ):
     """Get or create a Study and its StudyPractice records for a protocol.
 
@@ -525,6 +534,10 @@ def _get_or_create_study_with_practices(
         lab_client_id: Lab client ID.
         sync_log: Current SyncLog instance.
         counters: Dict of counters to update.
+        is_paid: Computed by caller via mappers.map_is_paid(pac_row). Updated
+                 on existing studies if it changed.
+        is_validated: True for sync-imported studies (connector pre-filters
+                      to VALIDADO_FLD='1' DETERS rows).
 
     Returns:
         Study pk.
@@ -539,13 +552,29 @@ def _get_or_create_study_with_practices(
         doctor_pk,
         fecha=first_row.get("FECHA_FLD"),
         hora=first_row.get("HORA_FLD"),
+        is_paid=is_paid,
+        is_validated=is_validated,
     )
     protocol_number = study_fields["protocol_number"]
 
     # Check if study already exists
     study = Study.objects.filter(protocol_number=protocol_number).first()
     if study:
-        # Study exists — add any new practices that aren't already linked
+        # Study exists — sync mutable per-study flags first, then handle practices.
+        # Re-imports must reflect the latest source state (e.g. patient paid
+        # their bono between yesterday's and today's backup).
+        flag_updates = []
+        if study.is_paid != is_paid:
+            study.is_paid = is_paid
+            flag_updates.append("is_paid")
+        if study.is_validated != is_validated:
+            study.is_validated = is_validated
+            flag_updates.append("is_validated")
+        if flag_updates:
+            flag_updates.append("updated_at")
+            study.save(update_fields=flag_updates)
+            counters["studies_updated"] += 1
+
         existing_codes = set(study.study_practices.values_list("code", flat=True))
         for row in deters_rows:
             abrev = row["ABREV_FLD"].strip()
@@ -583,6 +612,8 @@ def _get_or_create_study_with_practices(
             service_date=study_fields.get("service_date"),
             completed_at=study_fields.get("completed_at"),
             sample_id=study_fields.get("sample_id", ""),
+            is_paid=study_fields.get("is_paid", True),
+            is_validated=study_fields.get("is_validated", False),
             lab_client_id=lab_client_id,
         )
         study.save()
@@ -672,12 +703,19 @@ def fetch_ftp_pdfs(self, lab_client_id=None, delete_after_download=False):
 
             for filename in pdf_files:
                 try:
-                    # Extract NUMERO from filename (e.g. "100001.pdf" -> "100001")
+                    # Extract the protocol NUMERO from filename. The lab uses
+                    # two formats:
+                    #   {NUMERO}.pdf                          (legacy)
+                    #   {NUMERO}-{DNI}-{NOMBRE}.pdf          (current export
+                    #     format observed 2026-04-22; e.g. "220197-39592918-SIRI,FRANCO.pdf")
+                    # The protocol number is always the first dash-separated
+                    # segment (NUMERO is purely numeric, no dashes inside it).
                     name_without_ext = os.path.splitext(filename)[0]
+                    protocol_numero = name_without_ext.split("-", 1)[0]
 
-                    # Find matching study by sample_id
+                    # Find matching study by sample_id (which holds NUMERO_FLD)
                     study = Study.objects.filter(
-                        sample_id=name_without_ext,
+                        sample_id=protocol_numero,
                         lab_client_id=lab_client_id,
                     ).first()
 

@@ -29,6 +29,7 @@ SAMPLE_PACIENTES = {
         "DIRECCION_FLD": "Av. Corrientes 1234",
         "LOCALIDAD_FLD": "CABA",
         "EMAIL_FLD": "maria.garcia@test.com",
+        "DEBEBONO_FLD": "",  # insurance-covered (most common in real DB)
     },
     100002: {
         "NUMERO_FLD": 100002,
@@ -45,6 +46,7 @@ SAMPLE_PACIENTES = {
         "DIRECCION_FLD": "San Martin 567",
         "LOCALIDAD_FLD": "La Plata",
         "EMAIL_FLD": "",
+        "DEBEBONO_FLD": "0",  # self-pay, already paid
     },
     100003: {
         "NUMERO_FLD": 100003,
@@ -61,6 +63,7 @@ SAMPLE_PACIENTES = {
         "DIRECCION_FLD": "",
         "LOCALIDAD_FLD": "Rosario",
         "EMAIL_FLD": "ana.fernandez@test.com",
+        "DEBEBONO_FLD": "1",  # self-pay, owes the bono → study.is_paid=False
     },
 }
 

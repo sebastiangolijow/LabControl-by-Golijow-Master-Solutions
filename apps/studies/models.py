@@ -240,6 +240,30 @@ class Study(BaseModel, LabClientModel):
         help_text=_("Soft delete flag - deleted studies are hidden but preserved"),
     )
 
+    # LabWin-derived flags (populated by sync_labwin_results)
+    is_paid = models.BooleanField(
+        _("is paid"),
+        default=True,
+        help_text=_(
+            "Whether the patient has settled the bono for this protocol. "
+            "Sourced from LabWin PACIENTES.DEBEBONO_FLD: False only when "
+            "DEBEBONO_FLD='1' (must pay bono); True otherwise (insurance, "
+            "already paid, or N/A). Default True so manually-created studies "
+            "and seed data are visible by default."
+        ),
+    )
+    is_validated = models.BooleanField(
+        _("is validated"),
+        default=False,
+        help_text=_(
+            "Whether all of this study's practices come from validated DETERS "
+            "rows in LabWin (VALIDADO_FLD='1'). The sync only ingests "
+            "validated DETERS today, so all sync-imported studies are "
+            "is_validated=True. Manually-created studies start as False until "
+            "lab staff validates them."
+        ),
+    )
+
     # Custom manager
     objects = StudyManager()
 

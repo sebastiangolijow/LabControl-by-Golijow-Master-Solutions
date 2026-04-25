@@ -176,7 +176,32 @@ def map_practice(nomen_row):
     }
 
 
-def map_study(numero, patient_pk, doctor_pk=None, fecha=None, hora=None):
+def map_is_paid(paciente_row):
+    """Derive Study.is_paid from a PACIENTES row's DEBEBONO_FLD.
+
+    DEBEBONO_FLD distribution observed in real lab DB:
+      '1'  -> patient owes a bono (must pay)            -> is_paid=False
+      '0'  -> patient does not owe a bono (already paid) -> is_paid=True
+      ''   -> not applicable (insurance-covered)         -> is_paid=True
+
+    The lab confirmed this mapping. Empty/None defaults to is_paid=True so
+    insurance patients (the majority) aren't accidentally hidden.
+    """
+    if paciente_row is None:
+        return True
+    debebono = paciente_row.get("DEBEBONO_FLD")
+    return debebono != "1"
+
+
+def map_study(
+    numero,
+    patient_pk,
+    doctor_pk=None,
+    fecha=None,
+    hora=None,
+    is_paid=True,
+    is_validated=True,
+):
     """Map a LabWin protocol (NUMERO_FLD) to Study model fields.
 
     Args:
@@ -185,6 +210,11 @@ def map_study(numero, patient_pk, doctor_pk=None, fecha=None, hora=None):
         doctor_pk: Optional UUID of the ordering doctor User.
         fecha: YYYYMMDD date string for service_date.
         hora: HH:MM time string for service_date.
+        is_paid: Whether the patient has settled the bono. Compute via
+                 map_is_paid(pac_row). Default True (insurance-covered).
+        is_validated: Whether all of this study's DETERS are validated.
+                      Default True since the connector only fetches
+                      VALIDADO_FLD='1' rows today.
 
     Returns:
         Dict of Study model fields suitable for create/update.
@@ -201,6 +231,8 @@ def map_study(numero, patient_pk, doctor_pk=None, fecha=None, hora=None):
         "service_date": service_date,
         "completed_at": service_date,
         "sample_id": str(numero),
+        "is_paid": is_paid,
+        "is_validated": is_validated,
     }
 
 

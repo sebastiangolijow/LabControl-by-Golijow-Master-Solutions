@@ -1178,3 +1178,183 @@ class ImportBackupCommandTests(BaseTestCase):
     def test_command_use_celery_with_restore_only_errors(self):
         with self.assertRaises(CommandError):
             call_command("import_backup", "--use-celery", "--restore-only")
+
+
+# ======================
+# is_paid / is_validated mapping (Phase 3)
+# ======================
+from apps.labwin_sync.mappers import map_is_paid
+
+
+class MapIsPaidTests(BaseTestCase):
+    """Tests for map_is_paid — derives Study.is_paid from PACIENTES.DEBEBONO_FLD."""
+
+    def test_debebono_1_means_unpaid(self):
+        self.assertFalse(map_is_paid({"DEBEBONO_FLD": "1"}))
+
+    def test_debebono_0_means_paid(self):
+        self.assertTrue(map_is_paid({"DEBEBONO_FLD": "0"}))
+
+    def test_debebono_empty_means_paid(self):
+        # Insurance-covered patients have empty DEBEBONO_FLD; they're paid via mutual.
+        self.assertTrue(map_is_paid({"DEBEBONO_FLD": ""}))
+
+    def test_debebono_missing_means_paid(self):
+        # Defensive: if the key isn't in the row, default to paid (safest).
+        self.assertTrue(map_is_paid({}))
+
+    def test_none_row_means_paid(self):
+        self.assertTrue(map_is_paid(None))
+
+
+class MapStudyIsPaidIsValidatedTests(BaseTestCase):
+    """Tests for map_study respecting is_paid and is_validated kwargs."""
+
+    def setUp(self):
+        super().setUp()
+        import uuid as _uuid
+        self.fake_pk = _uuid.uuid4()
+
+    def test_defaults_to_paid_validated(self):
+        result = map_study(100001, self.fake_pk)
+        self.assertTrue(result["is_paid"])
+        self.assertTrue(result["is_validated"])
+
+    def test_explicit_unpaid(self):
+        result = map_study(100001, self.fake_pk, is_paid=False)
+        self.assertFalse(result["is_paid"])
+        self.assertTrue(result["is_validated"])  # default
+
+    def test_explicit_unvalidated(self):
+        result = map_study(100001, self.fake_pk, is_validated=False)
+        self.assertTrue(result["is_paid"])
+        self.assertFalse(result["is_validated"])
+
+
+class SyncIsPaidIsValidatedTests(BaseTestCase):
+    """End-to-end: sync populates is_paid and is_validated correctly."""
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_sync_sets_is_paid_from_debebono(self):
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        # Mock fixtures: 100001 (DEBEBONO=''), 100002 (DEBEBONO='0'), 100003 (DEBEBONO='1')
+        # Expect: 100001 paid, 100002 paid, 100003 unpaid.
+        s1 = Study.objects.get(protocol_number="LW-100001")
+        s2 = Study.objects.get(protocol_number="LW-100002")
+        s3 = Study.objects.get(protocol_number="LW-100003")
+
+        self.assertTrue(s1.is_paid, "Insurance patient (DEBEBONO='') should be paid")
+        self.assertTrue(s2.is_paid, "Already-paid patient (DEBEBONO='0') should be paid")
+        self.assertFalse(s3.is_paid, "Owes-bono patient (DEBEBONO='1') should be UNPAID")
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_sync_sets_is_validated_true_for_all_imported(self):
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+        # The connector pre-filters to VALIDADO_FLD='1', so every imported
+        # study is validated.
+        for study in Study.objects.filter(protocol_number__startswith="LW-"):
+            self.assertTrue(
+                study.is_validated,
+                f"{study.protocol_number} should be is_validated=True",
+            )
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_resync_updates_is_paid_when_source_changes(self):
+        """If a patient pays their bono between backups, the next sync flips is_paid."""
+        # First sync — 100003 starts unpaid (DEBEBONO='1' in mock)
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+        s3 = Study.objects.get(protocol_number="LW-100003")
+        self.assertFalse(s3.is_paid)
+
+        # Simulate the lab marking 100003 as paid in the source DB.
+        # Mutate the in-memory mock fixture so the next sync sees DEBEBONO_FLD='0'.
+        from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES
+        original = SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"]
+        SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = "0"
+        try:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+        finally:
+            SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = original  # don't leak across tests
+
+        s3.refresh_from_db()
+        self.assertTrue(
+            s3.is_paid,
+            "Re-sync should flip is_paid=True when source DEBEBONO_FLD changes from '1' to '0'",
+        )
+
+
+# ======================
+# fetch_ftp_pdfs filename parsing (Phase 3)
+# ======================
+
+
+class FetchFTPPDFFilenameParsingTests(BaseTestCase):
+    """Tests that fetch_ftp_pdfs handles both filename formats from the lab.
+
+    Lab uses two formats:
+      {NUMERO}.pdf                          (legacy)
+      {NUMERO}-{DNI}-{NOMBRE}.pdf          (current — observed 2026-04-22)
+    """
+
+    def setUp(self):
+        super().setUp()
+        # Create a study with sample_id matching what's in the mock FTP fixtures
+        # Mock FTP exposes: 100001.pdf, 100002.pdf, 100003.pdf
+        # We synthesize one more study whose sample_id matches a dashed filename
+        # so we can verify parsing without modifying the FTP mock.
+        self.patient = self.create_patient()
+        # sample_id matches the leading numero in 'LW-220197-39592918-SIRI,FRANCO.pdf'
+        self.dashed_study = Study.objects.create(
+            patient=self.patient,
+            protocol_number="LW-220197",
+            status="completed",
+            sample_id="220197",
+            lab_client_id=1,
+        )
+
+    def test_legacy_filename_format_still_works(self):
+        """`100001.pdf` → looks up sample_id='100001'."""
+        # This is what the existing FetchFTPPDFsTests already verify; we add
+        # an explicit case here to lock in backward compatibility.
+        sync_labwin_results(lab_client_id=1, full_sync=True)  # creates LW-100001
+        result = fetch_ftp_pdfs(lab_client_id=1)
+        # 100001.pdf in mock should attach to LW-100001 created by sync above
+        s = Study.objects.get(protocol_number="LW-100001")
+        self.assertTrue(s.results_file)
+
+    def test_dashed_filename_format_extracts_numero(self):
+        """`220197-39592918-SIRI,FRANCO.pdf` → looks up sample_id='220197'."""
+        # Inject a fake FTP connector that returns the dashed filename
+        from apps.labwin_sync.ftp.mock import MockFTPConnector
+
+        class DashedNamedFTP(MockFTPConnector):
+            def list_pdf_files(self):
+                return ["220197-39592918-SIRI,FRANCO.pdf"]
+            def download_file(self, filename):
+                return b"%PDF-1.4 fake content"
+
+        with patch("apps.labwin_sync.tasks.get_ftp_connector", return_value=DashedNamedFTP()):
+            result = fetch_ftp_pdfs(lab_client_id=1)
+
+        self.assertEqual(result["files_matched"], 1)
+        self.assertEqual(result["files_attached"], 1)
+        self.dashed_study.refresh_from_db()
+        self.assertTrue(self.dashed_study.results_file)
+
+    def test_dashed_filename_with_no_match_skips_cleanly(self):
+        """`999999-12345-NOBODY.pdf` for a non-existent study → counted as skipped, not error."""
+        from apps.labwin_sync.ftp.mock import MockFTPConnector
+
+        class UnmatchedFTP(MockFTPConnector):
+            def list_pdf_files(self):
+                return ["999999-12345-NOBODY.pdf"]
+            def download_file(self, filename):
+                return b"%PDF-1.4"
+
+        with patch("apps.labwin_sync.tasks.get_ftp_connector", return_value=UnmatchedFTP()):
+            result = fetch_ftp_pdfs(lab_client_id=1)
+
+        self.assertEqual(result["files_skipped"], 1)
+        self.assertEqual(result["files_attached"], 0)
+        self.assertEqual(result["error_count"], 0)
