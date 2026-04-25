@@ -37,6 +37,7 @@ django-simple-history==3.5.0
 
 # Firebird Database (LabWin sync)
 firebirdsql==1.4.5
+passlib==1.7.4  # Required by firebirdsql.services for backup/restore via Services API
 
 # Utilities
 python-dateutil==2.9.0

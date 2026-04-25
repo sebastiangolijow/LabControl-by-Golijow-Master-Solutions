@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # PostgreSQL database with production settings
   db:
@@ -110,6 +108,7 @@ services:
     command: celery -A config worker -l info --concurrency=2
     volumes:
       - media_volume:/app/media
+      - /srv/labwin_backups:/srv/labwin_backups  # LabWin DB backup pipeline (Phase B)
     env_file:
       - .env.production
     extra_hosts:
@@ -127,6 +126,28 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+  # Firebird 2.5 container — restored target for nightly LabWin backups
+  # See LABWIN_BACKUP_PIPELINE.md for the full ingestion flow.
+  # Not exposed to host; only reachable on labcontrol_network as "firebird:3050".
+  #
+  # NOTE: Firebird 2.5 silently truncates SYSDBA passwords to 8 chars.
+  # Keep FIREBIRD_SYSDBA_PASSWORD ≤ 8 chars or accept the truncation behavior.
+  firebird:
+    image: jacobalberty/firebird:2.5-ss
+    container_name: labcontrol_firebird
+    restart: unless-stopped
+    env_file:
+      - .env.production       # Provides ISC_PASSWORD (= LABWIN_FDB_PASSWORD)
+    environment:
+      - FIREBIRD_DATABASE=BASEDAT.FDB
+    volumes:
+      - firebird_data:/firebird/data
+      - /srv/labwin_backups:/backups:ro  # read-only — celery_worker manages writes
+    networks:
+      - labcontrol_network
+    expose:
+      - "3050"
 
   # Celery beat for scheduled tasks
   celery_beat:
@@ -155,6 +176,8 @@ volumes:
     name: labcontrol_static
   media_volume:
     name: labcontrol_media
+  firebird_data:
+    name: labcontrol_firebird_data
 
 networks:
   labcontrol_network:

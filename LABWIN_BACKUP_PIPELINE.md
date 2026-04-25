@@ -6,7 +6,7 @@
 
 ---
 
-## 📊 Estado actual (2026-04-24)
+## 📊 Estado actual (2026-04-25)
 
 | Componente | Estado | Notas |
 |---|---|---|
@@ -16,8 +16,14 @@
 | Clave privada en PC del lab | ✅ | En `C:\labcontrol_backup\keys\labwin_backup` |
 | Script `upload_backup.py` (gbak + gzip + SFTP) | ✅ | En producción en PC del lab |
 | Primer upload real end-to-end | ✅ | `BASEDAT_20260424_180940.fbk.gz` (69.9 MB) en `/incoming/` |
-| Contenedor Firebird en `docker-compose.prod.yml` | ⏳ | Pendiente (Fase A item final) |
-| Task `import_uploaded_backup` | ⏳ | Pendiente (Fase B) |
+| Contenedor Firebird en `docker-compose.prod.yml` | ✅ | Desplegado 2026-04-25 — `jacobalberty/firebird:2.5-ss`, accesible en `firebird:3050` desde docker network. Services API verificada desde celery_worker. |
+| Permisos de `/srv/labwin_backups/{incoming,processed,failed}` | ✅ | `backup_user:1000 chmod 775` — celery_worker (uid 1000) puede leer y mover archivos |
+| `passlib` agregado a `requirements/base.txt` | ✅ | Requerido por `firebirdsql.services` para restore via Services API |
+| Task `import_uploaded_backup` | ⏳ | Pendiente (Fase B — siguiente paso) |
+| Management command `import_backup` | ⏳ | Pendiente (Fase B) |
+| Tests unitarios de `backup_import` | ⏳ | Pendiente (Fase B) |
+| `LABWIN_USE_MOCK=False` en prod | ⏳ | Solo después de validar Fase B end-to-end con disparo manual |
+| Beat schedule (cron 04:00 AM) | ⏳ | Solo después de soak period con disparos manuales |
 | Task Scheduler en la PC del lab | ⏳ | Pendiente — por ahora correrlo manual |
 | Limpieza de `.FDB` viejos en `/home/labwin_ftp/results/` | ⏳ | 2 archivos de 2.3 GB cada uno, probablemente corruptos |
 
