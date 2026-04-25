@@ -3,7 +3,7 @@
 import csv
 import io
 
-from django.db.models import Q, Value
+from django.db.models import Value
 from django.db.models.functions import Concat
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, permissions, status, viewsets
@@ -11,6 +11,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.core.search import unaccent_icontains_q
 
 from .filters import UserFilter
 from .models import User
@@ -174,17 +176,23 @@ class UserViewSet(viewsets.ModelViewSet):
         if user.role == "lab_staff" and user.lab_client_id:
             queryset = queryset.filter(lab_client_id=user.lab_client_id)
 
-        # Apply search filter if provided
+        # Apply search filter if provided. Searches first_name, last_name,
+        # full_name (concatenated), email, dni, phone_number — all accent-
+        # and case-insensitive (e.g. "si" matches "Sí").
         search_query = request.query_params.get("search", None)
         if search_query:
             queryset = queryset.annotate(
                 full_name=Concat("first_name", Value(" "), "last_name")
             ).filter(
-                Q(email__icontains=search_query)
-                | Q(first_name__icontains=search_query)
-                | Q(last_name__icontains=search_query)
-                | Q(full_name__icontains=search_query)
-                | Q(phone_number__icontains=search_query)
+                unaccent_icontains_q(
+                    search_query,
+                    "first_name",
+                    "last_name",
+                    "full_name",
+                    "email",
+                    "dni",
+                    "phone_number",
+                )
             )
 
         # Apply email filter if provided
@@ -292,17 +300,22 @@ class UserViewSet(viewsets.ModelViewSet):
         if user.role == "lab_staff" and user.lab_client_id:
             queryset = queryset.filter(lab_client_id=user.lab_client_id)
 
-        # Apply search filter if provided
+        # Apply search filter if provided. For doctors: first/last/full name,
+        # email, matricula, phone — all accent- and case-insensitive.
         search_query = request.query_params.get("search", None)
         if search_query:
             queryset = queryset.annotate(
                 full_name=Concat("first_name", Value(" "), "last_name")
             ).filter(
-                Q(email__icontains=search_query)
-                | Q(first_name__icontains=search_query)
-                | Q(last_name__icontains=search_query)
-                | Q(full_name__icontains=search_query)
-                | Q(phone_number__icontains=search_query)
+                unaccent_icontains_q(
+                    search_query,
+                    "first_name",
+                    "last_name",
+                    "full_name",
+                    "email",
+                    "matricula",
+                    "phone_number",
+                )
             )
 
         # Apply email filter if provided

@@ -1,7 +1,8 @@
 """Filters for the users app."""
 
 import django_filters
-from django.db.models import Q
+
+from apps.core.search import unaccent_icontains_q
 
 from .models import User
 
@@ -9,7 +10,8 @@ from .models import User
 class UserFilter(django_filters.FilterSet):
     """Filter set for User model."""
 
-    # Search across multiple fields
+    # Search across multiple fields. Accent- and case-insensitive
+    # (e.g. "si" matches "Sí", "Asunción"; "muno" matches "Muñoz").
     search = django_filters.CharFilter(method="filter_search", label="Search")
 
     class Meta:
@@ -21,17 +23,19 @@ class UserFilter(django_filters.FilterSet):
         }
 
     def filter_search(self, queryset, name, value):
-        """
-        Filter users by search term across multiple fields.
+        """Filter users by search term across multiple fields.
 
-        Searches in: first_name, last_name, email, dni
+        Searches in: first_name, last_name, email, dni, phone_number,
+        matricula. Accent- and case-insensitive.
         """
-        if not value:
-            return queryset
-
         return queryset.filter(
-            Q(first_name__icontains=value)
-            | Q(last_name__icontains=value)
-            | Q(email__icontains=value)
-            | Q(dni__icontains=value)
+            unaccent_icontains_q(
+                value,
+                "first_name",
+                "last_name",
+                "email",
+                "dni",
+                "phone_number",
+                "matricula",
+            )
         )

@@ -1,7 +1,8 @@
 """Filters for the studies app."""
 
 import django_filters
-from django.db.models import Q
+
+from apps.core.search import unaccent_icontains_q
 
 from .models import Determination, Practice, Study
 
@@ -9,7 +10,7 @@ from .models import Determination, Practice, Study
 class StudyFilter(django_filters.FilterSet):
     """Filter set for Study model."""
 
-    # Search across multiple fields
+    # Search across multiple fields. Accent- and case-insensitive.
     search = django_filters.CharFilter(method="filter_search", label="Search")
     practice = django_filters.UUIDFilter(
         field_name="study_practices__practice", label="Practice"
@@ -24,19 +25,24 @@ class StudyFilter(django_filters.FilterSet):
         }
 
     def filter_search(self, queryset, name, value):
-        """
-        Filter studies by search term across multiple fields.
+        """Filter studies by search term across multiple fields.
 
-        Searches in: protocol_number, patient name, practice name
+        Searches in: protocol_number, patient first/last name, patient dni,
+        patient email, practice name. Accent- and case-insensitive.
         """
         if not value:
             return queryset
 
         return queryset.filter(
-            Q(protocol_number__icontains=value)
-            | Q(patient__first_name__icontains=value)
-            | Q(patient__last_name__icontains=value)
-            | Q(study_practices__practice__name__icontains=value)
+            unaccent_icontains_q(
+                value,
+                "protocol_number",
+                "patient__first_name",
+                "patient__last_name",
+                "patient__dni",
+                "patient__email",
+                "study_practices__practice__name",
+            )
         ).distinct()
 
 
@@ -53,16 +59,10 @@ class DeterminationFilter(django_filters.FilterSet):
         }
 
     def filter_search(self, queryset, name, value):
-        """
-        Filter determinations by search term across multiple fields.
+        """Filter determinations by search term across multiple fields.
 
-        Searches in: name, code, description
+        Searches in: name, code, description. Accent- and case-insensitive.
         """
-        if not value:
-            return queryset
-
         return queryset.filter(
-            Q(name__icontains=value)
-            | Q(code__icontains=value)
-            | Q(description__icontains=value)
+            unaccent_icontains_q(value, "name", "code", "description")
         )
