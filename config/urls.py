@@ -18,9 +18,10 @@ from drf_spectacular.views import (
 )
 from rest_framework import routers
 
+from apps.core.views import health
+
 # Import custom admin site (restricted to superusers only)
 from config.admin import admin_site
-from apps.core.views import health
 
 # API Router
 router = routers.DefaultRouter()
