@@ -178,6 +178,22 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         if numero not in patient_cache:
                             pac_row = pacientes.get(numero)
                             if pac_row:
+                                # Skip veterinary patients per the
+                                # name-based allowlist rule. See
+                                # mappers.is_pet_candidate for the rule.
+                                fields = mappers.map_patient(pac_row)
+                                if mappers.is_pet_candidate(
+                                    fields.get("first_name"),
+                                    fields.get("last_name"),
+                                    fields.get("dni"),
+                                ):
+                                    counters.setdefault("pets_skipped", 0)
+                                    counters["pets_skipped"] += 1
+                                    # Mark cache as None so we don't
+                                    # re-evaluate this NUMERO if it shows
+                                    # up in another batch
+                                    patient_cache[numero] = None
+                                    continue
                                 patient_pk = _get_or_create_patient(
                                     pac_row, lab_client_id, sync_log, counters
                                 )

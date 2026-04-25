@@ -176,6 +176,60 @@ def map_practice(nomen_row):
     }
 
 
+# Conservative allowlist of pet names found in real lab data.
+# These are names that, in Argentina, are essentially NEVER used as human
+# first-names — they're recognizably pet/animal names. Names that are
+# common for both humans and pets (LUNA, SOFIA, MILO, OTTO, ROCCO, FELIPE,
+# LEON, OLIVIA, etc.) are deliberately EXCLUDED to avoid wrongly skipping
+# real patients.
+#
+# Rule for skipping a PACIENTES row:
+#   - last_name (after parse_name) is purely numeric digits with optional
+#     trailing dash — i.e. the source NOMBRE_FLD was '{NUMBER},{NAME}' or
+#     '{NUMBER}-{NAME},' (signature lab-uses for veterinary records)
+#   - DNI is empty (real human patients always have a DNI in this lab)
+#   - first_name is single-word (multi-word first_names are humans whose
+#     name format was misparsed: '{HCLIN_NUMBER}, {LASTNAME FIRSTNAME}')
+#   - first_name is in this allowlist
+#
+# History: the lab's PACIENTES table conflates humans and pets (the lab
+# also serves veterinary clients). There's no schema-level discriminator,
+# so we use a conservative name-based filter. If the lab adds a proper
+# pet/vet flag to LabWin, replace this with that signal.
+import re as _re
+
+PET_NAME_ALLOWLIST = frozenset({
+    'AFRIKA', 'ALFREDITO', 'ASILA', 'AYUN', 'BABI', 'BACHI', 'BART',
+    'BENDI', 'BLACKY', 'BOCHI', 'BRIDA', 'CANELA', 'CAÑITO', 'CHIQUI',
+    'CHIQUITIN', 'CHOCOLATE', 'CIRA', 'COBI', 'DRAKO', 'FALUCHO',
+    'FRIDA', 'GORDO', 'HARU', 'INCA', 'INDIO', 'JUANITO', 'KATA',
+    'LOBITO', 'MIKI', 'MORENA', 'NALA', 'NEGRITA', 'NILO', 'NYMERIA',
+    'PEPA', 'PERA', 'PININA', 'PIREW', 'PRETA', 'TIGRESA', 'TINI',
+    'TRUFA', 'WANA', 'WILLOW', 'ZAMBA',
+})
+
+_PET_NUMERIC_LAST_NAME_RE = _re.compile(r'^\d+[-]?$')
+
+
+def is_pet_candidate(first_name, last_name, dni):
+    """Return True if a (first_name, last_name, dni) triple looks like a
+    veterinary patient based on the conservative allowlist rule above.
+
+    Used by sync to skip pet PACIENTES rows on import. Matches a small
+    subset (~120) of all PACIENTES with numeric last_name + empty dni.
+    """
+    last = (last_name or '').strip()
+    dni_clean = (dni or '').strip()
+    first = (first_name or '').strip()
+    if not _PET_NUMERIC_LAST_NAME_RE.match(last):
+        return False
+    if dni_clean:
+        return False
+    if ' ' in first:
+        return False
+    return first.upper() in PET_NAME_ALLOWLIST
+
+
 def map_is_paid(paciente_row):
     """Derive Study.is_paid from a PACIENTES row's DEBEBONO_FLD.
 

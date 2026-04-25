@@ -1372,3 +1372,122 @@ class FetchFTPPDFFilenameParsingTests(BaseTestCase):
         self.assertEqual(result["files_skipped"], 1)
         self.assertEqual(result["files_attached"], 0)
         self.assertEqual(result["error_count"], 0)
+
+
+# ======================
+# is_pet_candidate / pet skipping (Phase 4)
+# ======================
+from apps.labwin_sync.mappers import is_pet_candidate
+
+
+class IsPetCandidateTests(BaseTestCase):
+    """Tests for the conservative pet-detection rule."""
+
+    def test_known_pet_name_with_numeric_lastname_and_empty_dni(self):
+        # All three conditions met → pet
+        self.assertTrue(is_pet_candidate("FALUCHO", "171029", ""))
+        self.assertTrue(is_pet_candidate("PEPA", "168000-", ""))
+        self.assertTrue(is_pet_candidate("haru", "170000", ""))  # case-insensitive
+
+    def test_known_pet_name_but_has_dni_is_kept(self):
+        # If patient has a DNI, treat as human even with pet-y name
+        self.assertFalse(is_pet_candidate("FALUCHO", "171029", "12345678"))
+
+    def test_known_pet_name_but_human_lastname_is_kept(self):
+        # Real surname, not a numeric protocol — treat as human
+        self.assertFalse(is_pet_candidate("HARU", "GARCIA", ""))
+
+    def test_unknown_name_with_numeric_lastname_is_kept(self):
+        # Conservative: if first_name not in our allowlist, KEEP (don't risk
+        # deleting an actual human). LUNA is a common human name, so even
+        # with numeric last_name + empty dni, we keep it.
+        self.assertFalse(is_pet_candidate("LUNA", "171000", ""))
+        self.assertFalse(is_pet_candidate("SOFIA", "170500", ""))
+        self.assertFalse(is_pet_candidate("MILO", "170600", ""))
+
+    def test_multiword_first_name_is_kept(self):
+        # Multi-word first_names are humans whose name was misparsed:
+        # source '376656,HELEMENIS AIDA' → first='HELEMENIS AIDA', last='376656'.
+        self.assertFalse(is_pet_candidate("HELEMENIS AIDA", "376656", ""))
+        self.assertFalse(is_pet_candidate("PRINCESA FIONA", "166000", ""))
+
+    def test_empty_inputs_are_kept(self):
+        self.assertFalse(is_pet_candidate("", "", ""))
+        self.assertFalse(is_pet_candidate(None, None, None))
+
+
+class SyncSkipsPetsTests(BaseTestCase):
+    """Sync should skip PACIENTES rows that match the pet rule."""
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_pet_paciente_row_is_skipped(self):
+        """If the source row maps to a pet, sync skips it: no User, no Study."""
+        from apps.labwin_sync.connectors.mock import (
+            SAMPLE_PACIENTES, SAMPLE_DETERS,
+        )
+
+        # Inject a pet PACIENTES row + matching DETERS into the mock fixtures.
+        # Use a fresh NUMERO so we don't collide with existing fixtures.
+        pet_numero = 199001
+        SAMPLE_PACIENTES[pet_numero] = {
+            "NUMERO_FLD": pet_numero,
+            "NOMBRE_FLD": "171029,FALUCHO",  # source format for a pet
+            "HCLIN_FLD": "",                  # no DNI
+            "SEXO_FLD": 1,
+            "FNACIM_FLD": "",
+            "MUTUAL_FLD": 0,
+            "MEDICO_FLD": "",
+            "NUMMEDICO_FLD": 0,
+            "CARNET_FLD": "",
+            "TELEFONO_FLD": "",
+            "CELULAR_FLD": "",
+            "DIRECCION_FLD": "",
+            "LOCALIDAD_FLD": "",
+            "EMAIL_FLD": "",
+            "DEBEBONO_FLD": "",
+        }
+        SAMPLE_DETERS.append({
+            "NUMERO_FLD": pet_numero,
+            "ABREV_FLD": "GLU",
+            "RESULT_FLD": "100",
+            "RESULTREP_FLD": "100",
+            "VALIDADO_FLD": "1",
+            "FECHA_FLD": "20260415",
+            "HORA_FLD": "10:00",
+            "ORDEN_FLD": 1,
+            "OPERADOR_FLD": "",
+            "SUCURSAL_FLD": "",
+        })
+
+        try:
+            result = sync_labwin_results(lab_client_id=1, full_sync=True)
+        finally:
+            # Clean up fixture mutations so other tests aren't polluted
+            del SAMPLE_PACIENTES[pet_numero]
+            SAMPLE_DETERS.pop()
+
+        # The pet should NOT have been created
+        self.assertFalse(
+            User.objects.filter(first_name="FALUCHO", last_name="171029").exists(),
+            "Pet user should have been skipped",
+        )
+        self.assertFalse(
+            Study.objects.filter(protocol_number=f"LW-{pet_numero}").exists(),
+            "Pet's study should not have been created",
+        )
+        self.assertEqual(result.get("pets_skipped", 0), 1)
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_human_paciente_row_is_NOT_skipped(self):
+        """A normal PACIENTES row (real human) should be imported normally."""
+        # Mock fixtures already have 100001 (Garcia, Maria — clearly human).
+        result = sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        self.assertTrue(
+            User.objects.filter(first_name="Maria", last_name="Garcia").exists(),
+            "Human patient should be created",
+        )
+        self.assertTrue(
+            Study.objects.filter(protocol_number="LW-100001").exists(),
+            "Human's study should be created",
+        )
