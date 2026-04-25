@@ -168,7 +168,7 @@ labcontrol/
 │   ├── asgi.py                  # ASGI config (future WebSocket support)
 │   └── celery.py                # Celery configuration
 │
-├── tests/                       # Test suite (374 tests, 82% coverage)
+├── tests/                       # Test suite (459 tests passing as of 2026-04-25)
 │   ├── base.py                  # BaseTestCase with factories
 │   ├── test_users.py
 │   ├── test_studies.py
@@ -453,6 +453,20 @@ class StudyManager(models.Manager):
     def for_practice(self, practice):
         return self.filter(study_practices__practice=practice)
 ```
+
+**LabWin-derived flags** (added 2026-04-25):
+- `is_paid: BooleanField(default=True)` — `False` only when the source
+  `PACIENTES.DEBEBONO_FLD == '1'` (patient owes a bono). Most patients are
+  insurance-covered so the default is True. Re-imported on every sync; flips
+  if the patient pays between backups.
+- `is_validated: BooleanField(default=False)` — `True` for sync-imported
+  studies (the connector pre-filters to `VALIDADO_FLD='1'` DETERS rows).
+  Manually-created studies start False until lab staff validates.
+
+Patient-facing visibility filters (e.g. `Study.objects.visible_to_patient()`)
+should AND on both flags. Today no manager method enforces this; add one
+when the lab confirms the patient signup workflow (see CLAUDE.md "Workflow
+open question").
 
 ### StudyPractice Model (apps/studies/models.py)
 
@@ -1202,11 +1216,56 @@ def pending(self, request):
     return Response(serializer.data)
 ```
 
+### 8. Accent-insensitive Search (added 2026-04-25)
+
+All search across user/study fields is **case AND accent insensitive** so that
+`'si'` matches `'Sí'`, `'munoz'` matches `'Muñoz'`, `'gonzalez'` matches
+`'González'`. Required for Spanish-language patient data.
+
+Implementation: `apps/core/search.unaccent_icontains_q(value, *fields)` builds
+a `Q()` object using Postgres' `unaccent()` extension via the bilateral
+`__unaccent` lookup transform. Extension enabled by migration
+`apps.core.0001_unaccent_extension`.
+
+```python
+from apps.core.search import unaccent_icontains_q
+
+# In a custom filter_search method
+queryset.filter(
+    unaccent_icontains_q(
+        value,
+        "first_name", "last_name", "email", "dni",
+        "phone_number", "matricula",
+    )
+)
+```
+
+Used by `UserFilter`, `StudyFilter`, `DeterminationFilter`, and the
+`/users/search-patients/` and `/users/search-doctors/` endpoints.
+
+### 9. Pet/Veterinary Patient Filtering (added 2026-04-25)
+
+The lab serves veterinary patients alongside humans, but PACIENTES has no
+schema-level discriminator. `apps/labwin_sync/mappers.is_pet_candidate(...)`
+combines two signals to skip pets at sync time:
+
+1. **Structural**: `last_name` (parsed from `NOMBRE_FLD`) starts with `'167'`
+   — the lab's pet HCLIN range.
+2. **Practice-based**: any of the protocol's DETERS rows maps to a Practice
+   with code starting with `VET` or name containing veterinary keywords
+   (`veterinari`, `canin`, `felin`, `canis`, `bovin`, `porcin`, `equin`,
+   `caprin`, `aves`).
+
+Pet IF: `dni == '' AND (signal 1 OR signal 2)`. The `dni=''` guard prevents
+false positives — verified against real data, 0 patients with a DNI matched.
+If the lab adds an explicit pet/vet flag to LabWin in the future, replace
+both signals with that single source of truth.
+
 ---
 
 ## 🧪 Testing
 
-**Test Suite**: 374 tests, 82% coverage
+**Test Suite**: 459 tests passing, 0 regressions (as of 2026-04-25)
 
 ### BaseTestCase (tests/base.py)
 

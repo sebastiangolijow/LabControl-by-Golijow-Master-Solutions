@@ -1058,6 +1058,38 @@ sshpass -p "$DEPLOY_SSH_PASSWORD" scp local_file deploy@72.60.137.226:/remote/pa
 
 > **Future hardening**: switch `deploy` to SSH key auth and remove password access entirely. The `sshpass` workflow is a leftover from initial bring-up.
 
+### Reading production logs
+
+Two ways, both added 2026-04-25.
+
+**From your laptop** (Makefile targets in this repo, require `DEPLOY_SSH_PASSWORD` exported):
+
+```bash
+make logs-prod                # tail web + celery_worker + celery_beat
+make logs-prod-web            # individual containers
+make logs-prod-worker
+make logs-prod-beat
+make logs-prod-nginx
+make logs-prod-errors         # only ERROR / WARNING / Traceback
+make logs-prod-grep TERM=sync_labwin
+make ps-prod                  # container status with healthchecks
+```
+
+**On the VPS** (after `ssh deploy@…`), the `labcontrol-logs` shell wrapper at `/usr/local/bin/labcontrol-logs`:
+
+```bash
+labcontrol-logs                     # tail backend services (default)
+labcontrol-logs worker              # one container (web|worker|beat|nginx|db|firebird|redis)
+labcontrol-logs errors              # ERROR / WARNING / Traceback grep
+labcontrol-logs grep "patient 12345"
+labcontrol-logs since 1h            # logs from last hour
+labcontrol-logs status              # ps with healthchecks
+labcontrol-logs --help
+TAIL=500 labcontrol-logs            # override default tail size (200)
+```
+
+To re-install the wrapper after changes: `make install-prod-logs-cli` from the laptop.
+
 ### Docker Commands
 
 ```bash

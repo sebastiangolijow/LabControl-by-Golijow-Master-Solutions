@@ -1,8 +1,8 @@
 # LabWin Backup Ingestion Pipeline
 
-**Status:** Fase A completa + upload del lab funcionando end-to-end. Falta Fase B (ingesta en VPS) antes de habilitar `LABWIN_USE_MOCK=False`.
+**Status:** Fase A + Fase B completas. Sync end-to-end validado contra DB real (3,062 estudios + 2,877 pacientes importados). `LABWIN_USE_MOCK=True` sigue como default en `.env.production` por ahora — se enciende cuando el lab confirme el flujo de signup de pacientes (ver [CLAUDE.md "Workflow open question"](CLAUDE.md#workflow-open-question-waiting-on-lab)).
 **Owner:** Development Team
-**Última actualización:** 2026-04-24
+**Última actualización:** 2026-04-25
 
 ---
 
@@ -22,11 +22,16 @@
 | `BackupImporter` service + `import_uploaded_backup` task | ✅ | Implementado 2026-04-25 — `apps/labwin_sync/services/backup_import.py` + `apps/labwin_sync/tasks.py::import_uploaded_backup` |
 | Management command `import_backup` | ✅ | `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only] [--use-celery]` |
 | Tests unitarios de `backup_import` | ✅ | 24 tests, 100% passing (discovery, validate, move, run happy/failure paths, task wrapper, command flags) |
-| **Restore end-to-end validado** | ✅ | 2026-04-25 — restored `BASEDAT_20260424_180940.fbk.gz` (70 MB → 2.2 GB DB) via Services API en 155 s. Tablas verificadas: PACIENTES 218,843 · DETERS 940,198 · MEDICOS 7,104 · NOMEN 2,201 |
-| `LABWIN_USE_MOCK=False` en prod | ⏳ | Solo después de hacer `--sync-only` contra la DB restaurada y validar que `sync_labwin_results` mapea correctamente los 218k pacientes y 940k DETERS |
-| Beat schedule (cron 04:00 AM) | ⏳ | Solo después de soak period con disparos manuales |
-| Task Scheduler en la PC del lab | ⏳ | Pendiente — por ahora correrlo manual |
+| **Restore end-to-end validado** | ✅ | 2026-04-25 — restored `BASEDAT_20260424_180940.fbk.gz` (70 MB → 2.2 GB DB) via Services API en 155 s. Tablas: PACIENTES 218,843 · DETERS 940,198 · MEDICOS 7,104 · NOMEN 2,201 |
+| **Sync end-to-end validado** | ✅ | 2026-04-25 — `--sync-only` con `LABWIN_USE_MOCK=False` ingestó la slice 2026-02-01+ en ~73 s. Resultado: 1,316 studies + 1,030 patients nuevos, 0 errores. Total acumulado en Postgres: 3,062 studies / 2,877 patients (post pet-cleanup) |
+| Bugs reales surgidos por la data del lab y arreglados | ✅ | (1) Email collisions entre familiares → skip duplicate email; (2) `varchar(20)` overflow en phones con anotaciones → bumped to 50; (3) duplicate `(study, practice)` (lab repite ABREV) → dropped unique_together; (4) charset `NONE` en la DB → `LABWIN_FDB_CHARSET=ISO8859_1`; (5) pet/vet patients filtrados con regla combinada `dni='' AND (last_name 167* OR has vet practice)`, 583 mascotas eliminadas + skip rule en mappers |
+| `Study.is_paid` + `Study.is_validated` | ✅ | `is_paid` mapeado de `DEBEBONO_FLD` (lab confirmó: `'1'` = debe bono → unpaid). `is_validated=True` para todo lo importado (connector ya filtra `VALIDADO_FLD='1'`). Re-sync actualiza ambos flags en studies existentes |
+| FTP PDF fetch validado end-to-end | ✅ | 2026-04-25 — fix de filename parsing para `{NUMERO}-{DNI}-{NOMBRE}.pdf`. 24 PDFs reales attached. 32 skipped porque su NUMERO está fuera del rango importado |
+| `LABWIN_USE_MOCK=False` en prod (default) | ⏳ | Pendiente — gated en decisión del lab sobre flujo de signup de pacientes sin email |
+| Beat schedule (cron 04:00 AM) | ⏳ | Pendiente — gated en lo mismo. Sync window también cambia: rolling "ayer + hoy" en vez de "todo desde 2026-02-01" |
+| Task Scheduler en la PC del lab | ⏳ | Pendiente — upload corre manual |
 | Limpieza de `.FDB` viejos en `/home/labwin_ftp/results/` | ⏳ | 2 archivos de 2.3 GB cada uno, probablemente corruptos |
+| Workflow para pacientes sin email en LabWin | ⏳ | Sebastián consulta con el lab. Ver [CLAUDE.md "Workflow open question"](CLAUDE.md#workflow-open-question-waiting-on-lab) |
 
 **Tiempos reales medidos en el primer upload (DB de 347 MB en caliente):**
 - `gbak -b -g`: 67 s
