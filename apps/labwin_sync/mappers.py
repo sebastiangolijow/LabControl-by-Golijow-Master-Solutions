@@ -202,8 +202,15 @@ def map_practice(nomen_row):
 # both signals with that single source of truth.
 
 VET_NAME_KEYWORDS = (
-    "veterinari", "canin", "felin", "canis",
-    "bovin", "porcin", "equin", "caprin", "aves",
+    "veterinari",
+    "canin",
+    "felin",
+    "canis",
+    "bovin",
+    "porcin",
+    "equin",
+    "caprin",
+    "aves",
 )
 
 PET_LAST_NAME_PREFIX = "167"

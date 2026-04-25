@@ -1439,7 +1439,9 @@ class IsPetCandidateTests(BaseTestCase):
 
     def test_human_lastname_is_kept(self):
         self.assertFalse(is_pet_candidate("Maria", "Garcia", ""))
-        self.assertFalse(is_pet_candidate("Maria", "Garcia", "", has_vet_practice=False))
+        self.assertFalse(
+            is_pet_candidate("Maria", "Garcia", "", has_vet_practice=False)
+        )
 
     def test_empty_inputs_are_kept(self):
         self.assertFalse(is_pet_candidate("", "", ""))
@@ -1449,20 +1451,24 @@ class IsPetCandidateTests(BaseTestCase):
 class SyncSkipsPetsTests(BaseTestCase):
     """Sync should skip PACIENTES rows that match the combined pet rule."""
 
-    def _inject_pet_fixtures(self, pet_numero, last_name="167400", abrev="GLU",
-                              practice_name=None):
+    def _inject_pet_fixtures(
+        self, pet_numero, last_name="167400", abrev="GLU", practice_name=None
+    ):
         """Helper: add a pet PACIENTES row + matching DETERS to mock fixtures.
 
         The default `last_name="167400"` triggers signal 1 (167-prefix).
         Override `abrev` + `practice_name` to also test signal 2 (vet practice).
         """
         from apps.labwin_sync.connectors.mock import (
-            SAMPLE_PACIENTES, SAMPLE_DETERS, SAMPLE_NOMEN,
+            SAMPLE_DETERS,
+            SAMPLE_NOMEN,
+            SAMPLE_PACIENTES,
         )
+
         SAMPLE_PACIENTES[pet_numero] = {
             "NUMERO_FLD": pet_numero,
             "NOMBRE_FLD": f"{last_name},FALUCHO",  # parses to last={last_name} first=FALUCHO
-            "HCLIN_FLD": "",                       # no DNI
+            "HCLIN_FLD": "",  # no DNI
             "SEXO_FLD": 1,
             "FNACIM_FLD": "",
             "MUTUAL_FLD": 0,
@@ -1484,23 +1490,28 @@ class SyncSkipsPetsTests(BaseTestCase):
                 "DIASTARDA_FLD": 1,
                 "MATERIAL_FLD": "",
             }
-        SAMPLE_DETERS.append({
-            "NUMERO_FLD": pet_numero,
-            "ABREV_FLD": abrev,
-            "RESULT_FLD": "100",
-            "RESULTREP_FLD": "100",
-            "VALIDADO_FLD": "1",
-            "FECHA_FLD": "20260415",
-            "HORA_FLD": "10:00",
-            "ORDEN_FLD": 1,
-            "OPERADOR_FLD": "",
-            "SUCURSAL_FLD": "",
-        })
+        SAMPLE_DETERS.append(
+            {
+                "NUMERO_FLD": pet_numero,
+                "ABREV_FLD": abrev,
+                "RESULT_FLD": "100",
+                "RESULTREP_FLD": "100",
+                "VALIDADO_FLD": "1",
+                "FECHA_FLD": "20260415",
+                "HORA_FLD": "10:00",
+                "ORDEN_FLD": 1,
+                "OPERADOR_FLD": "",
+                "SUCURSAL_FLD": "",
+            }
+        )
 
     def _cleanup_pet_fixtures(self, pet_numero, abrev_added=None):
         from apps.labwin_sync.connectors.mock import (
-            SAMPLE_PACIENTES, SAMPLE_DETERS, SAMPLE_NOMEN,
+            SAMPLE_DETERS,
+            SAMPLE_NOMEN,
+            SAMPLE_PACIENTES,
         )
+
         SAMPLE_PACIENTES.pop(pet_numero, None)
         SAMPLE_DETERS.pop()  # we just appended one
         if abrev_added:
