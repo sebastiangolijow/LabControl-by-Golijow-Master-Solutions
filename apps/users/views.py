@@ -2,6 +2,7 @@
 
 import csv
 import io
+import logging
 
 from django.db.models import Value
 from django.db.models.functions import Concat
@@ -25,6 +26,8 @@ from .serializers import (
     UserSerializer,
     UserUpdateSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -119,6 +122,13 @@ class UserViewSet(viewsets.ModelViewSet):
         user_to_delete.save(update_fields=["is_active"])
 
         # Log the deactivation for audit trail
+        logger.info(
+            "User soft-deleted (deactivated) — target_pk=%s target_role=%s "
+            "by_user_pk=%s",
+            user_to_delete.pk,
+            user_to_delete.role,
+            request.user.pk,
+        )
         return Response(
             {
                 "message": f"User {user_to_delete.email} has been deactivated successfully.",
@@ -256,6 +266,14 @@ class UserViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        logger.info(
+            "Admin created user — new_user_pk=%s role=%s by_admin_pk=%s "
+            "lab_client_id=%s",
+            user.pk,
+            user.role,
+            request.user.pk,
+            user.lab_client_id,
+        )
 
         # Send password setup email asynchronously
         from apps.notifications.tasks import send_password_setup_email
@@ -613,6 +631,15 @@ class ImportDoctorsView(APIView):
             from apps.users.tasks import import_doctors_task
 
             task = import_doctors_task.delay(csv_content, lab_client_id)
+            logger.info(
+                "Doctor import queued — task_id=%s file=%s size=%d "
+                "by_user_pk=%s lab_client_id=%s",
+                task.id,
+                csv_file.name,
+                len(csv_content),
+                request.user.pk,
+                lab_client_id,
+            )
 
             return Response(
                 {
@@ -623,6 +650,13 @@ class ImportDoctorsView(APIView):
             )
 
         except Exception as e:
+            # .exception so the actual problem (decode error / broker down /
+            # etc.) lands in docker logs with a traceback.
+            logger.exception(
+                "ImportDoctorsView: failed to queue import for file=%s by_user_pk=%s",
+                csv_file.name,
+                request.user.pk,
+            )
             return Response(
                 {"error": f"Failed to queue import task: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

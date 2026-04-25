@@ -6,6 +6,8 @@ import logging
 
 from celery import shared_task
 
+from apps.core.logging_utils import memory_summary
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,6 +24,20 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
         dict: Summary with created, skipped, and errors counts
     """
     from apps.users.models import User
+
+    task_id = ""
+    try:
+        task_id = self.request.id or ""
+    except AttributeError:
+        pass
+
+    logger.info(
+        "import_doctors_task START — lab_client_id=%s csv_bytes=%d task_id=%s | %s",
+        lab_client_id,
+        len(csv_content) if csv_content else 0,
+        task_id or "<sync>",
+        memory_summary(),
+    )
 
     try:
         # Update task state to show progress
@@ -49,6 +65,13 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
                         "errors": len(errors),
                     },
                 )
+                logger.info(
+                    "import_doctors_task progress — processed=%d created=%d skipped=%d errors=%d",
+                    total_rows,
+                    created_count,
+                    skipped_count,
+                    len(errors),
+                )
 
             try:
                 # Extract data from row
@@ -57,6 +80,10 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
 
                 # Skip empty rows
                 if not nombre_medico or not matricula_raw:
+                    logger.warning(
+                        "import_doctors_task: skipped row %d (missing NOMBRE_MEDICO or MATRICULA_O_ID)",
+                        row_number,
+                    )
                     continue
 
                 # Parse matricula
@@ -98,7 +125,13 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
                         ),
                     }
                 )
-                logger.error(f"Error importing doctor at row {row_number}: {error_msg}")
+                # Use .exception so the traceback ends up in the logs.
+                # The loop continues — this is a per-row failure, not fatal.
+                logger.exception(
+                    "import_doctors_task: error on row %d (matricula=%s)",
+                    row_number,
+                    matricula_raw if "matricula_raw" in locals() else "?",
+                )
 
         # Final result
         result = {
@@ -109,12 +142,16 @@ def import_doctors_task(self, csv_content, lab_client_id=None):
             "total_processed": total_rows,
         }
 
-        logger.info(f"Doctor import completed: {result['message']}")
+        logger.info(
+            "import_doctors_task END — %s | %s", result["message"], memory_summary()
+        )
         return result
 
     except Exception as e:
         error_msg = f"Failed to process CSV file: {str(e)}"
-        logger.error(error_msg)
+        # .exception keeps the traceback so we can tell whether it was a
+        # decode error, a DB hiccup, or something else.
+        logger.exception("import_doctors_task FAILED — %s", error_msg)
         self.update_state(state="FAILURE", meta={"error": error_msg})
         raise
 

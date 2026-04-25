@@ -31,6 +31,7 @@ from typing import Optional
 from django.conf import settings
 from django.utils import timezone
 
+from apps.core.logging_utils import memory_summary
 from apps.labwin_sync.models import SyncLog
 
 logger = logging.getLogger(__name__)
@@ -172,6 +173,17 @@ class BackupImporter:
             skip_restore: skip Firebird restore (assume DB already loaded).
             skip_sync: skip the sync_labwin_results call (restore only).
         """
+        logger.info(
+            "BackupImporter START — lab_client_id=%s explicit_file=%s "
+            "skip_restore=%s skip_sync=%s incoming=%s | %s",
+            self.lab_client_id,
+            explicit_file,
+            skip_restore,
+            skip_sync,
+            self.incoming_dir,
+            memory_summary(),
+        )
+
         sync_log = SyncLog.objects.create(
             status="started",
             lab_client_id=self.lab_client_id,
@@ -225,7 +237,9 @@ class BackupImporter:
         except BackupImportError as e:
             result.status = "failed"
             result.error = f"{type(e).__name__}: {e}"
-            logger.error("BackupImporter failed: %s", result.error)
+            # .exception so the traceback (especially for FirebirdRestoreError
+            # wrapping a low-level connection failure) lands in docker logs.
+            logger.exception("BackupImporter failed: %s", result.error)
             if backup_path and backup_path.exists():
                 self.move_to_failed(backup_path)
 
@@ -243,6 +257,14 @@ class BackupImporter:
                 sync_log.errors = [{"stage": "backup_import", "error": result.error}]
                 sync_log.error_count = 1
             sync_log.save()
+            logger.info(
+                "BackupImporter END — status=%s backup=%s restore=%.1fs error=%s | %s",
+                result.status,
+                result.backup_filename,
+                result.restore_duration_s,
+                result.error,
+                memory_summary(),
+            )
 
         return result
 

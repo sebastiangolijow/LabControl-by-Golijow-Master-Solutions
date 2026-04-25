@@ -2,12 +2,16 @@
 Views for manually triggering and monitoring LabWin sync.
 """
 
+import logging
+
 from celery.result import AsyncResult
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminOrLabManager
+
+logger = logging.getLogger(__name__)
 
 
 class TriggerSyncView(APIView):
@@ -24,10 +28,19 @@ class TriggerSyncView(APIView):
         from .tasks import sync_labwin_results
 
         lab_client_id = request.user.lab_client_id or 1
+        full_sync = request.data.get("full_sync", False)
 
         task = sync_labwin_results.delay(
             lab_client_id=lab_client_id,
-            full_sync=request.data.get("full_sync", False),
+            full_sync=full_sync,
+        )
+        logger.info(
+            "LabWin sync triggered manually — task_id=%s lab_client_id=%s "
+            "full_sync=%s by_user_pk=%s",
+            task.id,
+            lab_client_id,
+            full_sync,
+            request.user.pk,
         )
 
         return Response(
@@ -53,10 +66,19 @@ class TriggerFTPFetchView(APIView):
         from .tasks import fetch_ftp_pdfs
 
         lab_client_id = request.user.lab_client_id or 1
+        delete_after = request.data.get("delete_after_download", False)
 
         task = fetch_ftp_pdfs.delay(
             lab_client_id=lab_client_id,
-            delete_after_download=request.data.get("delete_after_download", False),
+            delete_after_download=delete_after,
+        )
+        logger.info(
+            "FTP PDF fetch triggered manually — task_id=%s lab_client_id=%s "
+            "delete_after_download=%s by_user_pk=%s",
+            task.id,
+            lab_client_id,
+            delete_after,
+            request.user.pk,
         )
 
         return Response(

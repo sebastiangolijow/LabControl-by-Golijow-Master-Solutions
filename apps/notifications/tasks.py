@@ -32,14 +32,17 @@ def send_email_notification(user_id, subject, message):
             recipient_list=[user.email],
             fail_silently=False,
         )
-        logger.info(f"Email sent to {user.email}")
+        # Log user.pk (UUID) instead of email — emails are PII.
+        logger.info("Email sent to user pk=%s", user.pk)
         return f"Email sent to {user.email}"
     except User.DoesNotExist:
-        logger.error(f"User {user_id} not found")
+        logger.warning("send_email_notification: user pk=%s not found", user_id)
         return f"User {user_id} not found"
-    except Exception as e:
-        logger.error(f"Error sending email to user {user_id}: {str(e)}")
-        return f"Error: {str(e)}"
+    except Exception:
+        logger.exception(
+            "send_email_notification: error sending to user pk=%s", user_id
+        )
+        return f"Error sending email to user {user_id}"
 
 
 @shared_task(bind=True, max_retries=3)
@@ -84,21 +87,35 @@ def send_result_notification_email(self, user_id, study_id, study_type_name):
         email.send(fail_silently=False)
 
         logger.info(
-            f"Result notification email sent to {user.email} for study {study_id}"
+            "Result notification email sent to user pk=%s for study pk=%s",
+            user.pk,
+            study_id,
         )
         return f"Email sent to {user.email}"
 
     except User.DoesNotExist:
-        logger.error(f"User {user_id} not found")
+        logger.warning(
+            "send_result_notification_email: user pk=%s not found (study pk=%s)",
+            user_id,
+            study_id,
+        )
         return f"User {user_id} not found"
 
     except Exception as e:
-        logger.error(f"Error sending result notification email: {str(e)}")
+        logger.exception(
+            "send_result_notification_email: error for user pk=%s study pk=%s",
+            user_id,
+            study_id,
+        )
         # Retry the task with exponential backoff
         try:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
         except self.MaxRetriesExceededError:
-            logger.error(f"Max retries exceeded for user {user_id}, study {study_id}")
+            logger.error(
+                "send_result_notification_email: max retries exceeded for user pk=%s study pk=%s",
+                user_id,
+                study_id,
+            )
             return f"Failed after retries: {str(e)}"
 
 
@@ -120,6 +137,11 @@ def cleanup_old_notifications():
         status="read", read_at__lt=cutoff_date
     ).delete()
 
+    logger.info(
+        "cleanup_old_notifications: deleted %d read notifications older than %s",
+        deleted_count,
+        cutoff_date.isoformat(),
+    )
     return f"Deleted {deleted_count} old notifications"
 
 
@@ -149,6 +171,11 @@ def send_bulk_notification(user_ids, title, message, notification_type="info"):
     ]
 
     Notification.objects.bulk_create(notifications)
+    logger.info(
+        "send_bulk_notification: created %d in-app notifications (type=%s)",
+        len(notifications),
+        notification_type,
+    )
     return f"Created {len(notifications)} notifications"
 
 
@@ -169,7 +196,10 @@ def send_verification_email(self, user_id):
 
         # Check if user is already verified
         if user.is_verified:
-            logger.info(f"User {user.email} is already verified, skipping email")
+            logger.info(
+                "send_verification_email: user pk=%s already verified, skipping",
+                user.pk,
+            )
             return f"User {user.email} already verified"
 
         # Generate verification token
@@ -203,20 +233,25 @@ def send_verification_email(self, user_id):
         # Send email
         email.send(fail_silently=False)
 
-        logger.info(f"Verification email sent to {user.email}")
+        logger.info("Verification email sent to user pk=%s", user.pk)
         return f"Verification email sent to {user.email}"
 
     except User.DoesNotExist:
-        logger.error(f"User {user_id} not found")
+        logger.warning("send_verification_email: user pk=%s not found", user_id)
         return f"User {user_id} not found"
 
     except Exception as e:
-        logger.error(f"Error sending verification email: {str(e)}")
+        logger.exception(
+            "send_verification_email: error for user pk=%s", user_id
+        )
         # Retry the task with exponential backoff
         try:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
         except self.MaxRetriesExceededError:
-            logger.error(f"Max retries exceeded for user {user_id}")
+            logger.error(
+                "send_verification_email: max retries exceeded for user pk=%s",
+                user_id,
+            )
             return f"Failed after retries: {str(e)}"
 
 
@@ -267,18 +302,23 @@ def send_password_setup_email(self, user_id):
         # Send email
         email.send(fail_silently=False)
 
-        logger.info(f"Password setup email sent to {user.email}")
+        logger.info("Password setup email sent to user pk=%s", user.pk)
         return f"Password setup email sent to {user.email}"
 
     except User.DoesNotExist:
-        logger.error(f"User {user_id} not found")
+        logger.warning("send_password_setup_email: user pk=%s not found", user_id)
         return f"User {user_id} not found"
 
     except Exception as e:
-        logger.error(f"Error sending password setup email: {str(e)}")
+        logger.exception(
+            "send_password_setup_email: error for user pk=%s", user_id
+        )
         # Retry the task with exponential backoff
         try:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
         except self.MaxRetriesExceededError:
-            logger.error(f"Max retries exceeded for user {user_id}")
+            logger.error(
+                "send_password_setup_email: max retries exceeded for user pk=%s",
+                user_id,
+            )
             return f"Failed after retries: {str(e)}"

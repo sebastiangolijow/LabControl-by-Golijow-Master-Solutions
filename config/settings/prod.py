@@ -75,8 +75,16 @@ if SENTRY_DSN:
         environment="production",
     )
 
-# Production logging - send to cloud logging service
-LOGGING["handlers"]["console"]["level"] = "WARNING"  # noqa
+# Production logging - silence chatty third-party libs but keep our app logs.
+#
+# We deliberately leave the console handler at INFO (set in base.py) so that
+# `apps.*` loggers can emit INFO-level records — those are the ingest progress
+# / sync-task / import logs that on-call needs to debug a failed nightly job.
+#
+# The root logger goes to WARNING so unconfigured third-party libs (urllib3,
+# django.request, requests, etc.) don't flood `docker logs`. Anything we own
+# is wired explicitly in base.LOGGING["loggers"] and propagate=False, so this
+# doesn't muzzle our own code.
 LOGGING["root"]["level"] = "WARNING"  # noqa
 
 # Database connection pooling for production

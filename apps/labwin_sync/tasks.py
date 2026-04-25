@@ -18,6 +18,8 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core.logging_utils import memory_summary
+
 from . import mappers
 from .connectors import get_connector
 from .ftp import get_ftp_connector
@@ -52,6 +54,16 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         task_id = self.request.id or ""
     except AttributeError:
         pass
+
+    logger.info(
+        "sync_labwin_results START — lab_client_id=%s full_sync=%s batch_size=%s task_id=%s mock=%s | %s",
+        lab_client_id,
+        full_sync,
+        batch_size,
+        task_id or "<sync>",
+        getattr(settings, "LABWIN_USE_MOCK", False),
+        memory_summary(),
+    )
 
     sync_log = SyncLog.objects.create(
         status="started",
@@ -102,6 +114,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
     max_numero = since_numero
     max_fecha = since_fecha or ""
 
+    batch_index = 0
     try:
         with get_connector() as connector:
             for batch in connector.fetch_validated_deters(
@@ -111,6 +124,14 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             ):
                 if not batch:
                     continue
+                batch_index += 1
+                logger.info(
+                    "sync_labwin batch #%d — %d DETERS rows (running total processed=%d, errors=%d)",
+                    batch_index,
+                    len(batch),
+                    total_processed,
+                    len(errors),
+                )
 
                 # Collect unique IDs from this batch
                 numero_flds = set()
@@ -144,7 +165,11 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         )
                         practice_cache[abrev] = practice_pk
                     except Exception as e:
-                        logger.error("Error creating practice %s: %s", abrev, e)
+                        logger.exception(
+                            "sync_labwin: error creating practice abrev=%s (batch #%d)",
+                            abrev,
+                            batch_index,
+                        )
                         errors.append(
                             {"type": "practice", "key": abrev, "error": str(e)}
                         )
@@ -159,7 +184,11 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         )
                         doctor_cache[num] = doctor_pk
                     except Exception as e:
-                        logger.error("Error creating doctor %s: %s", num, e)
+                        logger.exception(
+                            "sync_labwin: error creating doctor numero=%s (batch #%d)",
+                            num,
+                            batch_index,
+                        )
                         errors.append(
                             {"type": "doctor", "key": str(num), "error": str(e)}
                         )
@@ -273,7 +302,13 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                 max_numero = numero
 
                     except Exception as e:
-                        logger.error("Error processing protocol %s: %s", numero, e)
+                        logger.exception(
+                            "sync_labwin: error processing protocol numero=%s "
+                            "(batch #%d, %d DETERS rows in this protocol)",
+                            numero,
+                            batch_index,
+                            len(rows),
+                        )
                         errors.append(
                             {
                                 "type": "study",
@@ -317,11 +352,22 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             **counters,
             "error_count": len(errors),
         }
-        logger.info("LabWin sync completed: %s", result["message"])
+        logger.info(
+            "sync_labwin_results END — %s | batches=%d | %s",
+            result["message"],
+            batch_index,
+            memory_summary(),
+        )
         return result
 
     except Exception as e:
-        logger.exception("LabWin sync failed: %s", e)
+        logger.exception(
+            "sync_labwin_results FAILED at batch #%d (processed=%d, errors=%d) — %s",
+            batch_index,
+            total_processed,
+            len(errors),
+            memory_summary(),
+        )
         sync_log.status = "failed"
         sync_log.completed_at = timezone.now()
         sync_log.errors = [{"type": "fatal", "error": str(e)}]
@@ -724,6 +770,15 @@ def fetch_ftp_pdfs(self, lab_client_id=None, delete_after_download=False):
     }
     errors = []
 
+    logger.info(
+        "fetch_ftp_pdfs START — lab_client_id=%s delete_after_download=%s task_id=%s mock=%s | %s",
+        lab_client_id,
+        delete_after_download,
+        task_id or "<sync>",
+        getattr(settings, "LABWIN_FTP_USE_MOCK", False),
+        memory_summary(),
+    )
+
     try:
         with get_ftp_connector() as ftp:
             pdf_files = ftp.list_pdf_files()
@@ -787,7 +842,9 @@ def fetch_ftp_pdfs(self, lab_client_id=None, delete_after_download=False):
                         counters["files_deleted"] += 1
 
                 except Exception as e:
-                    logger.error("Error processing FTP file %s: %s", filename, e)
+                    logger.exception(
+                        "fetch_ftp_pdfs: error processing FTP file %s", filename
+                    )
                     errors.append({"file": filename, "error": str(e)})
 
                 # Update progress
@@ -809,11 +866,18 @@ def fetch_ftp_pdfs(self, lab_client_id=None, delete_after_download=False):
             "error_count": len(errors),
             "errors": errors[-50:],
         }
-        logger.info("FTP PDF fetch completed: %s", result["message"])
+        logger.info(
+            "fetch_ftp_pdfs END — %s | %s", result["message"], memory_summary()
+        )
         return result
 
     except Exception as e:
-        logger.exception("FTP PDF fetch failed: %s", e)
+        logger.exception(
+            "fetch_ftp_pdfs FAILED (counters=%s errors=%d) — %s",
+            counters,
+            len(errors),
+            memory_summary(),
+        )
         if task_id:
             self.retry(exc=e, countdown=300 * (2**self.request.retries))
         raise
@@ -872,7 +936,9 @@ def cleanup_ftp_pdfs(self, lab_client_id=None):
                         counters["files_kept"] += 1
 
                 except Exception as e:
-                    logger.error("Error cleaning up FTP file %s: %s", filename, e)
+                    logger.exception(
+                        "cleanup_ftp_pdfs: error cleaning up file %s", filename
+                    )
                     errors.append({"file": filename, "error": str(e)})
 
         result = {
@@ -921,7 +987,40 @@ def import_uploaded_backup(self, lab_client_id=None, explicit_file=None):
 
     from apps.labwin_sync.services.backup_import import BackupImporter
 
+    task_id = ""
+    try:
+        task_id = self.request.id or ""
+    except AttributeError:
+        pass
+
+    logger.info(
+        "import_uploaded_backup START — lab_client_id=%s explicit_file=%s task_id=%s | %s",
+        lab_client_id,
+        explicit_file,
+        task_id or "<sync>",
+        memory_summary(),
+    )
+
     importer = BackupImporter(lab_client_id=lab_client_id)
     file_arg = Path(explicit_file) if explicit_file else None
-    result = importer.run(explicit_file=file_arg)
-    return result.as_dict()
+    try:
+        result = importer.run(explicit_file=file_arg)
+    except Exception:
+        # BackupImporter handles its own errors and returns a result, but
+        # an unexpected raise here means something exploded outside its
+        # try/finally — make sure the traceback ends up in docker logs.
+        logger.exception(
+            "import_uploaded_backup: unexpected error escaped BackupImporter | %s",
+            memory_summary(),
+        )
+        raise
+
+    payload = result.as_dict()
+    logger.info(
+        "import_uploaded_backup END — status=%s backup=%s error=%s | %s",
+        payload.get("status"),
+        payload.get("backup_filename"),
+        payload.get("error"),
+        memory_summary(),
+    )
+    return payload

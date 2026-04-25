@@ -1,5 +1,6 @@
 """Views for studies app."""
 
+import logging
 import os
 
 from django.http import FileResponse, Http404
@@ -25,6 +26,8 @@ from .serializers import (
     UserDeterminationCreateSerializer,
     UserDeterminationSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PracticeViewSet(viewsets.ModelViewSet):
@@ -184,6 +187,17 @@ class StudyViewSet(viewsets.ModelViewSet):
             status=study_status,
             completed_at=completed_at,
         )
+        logger.info(
+            "Study created — protocol=%s study_pk=%s patient_pk=%s "
+            "by_user_pk=%s status=%s has_file=%s lab_client_id=%s",
+            study.protocol_number,
+            study.pk,
+            study.patient_id,
+            request.user.pk,
+            study_status,
+            has_file,
+            lab_client_id,
+        )
 
         # If file was attached, notify patient immediately
         if has_file:
@@ -289,6 +303,13 @@ class StudyViewSet(viewsets.ModelViewSet):
         # Soft delete
         study.is_deleted = True
         study.save(update_fields=["is_deleted"])
+        logger.info(
+            "Study soft-deleted — protocol=%s study_pk=%s by_user_pk=%s role=%s",
+            study.protocol_number,
+            study.pk,
+            user.pk,
+            user.role,
+        )
 
         return Response(
             {
@@ -341,6 +362,12 @@ class StudyViewSet(viewsets.ModelViewSet):
         serializer.save(
             status="completed",
             completed_at=timezone.now(),
+        )
+        logger.info(
+            "Study result uploaded — protocol=%s study_pk=%s by_user_pk=%s",
+            study.protocol_number,
+            study.pk,
+            user.pk,
         )
 
         # Send in-app notification to patient
@@ -415,6 +442,11 @@ class StudyViewSet(viewsets.ModelViewSet):
                 filename=f"results_{study.protocol_number}.pdf",
             )
         except Exception as e:
+            logger.exception(
+                "download_result: failed to open file for study_pk=%s protocol=%s",
+                study.pk,
+                study.protocol_number,
+            )
             raise Http404(f"File not found: {str(e)}")
 
     @action(
@@ -449,6 +481,12 @@ class StudyViewSet(viewsets.ModelViewSet):
         study.status = "in_progress"
         study.completed_at = None
         study.save(update_fields=["results_file", "status", "completed_at"])
+        logger.info(
+            "Study result deleted — protocol=%s study_pk=%s by_user_pk=%s",
+            study.protocol_number,
+            study.pk,
+            request.user.pk,
+        )
 
         return Response(
             {
