@@ -176,98 +176,73 @@ def map_practice(nomen_row):
     }
 
 
-# Conservative allowlist of pet names found in real lab data.
-# These are names that, in Argentina, are essentially NEVER used as human
-# first-names — they're recognizably pet/animal names. Names that are
-# common for both humans and pets (LUNA, SOFIA, MILO, OTTO, ROCCO, FELIPE,
-# LEON, OLIVIA, etc.) are deliberately EXCLUDED to avoid wrongly skipping
-# real patients.
+# --- Pet/veterinary detection ---
 #
-# Rule for skipping a PACIENTES row:
-#   - last_name (after parse_name) is purely numeric digits with optional
-#     trailing dash — i.e. the source NOMBRE_FLD was '{NUMBER},{NAME}' or
-#     '{NUMBER}-{NAME},' (signature lab-uses for veterinary records)
-#   - DNI is empty (real human patients always have a DNI in this lab)
-#   - first_name is single-word (multi-word first_names are humans whose
-#     name format was misparsed: '{HCLIN_NUMBER}, {LASTNAME FIRSTNAME}')
-#   - first_name is in this allowlist
+# The lab serves veterinary patients alongside humans, but PACIENTES has
+# no schema-level discriminator. We identify pets via two combined signals:
 #
-# History: the lab's PACIENTES table conflates humans and pets (the lab
-# also serves veterinary clients). There's no schema-level discriminator,
-# so we use a conservative name-based filter. If the lab adds a proper
-# pet/vet flag to LabWin, replace this with that signal.
-import re as _re
+#   1. STRUCTURAL: last_name (parsed from NOMBRE_FLD) starts with "167" —
+#      the lab uses HCLIN/protocol numbers in the 167xxx range as a pet
+#      identifier (and the source NOMBRE_FLD format '{HCLIN},{PETNAME}'
+#      makes that number end up in our last_name field).
+#
+#   2. PRACTICE-BASED: the protocol uses at least one veterinary-named
+#      practice (Practice.code starts with "VET" or Practice.name contains
+#      veterinary keywords like "veterinari", "canin", "felin", "canis",
+#      "bovin", "porcin", "equin", "caprin", "aves").
+#
+# A PACIENTES row is a pet IF dni == '' AND (signal 1 OR signal 2).
+#
+# This catches pets whose protocol# falls outside the 167 range (signal 2)
+# AND pets the lab created without attaching a study (signal 1).
+# The dni='' guard prevents false positives — verified against real data,
+# 0 patients with a DNI matched this rule.
+#
+# If the lab adds an explicit pet/vet flag to LabWin in the future, replace
+# both signals with that single source of truth.
 
-PET_NAME_ALLOWLIST = frozenset(
-    {
-        "AFRIKA",
-        "ALFREDITO",
-        "ASILA",
-        "AYUN",
-        "BABI",
-        "BACHI",
-        "BART",
-        "BENDI",
-        "BLACKY",
-        "BOCHI",
-        "BRIDA",
-        "CANELA",
-        "CAÑITO",
-        "CHIQUI",
-        "CHIQUITIN",
-        "CHOCOLATE",
-        "CIRA",
-        "COBI",
-        "DRAKO",
-        "FALUCHO",
-        "FRIDA",
-        "GORDO",
-        "HARU",
-        "INCA",
-        "INDIO",
-        "JUANITO",
-        "KATA",
-        "LOBITO",
-        "MIKI",
-        "MORENA",
-        "NALA",
-        "NEGRITA",
-        "NILO",
-        "NYMERIA",
-        "PEPA",
-        "PERA",
-        "PININA",
-        "PIREW",
-        "PRETA",
-        "TIGRESA",
-        "TINI",
-        "TRUFA",
-        "WANA",
-        "WILLOW",
-        "ZAMBA",
-    }
+VET_NAME_KEYWORDS = (
+    "veterinari", "canin", "felin", "canis",
+    "bovin", "porcin", "equin", "caprin", "aves",
 )
 
-_PET_NUMERIC_LAST_NAME_RE = _re.compile(r"^\d+[-]?$")
+PET_LAST_NAME_PREFIX = "167"
 
 
-def is_pet_candidate(first_name, last_name, dni):
-    """Return True if a (first_name, last_name, dni) triple looks like a
-    veterinary patient based on the conservative allowlist rule above.
+def is_vet_practice(practice_code, practice_name):
+    """Return True if a Practice (by code + name) is a veterinary practice."""
+    code = (practice_code or "").strip().upper()
+    if code.startswith("VET"):
+        return True
+    name = (practice_name or "").strip().lower()
+    return any(kw in name for kw in VET_NAME_KEYWORDS)
 
-    Used by sync to skip pet PACIENTES rows on import. Matches a small
-    subset (~120) of all PACIENTES with numeric last_name + empty dni.
+
+def is_pet_candidate(first_name, last_name, dni, has_vet_practice=False):
+    """Return True if a patient record looks like a veterinary patient.
+
+    Combined rule: dni == '' AND (last_name starts with '167' OR
+    has_vet_practice).
+
+    Args:
+        first_name, last_name: parsed from PACIENTES.NOMBRE_FLD via
+            parse_name(). last_name typically contains the HCLIN/protocol
+            number for pet records (e.g. '167427').
+        dni: parsed from PACIENTES.HCLIN_FLD. Real human patients in
+            this lab always have a DNI; pets never do.
+        has_vet_practice: True if any of this protocol's DETERS rows maps
+            to a Practice with code starting with 'VET' or name containing
+            a veterinary keyword. Caller computes this from practice_cache.
+
+    Verified against real lab data: 0 patients with a DNI match either
+    signal, so dni='' is a safe necessary condition.
     """
+    if (dni or "").strip():
+        return False
     last = (last_name or "").strip()
-    dni_clean = (dni or "").strip()
-    first = (first_name or "").strip()
-    if not _PET_NUMERIC_LAST_NAME_RE.match(last):
-        return False
-    if dni_clean:
-        return False
-    if " " in first:
-        return False
-    return first.upper() in PET_NAME_ALLOWLIST
+    if last.startswith(PET_LAST_NAME_PREFIX):
+        return True
+    return bool(has_vet_practice)
 
 
 def map_is_paid(paciente_row):

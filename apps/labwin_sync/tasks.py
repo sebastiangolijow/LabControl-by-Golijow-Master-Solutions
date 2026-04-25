@@ -178,14 +178,28 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         if numero not in patient_cache:
                             pac_row = pacientes.get(numero)
                             if pac_row:
-                                # Skip veterinary patients per the
-                                # name-based allowlist rule. See
-                                # mappers.is_pet_candidate for the rule.
+                                # Skip veterinary patients. Combined rule:
+                                # dni='' AND (last_name starts with '167'
+                                # OR any practice in this protocol is a
+                                # vet practice). See mappers.is_pet_candidate.
                                 fields = mappers.map_patient(pac_row)
+                                # Check if any DETERS row in this protocol
+                                # maps to a vet practice (via NOMEN cache).
+                                has_vet = False
+                                for row in rows:
+                                    abrev = row.get("ABREV_FLD", "").strip()
+                                    nomen_row = nomens.get(abrev) if abrev else None
+                                    if nomen_row and mappers.is_vet_practice(
+                                        nomen_row.get("ABREV_FLD"),
+                                        nomen_row.get("NOMBRE_FLD"),
+                                    ):
+                                        has_vet = True
+                                        break
                                 if mappers.is_pet_candidate(
                                     fields.get("first_name"),
                                     fields.get("last_name"),
                                     fields.get("dni"),
+                                    has_vet_practice=has_vet,
                                 ):
                                     counters.setdefault("pets_skipped", 0)
                                     counters["pets_skipped"] += 1
