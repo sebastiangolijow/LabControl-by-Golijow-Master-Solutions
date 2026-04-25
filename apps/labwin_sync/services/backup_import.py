@@ -177,9 +177,7 @@ class BackupImporter:
             lab_client_id=self.lab_client_id,
             celery_task_id="",
         )
-        result = BackupImportResult(
-            status="started", sync_log_uuid=str(sync_log.pk)
-        )
+        result = BackupImportResult(status="started", sync_log_uuid=str(sync_log.pk))
         backup_path: Optional[Path] = None
 
         try:
@@ -207,15 +205,9 @@ class BackupImporter:
                     try:
                         fbk_path.unlink()
                     except OSError as e:
-                        logger.warning(
-                            "Could not delete temp .fbk %s: %s", fbk_path, e
-                        )
-                result.restore_duration_s = (
-                    timezone.now() - t0
-                ).total_seconds()
-                logger.info(
-                    "Restore OK in %.1fs", result.restore_duration_s
-                )
+                        logger.warning("Could not delete temp .fbk %s: %s", fbk_path, e)
+                result.restore_duration_s = (timezone.now() - t0).total_seconds()
+                logger.info("Restore OK in %.1fs", result.restore_duration_s)
 
             # 4. Sync
             if not skip_sync:
@@ -245,9 +237,7 @@ class BackupImporter:
                 self.move_to_failed(backup_path)
 
         finally:
-            sync_log.status = (
-                "completed" if result.status == "completed" else "failed"
-            )
+            sync_log.status = "completed" if result.status == "completed" else "failed"
             sync_log.completed_at = timezone.now()
             if result.error:
                 sync_log.errors = [{"stage": "backup_import", "error": result.error}]
@@ -272,9 +262,7 @@ class BackupImporter:
         # completion, so anything ending .uploading is partial)
         candidates = [p for p in candidates if not p.name.endswith(".uploading")]
         if not candidates:
-            raise NoBackupFound(
-                f"No .fbk.gz files in {self.incoming_dir}"
-            )
+            raise NoBackupFound(f"No .fbk.gz files in {self.incoming_dir}")
         return candidates[0]
 
     def validate_backup(self, path: Path) -> None:
@@ -283,15 +271,11 @@ class BackupImporter:
         if size == 0:
             raise CorruptBackup(f"{path.name} is empty")
         if size < 1024:
-            raise CorruptBackup(
-                f"{path.name} is suspiciously small ({size} bytes)"
-            )
+            raise CorruptBackup(f"{path.name} is suspiciously small ({size} bytes)")
         with open(path, "rb") as f:
             magic = f.read(2)
         if magic != GZIP_MAGIC:
-            raise CorruptBackup(
-                f"{path.name} is not gzip (magic: {magic!r})"
-            )
+            raise CorruptBackup(f"{path.name} is not gzip (magic: {magic!r})")
 
     def decompress(self, gz_path: Path) -> Path:
         """Decompress a `.fbk.gz` to a sibling `.fbk` (for firebird to read).
@@ -378,9 +362,7 @@ class BackupImporter:
         logger.info("Triggering sync_labwin_results (synchronous)")
         # Calling .run() / direct invocation runs synchronously in this process.
         # Pass full_sync=False so it uses the cursor.
-        return sync_labwin_results(
-            lab_client_id=self.lab_client_id, full_sync=False
-        )
+        return sync_labwin_results(lab_client_id=self.lab_client_id, full_sync=False)
 
     def move_to_processed(self, path: Path) -> None:
         """Atomic move into processed/ with a timestamp suffix."""

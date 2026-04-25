@@ -59,9 +59,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options["restore_only"] and options["sync_only"]:
-            raise CommandError(
-                "--restore-only and --sync-only are mutually exclusive"
-            )
+            raise CommandError("--restore-only and --sync-only are mutually exclusive")
 
         explicit_file = options["file"]
         lab_client_id = options["lab_client_id"]
@@ -117,13 +115,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f"Status: {result.status}"))
         if result.backup_filename:
             self.stdout.write(f"Backup:  {result.backup_filename}")
-            self.stdout.write(
-                f"Size:    {result.backup_size_bytes / 1_048_576:.1f} MB"
-            )
+            self.stdout.write(f"Size:    {result.backup_size_bytes / 1_048_576:.1f} MB")
         if result.restore_duration_s:
-            self.stdout.write(
-                f"Restore: {result.restore_duration_s:.1f}s"
-            )
+            self.stdout.write(f"Restore: {result.restore_duration_s:.1f}s")
         if result.sync_result:
             sync_msg = result.sync_result.get("message", "")
             self.stdout.write(f"Sync:    {sync_msg}")

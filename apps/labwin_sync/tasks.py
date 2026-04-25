@@ -839,6 +839,7 @@ def import_uploaded_backup(self, lab_client_id=None, explicit_file=None):
         dict: BackupImportResult.as_dict() — status, sync_result, error, etc.
     """
     from pathlib import Path
+
     from apps.labwin_sync.services.backup_import import BackupImporter
 
     importer = BackupImporter(lab_client_id=lab_client_id)

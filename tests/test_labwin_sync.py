@@ -816,12 +816,14 @@ from apps.labwin_sync.services.backup_import import (
 from apps.labwin_sync.tasks import import_uploaded_backup
 
 
-def _make_fake_backup(dir_path: Path, name: str = "BASEDAT_20260424.fbk.gz",
-                     payload: bytes = None) -> Path:
+def _make_fake_backup(
+    dir_path: Path, name: str = "BASEDAT_20260424.fbk.gz", payload: bytes = None
+) -> Path:
     """Write a valid-gzip file ≥ 1024 bytes (clears validate_backup minimum)."""
     if payload is None:
         # 64 KB of random bytes — incompressible, so gzipped size > 64 KB
         import os
+
         payload = os.urandom(64 * 1024)
     target = dir_path / name
     with gzip.open(target, "wb") as f:
@@ -859,6 +861,7 @@ class BackupImporterDiscoveryTests(BaseTestCase):
         new = _make_fake_backup(self.incoming, "new.fbk.gz")
         # Force old's mtime backwards
         import os
+
         os.utime(old, (1000000, 1000000))
         result = self._importer().find_latest_backup()
         self.assertEqual(result, new)
@@ -1053,7 +1056,9 @@ class ImportUploadedBackupTaskTests(BaseTestCase):
         import_uploaded_backup(lab_client_id=1, explicit_file="/some/path.fbk.gz")
         # First positional / kwarg arg should be a Path
         call = mock_run.call_args
-        path_arg = call.kwargs.get("explicit_file") or (call.args[0] if call.args else None)
+        path_arg = call.kwargs.get("explicit_file") or (
+            call.args[0] if call.args else None
+        )
         self.assertIsInstance(path_arg, Path)
         self.assertEqual(str(path_arg), "/some/path.fbk.gz")
 
@@ -1069,6 +1074,7 @@ class ImportBackupCommandTests(BaseTestCase):
             backup_size_bytes=1024,
         )
         from io import StringIO
+
         out = StringIO()
         call_command("import_backup", stdout=out)
         self.assertIn("completed", out.getvalue())
@@ -1105,6 +1111,7 @@ class ImportBackupCommandTests(BaseTestCase):
     def test_command_use_celery_dispatches_to_task(self, mock_task):
         mock_task.delay.return_value = MagicMock(id="celery-task-id-123")
         from io import StringIO
+
         out = StringIO()
         call_command("import_backup", "--use-celery", stdout=out)
         mock_task.delay.assert_called_once()
