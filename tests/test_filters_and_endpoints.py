@@ -32,8 +32,8 @@ class TestUserFilter(BaseTestCase):
         client, admin = self.authenticate_as_admin()
 
         # Create test users
-        user1 = self.create_patient(first_name="Alexander")
-        user2 = self.create_patient(first_name="Benjamin")
+        _user1 = self.create_patient(first_name="Alexander")
+        _user2 = self.create_patient(first_name="Benjamin")
 
         # Search by first name
         response = client.get("/api/v1/users/?search=Alex")
@@ -47,8 +47,8 @@ class TestUserFilter(BaseTestCase):
         client, admin = self.authenticate_as_admin()
 
         # Create test users
-        user1 = self.create_patient(last_name="Johnson")
-        user2 = self.create_patient(last_name="Williams")
+        _user1 = self.create_patient(last_name="Johnson")
+        _user2 = self.create_patient(last_name="Williams")
 
         # Search by last name
         response = client.get("/api/v1/users/?search=Johnson")
@@ -62,8 +62,8 @@ class TestUserFilter(BaseTestCase):
         client, admin = self.authenticate_as_admin()
 
         # Create test users
-        user1 = self.create_patient(dni="12345678")
-        user2 = self.create_patient(dni="87654321")
+        _user1 = self.create_patient(dni="12345678")
+        _user2 = self.create_patient(dni="87654321")
 
         # Search by DNI
         response = client.get("/api/v1/users/?search=12345678")
@@ -126,8 +126,8 @@ class TestStudyFilter(BaseTestCase):
         client, admin = self.authenticate_as_admin()
 
         # Create test studies
-        study1 = self.create_study(protocol_number="ORD-2024-0001")
-        study2 = self.create_study(protocol_number="ORD-2024-0002")
+        _study1 = self.create_study(protocol_number="ORD-2024-0001")
+        _study2 = self.create_study(protocol_number="ORD-2024-0002")
 
         # Search by protocol number
         response = client.get("/api/v1/studies/?search=0001")

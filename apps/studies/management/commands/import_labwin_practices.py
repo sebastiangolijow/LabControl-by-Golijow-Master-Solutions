@@ -169,7 +169,7 @@ class Command(BaseCommand):
         try:
             with open(file_path, "r", encoding="latin-1") as f:
                 reader = csv.reader(f)
-                header = next(reader)
+                next(reader)  # skip header row
 
                 references = {}
                 for row in reader:

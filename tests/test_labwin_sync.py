@@ -9,9 +9,15 @@ Tests cover:
 - FTP PDF fetch (mock connector, study matching, file attachment)
 """
 
+import gzip
+import shutil
+import tempfile
 from datetime import date, datetime
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import override_settings
 
 from apps.labwin_sync.connectors import get_connector
@@ -25,7 +31,10 @@ from apps.labwin_sync.connectors.mock import (
 from apps.labwin_sync.ftp import get_ftp_connector
 from apps.labwin_sync.ftp.mock import MockFTPConnector
 from apps.labwin_sync.mappers import (
+    is_pet_candidate,
+    is_vet_practice,
     map_doctor,
+    map_is_paid,
     map_patient,
     map_practice,
     map_study,
@@ -35,7 +44,19 @@ from apps.labwin_sync.mappers import (
     parse_name,
 )
 from apps.labwin_sync.models import SyncedRecord, SyncLog
-from apps.labwin_sync.tasks import cleanup_ftp_pdfs, fetch_ftp_pdfs, sync_labwin_results
+from apps.labwin_sync.services.backup_import import (
+    BackupImporter,
+    BackupImportResult,
+    CorruptBackup,
+    FirebirdRestoreError,
+    NoBackupFound,
+)
+from apps.labwin_sync.tasks import (
+    cleanup_ftp_pdfs,
+    fetch_ftp_pdfs,
+    import_uploaded_backup,
+    sync_labwin_results,
+)
 from apps.studies.models import Practice, Study, StudyPractice
 from apps.users.models import User
 from tests.base import BaseTestCase
@@ -855,23 +876,6 @@ class CleanupFTPPDFsTests(BaseTestCase):
 # ======================
 # BackupImporter (Phase B)
 # ======================
-import gzip
-import shutil
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-from django.core.management import call_command
-from django.core.management.base import CommandError
-
-from apps.labwin_sync.services.backup_import import (
-    BackupImporter,
-    BackupImportResult,
-    CorruptBackup,
-    FirebirdRestoreError,
-    NoBackupFound,
-)
-from apps.labwin_sync.tasks import import_uploaded_backup
 
 
 def _make_fake_backup(
@@ -1183,7 +1187,6 @@ class ImportBackupCommandTests(BaseTestCase):
 # ======================
 # is_paid / is_validated mapping (Phase 3)
 # ======================
-from apps.labwin_sync.mappers import map_is_paid
 
 
 class MapIsPaidTests(BaseTestCase):
@@ -1377,7 +1380,6 @@ class FetchFTPPDFFilenameParsingTests(BaseTestCase):
 # ======================
 # is_pet_candidate / is_vet_practice / pet skipping
 # ======================
-from apps.labwin_sync.mappers import is_pet_candidate, is_vet_practice
 
 
 class IsVetPracticeTests(BaseTestCase):
