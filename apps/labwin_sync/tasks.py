@@ -866,9 +866,7 @@ def fetch_ftp_pdfs(self, lab_client_id=None, delete_after_download=False):
             "error_count": len(errors),
             "errors": errors[-50:],
         }
-        logger.info(
-            "fetch_ftp_pdfs END — %s | %s", result["message"], memory_summary()
-        )
+        logger.info("fetch_ftp_pdfs END — %s | %s", result["message"], memory_summary())
         return result
 
     except Exception as e:

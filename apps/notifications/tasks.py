@@ -241,9 +241,7 @@ def send_verification_email(self, user_id):
         return f"User {user_id} not found"
 
     except Exception as e:
-        logger.exception(
-            "send_verification_email: error for user pk=%s", user_id
-        )
+        logger.exception("send_verification_email: error for user pk=%s", user_id)
         # Retry the task with exponential backoff
         try:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
@@ -310,9 +308,7 @@ def send_password_setup_email(self, user_id):
         return f"User {user_id} not found"
 
     except Exception as e:
-        logger.exception(
-            "send_password_setup_email: error for user pk=%s", user_id
-        )
+        logger.exception("send_password_setup_email: error for user pk=%s", user_id)
         # Retry the task with exponential backoff
         try:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
