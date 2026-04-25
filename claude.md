@@ -48,6 +48,9 @@ self.authenticate_as_patient() → (client, user)     # also _admin / _lab_staff
 ### Adding a new Celery task
 Worker doesn't hot-reload — **restart `celery_worker` AND `celery_beat`** after adding tasks (autodiscover only runs on startup). Easy to miss; symptom is "task not registered" in logs.
 
+### Deploying Python code changes
+**Always `docker compose build` before `up -d --force-recreate`.** The `web` / `celery_worker` / `celery_beat` images COPY `apps/` at build time, so an rsync to the host + recreate-only spins up the OLD code. Symptom: `docker exec <container> grep` shows the previous version. See DEPLOYMENT.md §Backend Updates.
+
 ---
 
 ## Migrations
