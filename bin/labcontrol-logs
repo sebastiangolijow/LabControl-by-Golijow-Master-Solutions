@@ -1,0 +1,95 @@
+#!/bin/sh
+# labcontrol-logs — quick wrapper around docker logs for the labcontrol stack.
+# Run on the VPS after SSH'ing in as deploy@.
+#
+# Install (one-time, as deploy user on VPS):
+#   sudo cp /opt/labcontrol/bin/labcontrol-logs /usr/local/bin/labcontrol-logs
+#   sudo chmod +x /usr/local/bin/labcontrol-logs
+#
+# Usage:
+#   labcontrol-logs                  # tail backend services (web + workers + beat)
+#   labcontrol-logs all              # tail every container in the stack
+#   labcontrol-logs web              # tail only the web container
+#   labcontrol-logs worker           # tail celery_worker
+#   labcontrol-logs beat             # tail celery_beat
+#   labcontrol-logs nginx            # tail nginx
+#   labcontrol-logs db               # tail postgres
+#   labcontrol-logs firebird         # tail firebird
+#   labcontrol-logs errors           # recent ERROR/WARNING/Traceback across backend services
+#   labcontrol-logs grep <pattern>   # grep recent logs (case-insensitive)
+#   labcontrol-logs status           # container status with healthchecks
+#   labcontrol-logs since <time>     # logs since a relative time, e.g. "1h", "30m"
+#
+# Tail size is 200 lines by default; override with TAIL=N env var.
+
+set -eu
+
+COMPOSE_FILE=/opt/labcontrol/docker-compose.prod.yml
+TAIL=${TAIL:-200}
+
+# Backend services we usually care about together
+BACKEND="web celery_worker celery_beat"
+
+# Resolve a short alias to a container name
+container_name() {
+    case "$1" in
+        web)        echo labcontrol_web ;;
+        worker)     echo labcontrol_celery_worker ;;
+        beat)       echo labcontrol_celery_beat ;;
+        nginx)      echo labcontrol_nginx ;;
+        db|postgres) echo labcontrol_db ;;
+        redis)      echo labcontrol_redis ;;
+        firebird)   echo labcontrol_firebird ;;
+        *) echo "" ;;
+    esac
+}
+
+cmd=${1:-tail}
+shift || true
+
+case "$cmd" in
+    "" | tail | backend)
+        exec docker compose -f "$COMPOSE_FILE" logs -f --tail="$TAIL" $BACKEND
+        ;;
+    all)
+        exec docker compose -f "$COMPOSE_FILE" logs -f --tail="$TAIL"
+        ;;
+    web|worker|beat|nginx|db|postgres|redis|firebird)
+        exec docker logs -f --tail="$TAIL" "$(container_name "$cmd")"
+        ;;
+    errors)
+        # Recent error/warning lines, no -f so it exits cleanly. Match our log
+        # format (uppercase level token surrounded by spaces) plus Python tracebacks.
+        docker compose -f "$COMPOSE_FILE" logs --tail=2000 $BACKEND 2>&1 \
+            | grep -E ' (ERROR|WARNING|EXCEPTION|FAILED|Traceback) '
+        ;;
+    grep)
+        if [ $# -eq 0 ]; then
+            echo "Usage: labcontrol-logs grep <pattern>"
+            exit 1
+        fi
+        pattern="$*"
+        docker compose -f "$COMPOSE_FILE" logs --tail=2000 $BACKEND 2>&1 \
+            | grep -i -- "$pattern"
+        ;;
+    since)
+        if [ $# -eq 0 ]; then
+            echo "Usage: labcontrol-logs since <time> (e.g. 1h, 30m, 2026-04-25T15:00)"
+            exit 1
+        fi
+        # docker logs --since accepts both "1h" and ISO8601
+        docker compose -f "$COMPOSE_FILE" logs --since "$1" $BACKEND
+        ;;
+    status|ps)
+        exec docker compose -f "$COMPOSE_FILE" ps --format 'table {{.Name}}\t{{.Status}}'
+        ;;
+    -h|--help|help)
+        # Print the leading comment block (lines 2 up to the first blank line).
+        awk 'NR>1 && /^[^#]/ {exit} NR>1 {sub(/^# ?/, ""); print}' "$0"
+        ;;
+    *)
+        echo "Unknown subcommand: $cmd"
+        echo "Try: labcontrol-logs --help"
+        exit 1
+        ;;
+esac

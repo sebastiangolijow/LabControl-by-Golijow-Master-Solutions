@@ -38,6 +38,47 @@ logs-db: ## View logs from database service
 logs-backend: ## View logs from backend services (web + celery)
 	$(DOCKER_COMPOSE) logs -f web celery_worker celery_beat
 
+# ============================================================
+# PROD log helpers — read docker logs on the VPS over SSH.
+# All require DEPLOY_SSH_PASSWORD exported in your shell
+# (see DEPLOYMENT.md §SSH Access). Examples:
+#   make logs-prod                  # tail all backend services
+#   make logs-prod-web              # tail only the web container
+#   make logs-prod-worker           # tail celery_worker
+#   make logs-prod-grep TERM=sync   # grep recent logs across containers
+#   make logs-prod-errors           # only ERROR / WARNING lines
+# ============================================================
+SSH_PROD = sshpass -p "$$DEPLOY_SSH_PASSWORD" ssh -o StrictHostKeyChecking=accept-new deploy@72.60.137.226
+
+logs-prod: ## VPS: tail web + celery_worker + celery_beat (Ctrl-C to exit)
+	@$(SSH_PROD) "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml logs -f --tail=100 web celery_worker celery_beat"
+
+logs-prod-web: ## VPS: tail the web container only
+	@$(SSH_PROD) "docker logs -f --tail=100 labcontrol_web"
+
+logs-prod-worker: ## VPS: tail the celery_worker container
+	@$(SSH_PROD) "docker logs -f --tail=100 labcontrol_celery_worker"
+
+logs-prod-beat: ## VPS: tail the celery_beat container
+	@$(SSH_PROD) "docker logs -f --tail=100 labcontrol_celery_beat"
+
+logs-prod-nginx: ## VPS: tail nginx access + error logs
+	@$(SSH_PROD) "docker logs -f --tail=100 labcontrol_nginx"
+
+logs-prod-errors: ## VPS: show recent ERROR/WARNING lines across backend services
+	@$(SSH_PROD) "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml logs --tail=500 web celery_worker celery_beat 2>&1 | grep -E ' (ERROR|WARNING|EXCEPTION|FAILED|Traceback) '"
+
+logs-prod-grep: ## VPS: grep recent logs (Usage: make logs-prod-grep TERM=sync_labwin)
+	@if [ -z "$(TERM)" ]; then echo "Usage: make logs-prod-grep TERM=<pattern>"; exit 1; fi
+	@$(SSH_PROD) "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml logs --tail=2000 web celery_worker celery_beat 2>&1 | grep -i '$(TERM)'"
+
+ps-prod: ## VPS: show container status with healthchecks
+	@$(SSH_PROD) "cd /opt/labcontrol && docker compose -f docker-compose.prod.yml ps --format 'table {{.Name}}\t{{.Status}}'"
+
+install-prod-logs-cli: ## VPS: install the `labcontrol-logs` shell wrapper to /usr/local/bin
+	@sshpass -p "$$DEPLOY_SSH_PASSWORD" scp bin/labcontrol-logs deploy@72.60.137.226:/tmp/labcontrol-logs
+	@$(SSH_PROD) "echo \"$$DEPLOY_SSH_PASSWORD\" | sudo -S install -m 755 /tmp/labcontrol-logs /usr/local/bin/labcontrol-logs && rm /tmp/labcontrol-logs && echo 'Installed. Run: labcontrol-logs --help'"
+
 ps: ## Show running services
 	$(DOCKER_COMPOSE) ps
 
