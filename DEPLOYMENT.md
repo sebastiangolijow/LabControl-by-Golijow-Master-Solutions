@@ -708,8 +708,14 @@ sshpass -p "$DEPLOY_SSH_PASSWORD" scp apps/users/views.py apps/users/serializers
 sshpass -p "$DEPLOY_SSH_PASSWORD" ssh deploy@72.60.137.226
 cd /opt/labcontrol
 
-# Rebuild the image (if you changed requirements.txt or Dockerfile)
-docker compose -f docker-compose.prod.yml build web
+# ⚠️ ALWAYS rebuild when Python code changed — not just for requirements.txt!
+# The web/celery_worker/celery_beat images COPY the apps/ tree at build time,
+# so an `up -d --force-recreate` without `build` will spin up the OLD code.
+# Symptom: your fix is rsync'd to /opt/labcontrol/apps/... on the host, but
+# `docker exec <container> grep ...` still shows the previous version.
+#
+# Rule of thumb: ANY time you change Python files, rebuild THEN recreate.
+docker compose -f docker-compose.prod.yml build web celery_worker celery_beat
 
 # Run migrations (if you created new migrations)
 docker compose -f docker-compose.prod.yml run --rm web python manage.py migrate

@@ -792,3 +792,324 @@ class CleanupFTPPDFsTests(BaseTestCase):
         self.assertIn("files_deleted", result)
         self.assertIn("files_kept", result)
         self.assertIn("message", result)
+
+
+# ======================
+# BackupImporter (Phase B)
+# ======================
+import gzip
+import shutil
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+from django.core.management import call_command
+from django.core.management.base import CommandError
+
+from apps.labwin_sync.services.backup_import import (
+    BackupImporter,
+    BackupImportResult,
+    CorruptBackup,
+    FirebirdRestoreError,
+    NoBackupFound,
+)
+from apps.labwin_sync.tasks import import_uploaded_backup
+
+
+def _make_fake_backup(dir_path: Path, name: str = "BASEDAT_20260424.fbk.gz",
+                     payload: bytes = None) -> Path:
+    """Write a valid-gzip file ≥ 1024 bytes (clears validate_backup minimum)."""
+    if payload is None:
+        # 64 KB of random bytes — incompressible, so gzipped size > 64 KB
+        import os
+        payload = os.urandom(64 * 1024)
+    target = dir_path / name
+    with gzip.open(target, "wb") as f:
+        f.write(payload)
+    return target
+
+
+class BackupImporterDiscoveryTests(BaseTestCase):
+    """find_latest_backup + validate_backup."""
+
+    def setUp(self):
+        super().setUp()
+        self.tmp = Path(tempfile.mkdtemp())
+        self.incoming = self.tmp / "incoming"
+        self.processed = self.tmp / "processed"
+        self.failed = self.tmp / "failed"
+        for d in (self.incoming, self.processed, self.failed):
+            d.mkdir()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        super().tearDown()
+
+    def _importer(self, **overrides):
+        kwargs = {
+            "incoming_dir": str(self.incoming),
+            "processed_dir": str(self.processed),
+            "failed_dir": str(self.failed),
+        }
+        kwargs.update(overrides)
+        return BackupImporter(**kwargs)
+
+    def test_find_latest_backup_returns_newest(self):
+        old = _make_fake_backup(self.incoming, "old.fbk.gz")
+        new = _make_fake_backup(self.incoming, "new.fbk.gz")
+        # Force old's mtime backwards
+        import os
+        os.utime(old, (1000000, 1000000))
+        result = self._importer().find_latest_backup()
+        self.assertEqual(result, new)
+
+    def test_find_latest_backup_skips_in_progress_uploads(self):
+        partial = self.incoming / "partial.fbk.gz.uploading"
+        partial.write_bytes(b"x")
+        complete = _make_fake_backup(self.incoming, "complete.fbk.gz")
+        result = self._importer().find_latest_backup()
+        self.assertEqual(result, complete)
+
+    def test_find_latest_backup_raises_when_empty(self):
+        with self.assertRaises(NoBackupFound):
+            self._importer().find_latest_backup()
+
+    def test_find_latest_backup_raises_when_dir_missing(self):
+        importer = self._importer(incoming_dir="/nonexistent/path/xyz123")
+        with self.assertRaises(NoBackupFound):
+            importer.find_latest_backup()
+
+    def test_validate_rejects_empty_file(self):
+        empty = self.incoming / "empty.fbk.gz"
+        empty.touch()
+        with self.assertRaises(CorruptBackup):
+            self._importer().validate_backup(empty)
+
+    def test_validate_rejects_non_gzip(self):
+        bogus = self.incoming / "bogus.fbk.gz"
+        bogus.write_bytes(b"this is not gzip" * 100)
+        with self.assertRaises(CorruptBackup):
+            self._importer().validate_backup(bogus)
+
+    def test_validate_accepts_valid_gzip(self):
+        valid = _make_fake_backup(self.incoming)
+        # Should not raise
+        self._importer().validate_backup(valid)
+
+
+class BackupImporterMoveTests(BaseTestCase):
+    """move_to_processed / move_to_failed."""
+
+    def setUp(self):
+        super().setUp()
+        self.tmp = Path(tempfile.mkdtemp())
+        self.incoming = self.tmp / "incoming"
+        self.processed = self.tmp / "processed"
+        self.failed = self.tmp / "failed"
+        for d in (self.incoming, self.processed, self.failed):
+            d.mkdir()
+        self.backup = _make_fake_backup(self.incoming)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        super().tearDown()
+
+    def _importer(self):
+        return BackupImporter(
+            incoming_dir=str(self.incoming),
+            processed_dir=str(self.processed),
+            failed_dir=str(self.failed),
+        )
+
+    def test_move_to_processed_appends_timestamp(self):
+        self._importer().move_to_processed(self.backup)
+        self.assertFalse(self.backup.exists())
+        moved = list(self.processed.glob("*.fbk.gz"))
+        self.assertEqual(len(moved), 1)
+        # Filename should have __YYYYMMDDTHHMMSS suffix before .fbk.gz
+        self.assertIn("__", moved[0].name)
+
+    def test_move_to_failed_works(self):
+        self._importer().move_to_failed(self.backup)
+        self.assertFalse(self.backup.exists())
+        self.assertEqual(len(list(self.failed.glob("*.fbk.gz"))), 1)
+
+
+class BackupImporterRunTests(BaseTestCase):
+    """End-to-end run() with mocked firebird + sync."""
+
+    def setUp(self):
+        super().setUp()
+        self.tmp = Path(tempfile.mkdtemp())
+        self.incoming = self.tmp / "incoming"
+        self.processed = self.tmp / "processed"
+        self.failed = self.tmp / "failed"
+        for d in (self.incoming, self.processed, self.failed):
+            d.mkdir()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        super().tearDown()
+
+    def _importer(self):
+        return BackupImporter(
+            incoming_dir=str(self.incoming),
+            processed_dir=str(self.processed),
+            failed_dir=str(self.failed),
+            firebird_password="masterke",  # 8-char (FB 2.5 truncates)
+        )
+
+    def test_run_no_backup_returns_skipped(self):
+        result = self._importer().run()
+        self.assertEqual(result.status, "skipped")
+        self.assertIn("No .fbk.gz", result.error)
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_run_happy_path_moves_to_processed(self, mock_restore, mock_sync):
+        backup = _make_fake_backup(self.incoming)
+        mock_sync.return_value = {"message": "Sync OK", "studies_created": 5}
+
+        result = self._importer().run()
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.backup_filename, backup.name)
+        self.assertEqual(result.sync_result["studies_created"], 5)
+        self.assertFalse(backup.exists())
+        self.assertEqual(len(list(self.processed.glob("*.fbk.gz"))), 1)
+        self.assertEqual(len(list(self.failed.glob("*.fbk.gz"))), 0)
+        mock_restore.assert_called_once()
+        mock_sync.assert_called_once()
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_run_restore_failure_moves_to_failed(self, mock_restore):
+        backup = _make_fake_backup(self.incoming)
+        mock_restore.side_effect = FirebirdRestoreError("simulated restore failure")
+
+        result = self._importer().run()
+
+        self.assertEqual(result.status, "failed")
+        self.assertIn("simulated restore failure", result.error)
+        self.assertFalse(backup.exists())
+        self.assertEqual(len(list(self.failed.glob("*.fbk.gz"))), 1)
+        self.assertEqual(len(list(self.processed.glob("*.fbk.gz"))), 0)
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_run_skip_restore_does_not_call_restore(self, mock_restore, mock_sync):
+        _make_fake_backup(self.incoming)
+        mock_sync.return_value = {"message": "Sync OK"}
+
+        result = self._importer().run(skip_restore=True)
+
+        self.assertEqual(result.status, "completed")
+        mock_restore.assert_not_called()
+        mock_sync.assert_called_once()
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_run_skip_sync_does_not_call_sync(self, mock_restore, mock_sync):
+        _make_fake_backup(self.incoming)
+
+        result = self._importer().run(skip_sync=True)
+
+        self.assertEqual(result.status, "completed")
+        mock_restore.assert_called_once()
+        mock_sync.assert_not_called()
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_run_creates_synclog(self, mock_restore, mock_sync):
+        _make_fake_backup(self.incoming)
+        mock_sync.return_value = {"message": "Sync OK"}
+
+        before = SyncLog.objects.count()
+        self._importer().run()
+        after = SyncLog.objects.count()
+
+        self.assertEqual(after, before + 1)
+        log = SyncLog.objects.latest("started_at")
+        self.assertEqual(log.status, "completed")
+
+
+class ImportUploadedBackupTaskTests(BaseTestCase):
+    """The thin Celery wrapper task."""
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.run")
+    def test_task_returns_result_dict(self, mock_run):
+        mock_run.return_value = BackupImportResult(
+            status="completed",
+            backup_filename="test.fbk.gz",
+            backup_size_bytes=1024,
+        )
+        result = import_uploaded_backup(lab_client_id=1)
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["backup_filename"], "test.fbk.gz")
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.run")
+    def test_task_passes_explicit_file_as_path(self, mock_run):
+        mock_run.return_value = BackupImportResult(status="completed")
+        import_uploaded_backup(lab_client_id=1, explicit_file="/some/path.fbk.gz")
+        # First positional / kwarg arg should be a Path
+        call = mock_run.call_args
+        path_arg = call.kwargs.get("explicit_file") or (call.args[0] if call.args else None)
+        self.assertIsInstance(path_arg, Path)
+        self.assertEqual(str(path_arg), "/some/path.fbk.gz")
+
+
+class ImportBackupCommandTests(BaseTestCase):
+    """The `import_backup` management command."""
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.run")
+    def test_command_runs_synchronously_by_default(self, mock_run):
+        mock_run.return_value = BackupImportResult(
+            status="completed",
+            backup_filename="test.fbk.gz",
+            backup_size_bytes=1024,
+        )
+        from io import StringIO
+        out = StringIO()
+        call_command("import_backup", stdout=out)
+        self.assertIn("completed", out.getvalue())
+        mock_run.assert_called_once()
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.run")
+    def test_command_restore_only_flag_propagated(self, mock_run):
+        mock_run.return_value = BackupImportResult(status="completed")
+        call_command("import_backup", "--restore-only")
+        self.assertTrue(mock_run.call_args.kwargs["skip_sync"])
+        self.assertFalse(mock_run.call_args.kwargs["skip_restore"])
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.run")
+    def test_command_sync_only_flag_propagated(self, mock_run):
+        mock_run.return_value = BackupImportResult(status="completed")
+        call_command("import_backup", "--sync-only")
+        self.assertTrue(mock_run.call_args.kwargs["skip_restore"])
+        self.assertFalse(mock_run.call_args.kwargs["skip_sync"])
+
+    def test_command_restore_only_and_sync_only_mutually_exclusive(self):
+        with self.assertRaises(CommandError):
+            call_command("import_backup", "--restore-only", "--sync-only")
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.run")
+    def test_command_failed_status_raises_command_error(self, mock_run):
+        mock_run.return_value = BackupImportResult(
+            status="failed",
+            error="simulated failure",
+        )
+        with self.assertRaises(CommandError):
+            call_command("import_backup")
+
+    @patch("apps.labwin_sync.tasks.import_uploaded_backup")
+    def test_command_use_celery_dispatches_to_task(self, mock_task):
+        mock_task.delay.return_value = MagicMock(id="celery-task-id-123")
+        from io import StringIO
+        out = StringIO()
+        call_command("import_backup", "--use-celery", stdout=out)
+        mock_task.delay.assert_called_once()
+        self.assertIn("celery-task-id-123", out.getvalue())
+
+    def test_command_use_celery_with_restore_only_errors(self):
+        with self.assertRaises(CommandError):
+            call_command("import_backup", "--use-celery", "--restore-only")

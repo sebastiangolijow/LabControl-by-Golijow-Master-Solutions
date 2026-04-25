@@ -5,6 +5,7 @@ Tasks:
 - sync_labwin_results: Nightly sync from LabWin Firebird database.
 - fetch_ftp_pdfs: Fetch PDF result files from FTP server and attach to studies.
 - cleanup_ftp_pdfs: Remove successfully processed PDFs from FTP server.
+- import_uploaded_backup: Restore latest .fbk.gz backup and trigger sync (Phase B).
 """
 
 import logging
@@ -819,3 +820,28 @@ def cleanup_ftp_pdfs(self, lab_client_id=None):
         if task_id:
             self.retry(exc=e, countdown=300 * (2**self.request.retries))
         raise
+
+
+@shared_task(bind=True, max_retries=2, time_limit=7200)
+def import_uploaded_backup(self, lab_client_id=None, explicit_file=None):
+    """Restore latest backup from /srv/labwin_backups/incoming and trigger sync.
+
+    Phase B of the LabWin backup pipeline. See LABWIN_BACKUP_PIPELINE.md.
+
+    Thin wrapper around BackupImporter so the bulk of the logic stays
+    test-friendly (BackupImporter has no Celery decoration).
+
+    Args:
+        lab_client_id: Lab client ID for synced records.
+        explicit_file: Override discovery; restore this specific path instead.
+
+    Returns:
+        dict: BackupImportResult.as_dict() — status, sync_result, error, etc.
+    """
+    from pathlib import Path
+    from apps.labwin_sync.services.backup_import import BackupImporter
+
+    importer = BackupImporter(lab_client_id=lab_client_id)
+    file_arg = Path(explicit_file) if explicit_file else None
+    result = importer.run(explicit_file=file_arg)
+    return result.as_dict()

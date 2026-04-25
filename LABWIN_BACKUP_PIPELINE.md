@@ -19,10 +19,11 @@
 | Contenedor Firebird en `docker-compose.prod.yml` | ✅ | Desplegado 2026-04-25 — `jacobalberty/firebird:2.5-ss`, accesible en `firebird:3050` desde docker network. Services API verificada desde celery_worker. |
 | Permisos de `/srv/labwin_backups/{incoming,processed,failed}` | ✅ | `backup_user:1000 chmod 775` — celery_worker (uid 1000) puede leer y mover archivos |
 | `passlib` agregado a `requirements/base.txt` | ✅ | Requerido por `firebirdsql.services` para restore via Services API |
-| Task `import_uploaded_backup` | ⏳ | Pendiente (Fase B — siguiente paso) |
-| Management command `import_backup` | ⏳ | Pendiente (Fase B) |
-| Tests unitarios de `backup_import` | ⏳ | Pendiente (Fase B) |
-| `LABWIN_USE_MOCK=False` en prod | ⏳ | Solo después de validar Fase B end-to-end con disparo manual |
+| `BackupImporter` service + `import_uploaded_backup` task | ✅ | Implementado 2026-04-25 — `apps/labwin_sync/services/backup_import.py` + `apps/labwin_sync/tasks.py::import_uploaded_backup` |
+| Management command `import_backup` | ✅ | `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only] [--use-celery]` |
+| Tests unitarios de `backup_import` | ✅ | 24 tests, 100% passing (discovery, validate, move, run happy/failure paths, task wrapper, command flags) |
+| **Restore end-to-end validado** | ✅ | 2026-04-25 — restored `BASEDAT_20260424_180940.fbk.gz` (70 MB → 2.2 GB DB) via Services API en 155 s. Tablas verificadas: PACIENTES 218,843 · DETERS 940,198 · MEDICOS 7,104 · NOMEN 2,201 |
+| `LABWIN_USE_MOCK=False` en prod | ⏳ | Solo después de hacer `--sync-only` contra la DB restaurada y validar que `sync_labwin_results` mapea correctamente los 218k pacientes y 940k DETERS |
 | Beat schedule (cron 04:00 AM) | ⏳ | Solo después de soak period con disparos manuales |
 | Task Scheduler en la PC del lab | ⏳ | Pendiente — por ahora correrlo manual |
 | Limpieza de `.FDB` viejos en `/home/labwin_ftp/results/` | ⏳ | 2 archivos de 2.3 GB cada uno, probablemente corruptos |
