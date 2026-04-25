@@ -51,6 +51,9 @@ Worker doesn't hot-reload — **restart `celery_worker` AND `celery_beat`** afte
 ### Deploying Python code changes
 **Always `docker compose build` before `up -d --force-recreate`.** The `web` / `celery_worker` / `celery_beat` images COPY `apps/` at build time, so an rsync to the host + recreate-only spins up the OLD code. Symptom: `docker exec <container> grep` shows the previous version. See DEPLOYMENT.md §Backend Updates.
 
+### Changing a healthcheck (or any compose-level service config)
+**`docker compose up -d --force-recreate <svc>`, NOT `restart`.** `restart` only restarts the running container — it doesn't re-read `docker-compose.yml`, so new healthcheck/env/volumes/network changes are silently ignored. Symptom: you change the healthcheck CMD in compose, run `restart`, and the container keeps reporting unhealthy with the OLD probe. Bit me on the nginx healthcheck fix (commit 877f51f).
+
 ---
 
 ## Migrations
