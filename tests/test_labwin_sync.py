@@ -604,7 +604,9 @@ class SyncWindowTests(BaseTestCase):
             def __exit__(self_inner, *exc):
                 return False
 
-            def fetch_validated_deters(self_inner, since_fecha=None, since_numero=None, batch_size=500):
+            def fetch_validated_deters(
+                self_inner, since_fecha=None, since_numero=None, batch_size=500
+            ):
                 captured["since_fecha"] = since_fecha
                 captured["since_numero"] = since_numero
                 return iter([])  # No batches → task completes immediately
@@ -692,7 +694,9 @@ class SyncWindowTests(BaseTestCase):
                 if row.get("ABREV_FLD") == "GLU-Bi":
                     row["RESULT_FLD"] = "999"  # Corrected value
 
-            def _fake_fetch(self_inner=None, since_fecha=None, since_numero=None, batch_size=500):
+            def _fake_fetch(
+                self_inner=None, since_fecha=None, since_numero=None, batch_size=500
+            ):
                 yield mutated_deters
 
             mock_fetch.side_effect = _fake_fetch
