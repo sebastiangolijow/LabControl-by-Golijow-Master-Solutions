@@ -322,7 +322,7 @@ Save this as `C:\labcontrol_backup\upload_backup.config.ini` on the lab PC. **Fi
 ```ini
 [firebird]
 gbak_exe = C:\Program Files\Firebird\Firebird_2_5\bin\gbak.exe
-database = C:\sistema\LabWin4\BASEDAT.FDB
+database = C:\sistema\LabWin4\Basedat\BASEDAT.FDB
 user = SYSDBA
 password = REPLACE_WITH_REAL_SYSDBA_PASSWORD
 
