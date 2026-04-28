@@ -70,7 +70,6 @@ All migrations were deleted and recreated from scratch on **2026-02-17**. Fresh 
 - **Patient signup workflow when source has no email** (~52% of PACIENTES rows lack `EMAIL_FLD`). Options being discussed: hybrid that always imports the patient (with `is_active=False` until signup) + QR code on the paper result for self-claim by DNI, OR lab manually triggers an invite email. See "Workflow open question" below for the full design tradeoff.
 
 **Ready to implement (no external blockers):**
-- Switch sync window from "all >= 2026-02-01" to **rolling yesterday + today** so re-imports update yesterday's late-validated rows without rescanning everything.
 - Implement the chosen patient-onboarding flow once decided.
 - **Schedule Celery Beat** for `import_uploaded_backup` (nightly 04:00) AND `fetch_ftp_pdfs`. Currently both are manual-only by deliberate choice — only flip after the workflow above is locked in.
 - **Schedule Task Scheduler on lab PC** for nightly 02:00 upload (still manual).
@@ -85,7 +84,8 @@ All migrations were deleted and recreated from scratch on **2026-02-17**. Fresh 
 - Decide retention policy for `/srv/labwin_backups/processed/` (currently 30 days).
 
 ### Done recently
-- ✅ **2026-04-25 (this session)** — see "Today's session" below
+- ✅ **2026-04-28** — Rolling-window sync (initial 90 days + rolling 2 days). New settings `LABWIN_SYNC_INITIAL_DAYS=90` / `LABWIN_SYNC_ROLLING_DAYS=2`. First sync backfills the last 90 days; every subsequent sync re-scans the last 2 days so late-validated rows get picked up. Re-syncs are idempotent — `_get_or_create_study_with_practices` already updates `is_paid`, `is_validated`, and `RESULT_FLD` when source state changes (verified). Skips the lab's 14-year history per business decision. 464 tests passing (5 new in `SyncWindowTests`).
+- ✅ **2026-04-25 (previous session)** — see "Today's session" below
 - ✅ **2026-04-24** — LabWin backup pipeline Fase A complete (SFTP chroot, first real upload 69.9 MB)
 - ✅ **2026-04-18** — 2,174 LabWin practices imported
 - ✅ **2026-04-12** — Doctor CSV import + LabWin sync feature shipped

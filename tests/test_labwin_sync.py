@@ -12,7 +12,7 @@ Tests cover:
 import gzip
 import shutil
 import tempfile
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -355,6 +355,15 @@ class MockConnectorTests(BaseTestCase):
     CELERY_TASK_ALWAYS_EAGER=True,
     CELERY_TASK_EAGER_PROPAGATES=True,
 )
+# Mock DETERS rows are dated 2025-10-28 to 2025-10-30. To keep the existing
+# SyncTaskTests valid as today's date drifts past the default 90-day window,
+# override the window to a value that always covers the mock data. Tests that
+# specifically exercise the window logic live in SyncWindowTests below and
+# override these settings further.
+@override_settings(
+    LABWIN_SYNC_INITIAL_DAYS=10000,
+    LABWIN_SYNC_ROLLING_DAYS=10000,
+)
 class SyncTaskTests(BaseTestCase):
     """Integration tests for the sync_labwin_results task."""
 
@@ -564,6 +573,135 @@ class SyncTaskTests(BaseTestCase):
         # Names preserved in source casing (mapper doesn't titlecase)
         self.assertEqual(new_user.first_name.upper(), "MARIA")
         self.assertEqual(new_user.last_name.upper(), "GARCIA")
+
+
+# ======================
+# Sync Window Tests (rolling-window cursor behavior)
+# ======================
+
+
+class SyncWindowTests(BaseTestCase):
+    """Tests for the date-window cursor logic in sync_labwin_results.
+
+    The task uses two settings:
+      - LABWIN_SYNC_INITIAL_DAYS for the very first sync (no prior SyncLog)
+      - LABWIN_SYNC_ROLLING_DAYS for every subsequent sync
+
+    These tests verify that the connector receives the correct since_fecha
+    based on those settings and the prior-sync state.
+    """
+
+    def _capture_since_fecha(self):
+        """Patch the connector's fetch_validated_deters to capture the
+        since_fecha argument it's called with, then return an empty iterator
+        so the task short-circuits."""
+        captured = {}
+
+        class _CapturingConnector:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *exc):
+                return False
+
+            def fetch_validated_deters(self_inner, since_fecha=None, since_numero=None, batch_size=500):
+                captured["since_fecha"] = since_fecha
+                captured["since_numero"] = since_numero
+                return iter([])  # No batches → task completes immediately
+
+        return captured, _CapturingConnector()
+
+    @override_settings(LABWIN_SYNC_INITIAL_DAYS=90)
+    def test_first_sync_uses_initial_window(self):
+        """No prior SyncLog → window starts LABWIN_SYNC_INITIAL_DAYS ago."""
+        captured, connector = self._capture_since_fecha()
+
+        with patch("apps.labwin_sync.tasks.get_connector", return_value=connector):
+            sync_labwin_results(lab_client_id=1, full_sync=False)
+
+        expected = (date.today() - timedelta(days=90)).strftime("%Y%m%d")
+        self.assertEqual(captured["since_fecha"], expected)
+        self.assertEqual(captured["since_numero"], -1)
+
+    @override_settings(LABWIN_SYNC_INITIAL_DAYS=30)
+    def test_initial_window_setting_is_honored(self):
+        """Different LABWIN_SYNC_INITIAL_DAYS produces a different cutoff."""
+        captured, connector = self._capture_since_fecha()
+
+        with patch("apps.labwin_sync.tasks.get_connector", return_value=connector):
+            sync_labwin_results(lab_client_id=1, full_sync=False)
+
+        expected = (date.today() - timedelta(days=30)).strftime("%Y%m%d")
+        self.assertEqual(captured["since_fecha"], expected)
+
+    @override_settings(LABWIN_SYNC_ROLLING_DAYS=2)
+    def test_subsequent_sync_uses_rolling_window(self):
+        """A prior completed SyncLog → window starts LABWIN_SYNC_ROLLING_DAYS ago,
+        regardless of how far the prior sync got. The point is to re-scan
+        recent days for late-validated rows."""
+        # Simulate an earlier successful sync that processed up to a date
+        # well in the past.
+        SyncLog.objects.create(
+            status="completed",
+            lab_client_id=1,
+            last_synced_fecha="20200101",  # Far in the past
+            last_synced_numero=999999,
+        )
+
+        captured, connector = self._capture_since_fecha()
+        with patch("apps.labwin_sync.tasks.get_connector", return_value=connector):
+            sync_labwin_results(lab_client_id=1, full_sync=False)
+
+        # Window is "today minus 2 days", NOT the saved cursor value.
+        expected = (date.today() - timedelta(days=2)).strftime("%Y%m%d")
+        self.assertEqual(captured["since_fecha"], expected)
+        self.assertEqual(captured["since_numero"], -1)
+
+    @override_settings(
+        LABWIN_SYNC_INITIAL_DAYS=10000,
+        LABWIN_SYNC_ROLLING_DAYS=10000,
+    )
+    def test_full_sync_bypasses_window(self):
+        """full_sync=True skips the date filter entirely (since_fecha=None)."""
+        captured, connector = self._capture_since_fecha()
+
+        with patch("apps.labwin_sync.tasks.get_connector", return_value=connector):
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        self.assertIsNone(captured["since_fecha"])
+        self.assertIsNone(captured["since_numero"])
+
+    @override_settings(
+        LABWIN_SYNC_INITIAL_DAYS=10000,
+        LABWIN_SYNC_ROLLING_DAYS=10000,
+    )
+    def test_resync_updates_result_when_changed(self):
+        """Re-syncing a study where RESULT_FLD changed overwrites the result.
+        This is the contract that makes the rolling window valuable: studies
+        already in Postgres get refreshed every run."""
+        # First sync — creates the study with original result
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+        sp = StudyPractice.objects.filter(code="GLU-Bi").first()
+        self.assertIsNotNone(sp)
+        original_result = sp.result
+
+        # Mutate the mock data: pretend the lab corrected the glucose result
+        with patch.object(MockLabWinConnector, "fetch_validated_deters") as mock_fetch:
+            mutated_deters = [dict(row) for row in SAMPLE_DETERS]
+            for row in mutated_deters:
+                if row.get("ABREV_FLD") == "GLU-Bi":
+                    row["RESULT_FLD"] = "999"  # Corrected value
+
+            def _fake_fetch(self_inner=None, since_fecha=None, since_numero=None, batch_size=500):
+                yield mutated_deters
+
+            mock_fetch.side_effect = _fake_fetch
+
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        sp.refresh_from_db()
+        self.assertEqual(sp.result, "999")
+        self.assertNotEqual(sp.result, original_result)
 
 
 # ======================

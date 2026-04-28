@@ -11,6 +11,7 @@ Tasks:
 import logging
 import os
 from collections import defaultdict
+from datetime import date, timedelta
 
 from celery import shared_task
 from django.conf import settings
@@ -71,7 +72,18 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         celery_task_id=task_id,
     )
 
-    # Determine cursor from last successful sync
+    # Determine the date window for this sync.
+    #
+    # Rolling window strategy (replaces the old "resume from last cursor" logic):
+    #   - First run for this lab → backfill the last LABWIN_SYNC_INITIAL_DAYS.
+    #   - Subsequent runs → re-scan the last LABWIN_SYNC_ROLLING_DAYS, so
+    #     late-validated rows from yesterday get picked up. Studies already in
+    #     Postgres are idempotently updated by _get_or_create_study_with_practices
+    #     (is_paid, is_validated, RESULT_FLD changes, new StudyPractices).
+    #   - full_sync=True still bypasses the window (useful for one-off re-imports).
+    #
+    # Older data (the lab has 14+ years of history) is intentionally skipped:
+    # only recent data is valid for the patient portal per business decision.
     since_fecha = None
     since_numero = None
 
@@ -80,18 +92,34 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             SyncLog.objects.filter(
                 lab_client_id=lab_client_id,
                 status="completed",
-                last_synced_fecha__gt="",
             )
             .order_by("-started_at")
             .first()
         )
+
         if last_sync:
-            since_fecha = last_sync.last_synced_fecha
-            since_numero = last_sync.last_synced_numero
+            rolling_days = getattr(settings, "LABWIN_SYNC_ROLLING_DAYS", 2)
+            window_start = date.today() - timedelta(days=rolling_days)
+            since_fecha = window_start.strftime("%Y%m%d")
+            # NUMERO_FLD is positive in real data; -1 makes the connector's
+            # `FECHA_FLD = ? AND NUMERO_FLD > ?` comparison include every row
+            # on the start date.
+            since_numero = -1
             logger.info(
-                "Incremental sync from fecha=%s, numero=%s",
+                "Rolling-window sync: fecha >= %s (last %d days)",
                 since_fecha,
-                since_numero,
+                rolling_days,
+            )
+        else:
+            initial_days = getattr(settings, "LABWIN_SYNC_INITIAL_DAYS", 90)
+            window_start = date.today() - timedelta(days=initial_days)
+            since_fecha = window_start.strftime("%Y%m%d")
+            since_numero = -1
+            logger.info(
+                "Initial backfill: fecha >= %s (last %d days, no prior sync for lab_client_id=%s)",
+                since_fecha,
+                initial_days,
+                lab_client_id,
             )
 
     # Caches to avoid repeated DB lookups within this sync run

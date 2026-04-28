@@ -6,7 +6,7 @@
 **Database**: PostgreSQL 15 with UUID primary keys
 **Task Queue**: Celery + Redis
 **API Framework**: Django REST Framework 3.x
-**Test suite**: 459 passing
+**Test suite**: 464 passing
 
 ---
 
@@ -1600,14 +1600,23 @@ apps/labwin_sync/
 
 ### Sync Flow
 
-1. Celery Beat triggers `sync_labwin_results` nightly at 2 AM
-2. Task reads cursor from last successful SyncLog
+1. Celery Beat triggers `sync_labwin_results` nightly at 2 AM (currently manual until the lab signup workflow is locked in)
+2. Task computes the **date window** (rolling-window strategy, since 2026-04-28):
+   - **First run** for this `lab_client_id` → window starts `LABWIN_SYNC_INITIAL_DAYS` ago (default 90)
+   - **Every subsequent run** → window starts `LABWIN_SYNC_ROLLING_DAYS` ago (default 2), regardless of how far the prior sync got. This re-scans the last couple of days every night so late-validated rows from yesterday get picked up.
+   - `full_sync=True` bypasses the window entirely (one-off re-imports).
+   - Older data (the lab's 14+ years of history pre-window) is intentionally skipped per business decision: only recent data is valid for the patient portal.
 3. Connects to LabWin via connector factory (mock or real based on `LABWIN_USE_MOCK`)
-4. Fetches validated DETERS in batches of 500
+4. Fetches validated DETERS where `FECHA_FLD >= window_start`, in batches of 500
 5. For each batch: fetches PACIENTES, MEDICOS, NOMEN for referenced IDs
 6. Groups DETERS rows by NUMERO_FLD — creates 1 Study per NUMERO, N StudyPractice records per Study
-7. Creates/updates patients, doctors, practices, studies, study_practices (idempotent)
-8. Updates SyncLog with counts and cursor
+7. Creates **or updates** patients, doctors, practices, studies, study_practices. Re-syncs are idempotent and refresh:
+   - `Study.is_paid` (from `DEBEBONO_FLD`) and `Study.is_validated` if they changed
+   - `StudyPractice.result` if `RESULT_FLD` changed and is non-empty
+   - New `StudyPractice` rows if the lab added practices to an existing protocol
+   - Patient `phone_number / direction / location / carnet` if they changed
+   - **Not** refreshed: study `status / service_date / patient FK / ordered_by FK`, removed practices, doctor / practice fields. Track as TODO if those become important.
+8. Updates SyncLog with counts. `last_synced_fecha` / `last_synced_numero` are written for audit trail but no longer drive the cursor (rolling-window replaces the resume-from-cursor logic).
 
 ### Connector Abstraction
 
@@ -1634,6 +1643,9 @@ LABWIN_FDB_USER=SYSDBA
 LABWIN_FDB_PASSWORD=<from 1Password: "LabControl LabWin SYSDBA">
 LABWIN_SYNC_BATCH_SIZE=500
 LABWIN_DEFAULT_LAB_CLIENT_ID=1
+# Date window — see "Sync Flow" above
+LABWIN_SYNC_INITIAL_DAYS=90
+LABWIN_SYNC_ROLLING_DAYS=2
 ```
 
 ### Production Data Ingestion — Backup Pipeline

@@ -281,6 +281,15 @@ LABWIN_SYNC_BATCH_SIZE = env.int("LABWIN_SYNC_BATCH_SIZE", default=500)
 LABWIN_DEFAULT_LAB_CLIENT_ID = env.int("LABWIN_DEFAULT_LAB_CLIENT_ID", default=1)
 LABWIN_MOCK_FDB_PATH = env("LABWIN_MOCK_FDB_PATH", default="")
 
+# Sync window. The lab's full backup contains 14+ years of records, but only
+# recent data is relevant for the patient portal.
+#   - INITIAL_DAYS: how far back the *first* sync (no prior cursor) reaches.
+#   - ROLLING_DAYS: how far back every subsequent sync reaches, so late-validated
+#     rows from yesterday get picked up. Re-syncs are idempotent
+#     (see _get_or_create_study_with_practices).
+LABWIN_SYNC_INITIAL_DAYS = env.int("LABWIN_SYNC_INITIAL_DAYS", default=90)
+LABWIN_SYNC_ROLLING_DAYS = env.int("LABWIN_SYNC_ROLLING_DAYS", default=2)
+
 # LabWin FTP Configuration (for fetching PDF results)
 LABWIN_FTP_USE_MOCK = env.bool("LABWIN_FTP_USE_MOCK", default=True)
 LABWIN_FTP_HOST = env("LABWIN_FTP_HOST", default="localhost")
