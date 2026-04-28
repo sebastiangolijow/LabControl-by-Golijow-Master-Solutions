@@ -74,53 +74,31 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
 
     # Determine the date window for this sync.
     #
-    # Rolling window strategy (replaces the old "resume from last cursor" logic):
-    #   - First run for this lab → backfill the last LABWIN_SYNC_INITIAL_DAYS.
-    #   - Subsequent runs → re-scan the last LABWIN_SYNC_ROLLING_DAYS, so
-    #     late-validated rows from yesterday get picked up. Studies already in
-    #     Postgres are idempotently updated by _get_or_create_study_with_practices
-    #     (is_paid, is_validated, RESULT_FLD changes, new StudyPractices).
-    #   - full_sync=True still bypasses the window (useful for one-off re-imports).
+    # Single rolling window: every run re-imports DETERS where FECHA_FLD falls
+    # within today - LABWIN_SYNC_WINDOW_DAYS (default 90, = the lab's max
+    # study turnaround). The connector filters on FECHA_FLD (sample date),
+    # not validation date — so a study that was sampled 60 days ago but only
+    # validated yesterday gets picked up by today's sync. Re-imports are
+    # idempotent (_get_or_create_study_with_practices updates is_paid,
+    # is_validated, RESULT_FLD, and adds new StudyPractices).
     #
-    # Older data (the lab has 14+ years of history) is intentionally skipped:
-    # only recent data is valid for the patient portal per business decision.
+    # full_sync=True bypasses the window for one-off re-imports of all history.
     since_fecha = None
     since_numero = None
 
     if not full_sync:
-        last_sync = (
-            SyncLog.objects.filter(
-                lab_client_id=lab_client_id,
-                status="completed",
-            )
-            .order_by("-started_at")
-            .first()
+        window_days = getattr(settings, "LABWIN_SYNC_WINDOW_DAYS", 90)
+        window_start = date.today() - timedelta(days=window_days)
+        since_fecha = window_start.strftime("%Y%m%d")
+        # NUMERO_FLD is positive in real data; -1 makes the connector's
+        # `FECHA_FLD = ? AND NUMERO_FLD > ?` comparison include every row on
+        # the window-start date.
+        since_numero = -1
+        logger.info(
+            "Sync window: fecha >= %s (last %d days)",
+            since_fecha,
+            window_days,
         )
-
-        if last_sync:
-            rolling_days = getattr(settings, "LABWIN_SYNC_ROLLING_DAYS", 2)
-            window_start = date.today() - timedelta(days=rolling_days)
-            since_fecha = window_start.strftime("%Y%m%d")
-            # NUMERO_FLD is positive in real data; -1 makes the connector's
-            # `FECHA_FLD = ? AND NUMERO_FLD > ?` comparison include every row
-            # on the start date.
-            since_numero = -1
-            logger.info(
-                "Rolling-window sync: fecha >= %s (last %d days)",
-                since_fecha,
-                rolling_days,
-            )
-        else:
-            initial_days = getattr(settings, "LABWIN_SYNC_INITIAL_DAYS", 90)
-            window_start = date.today() - timedelta(days=initial_days)
-            since_fecha = window_start.strftime("%Y%m%d")
-            since_numero = -1
-            logger.info(
-                "Initial backfill: fecha >= %s (last %d days, no prior sync for lab_client_id=%s)",
-                since_fecha,
-                initial_days,
-                lab_client_id,
-            )
 
     # Caches to avoid repeated DB lookups within this sync run
     practice_cache = {}  # ABREV_FLD -> Practice pk
@@ -144,14 +122,15 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
     # loop and dispatch one email per user at the end (so a patient with 5 new
     # studies gets 1 email, not 5). See _dispatch_patient_notifications.
     #
-    # users_created_this_run: User pks that THIS sync run created from PACIENTES.
-    #     Drives the "set up your password" email branch.
+    # users_needing_password_setup: User pks that need the password-setup email
+    #     this run — either created fresh from PACIENTES, or "DNI-revived"
+    #     (user existed but email-less, and this sync brought their email).
     # studies_to_notify: {user_pk: [study_pk, ...]} for studies whose
     #     notification_sent_at is currently NULL (i.e. patient hasn't been
     #     emailed yet about this study). Includes both fresh-create and re-sync
     #     cases — the timestamp is the source of truth, not "did we create the
     #     study just now".
-    users_created_this_run = set()
+    users_needing_password_setup = set()
     studies_to_notify = defaultdict(list)
 
     total_processed = 0
@@ -281,12 +260,14 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                     # up in another batch
                                     patient_cache[numero] = None
                                     continue
-                                patient_pk, was_created = _get_or_create_patient(
-                                    pac_row, lab_client_id, sync_log, counters
+                                patient_pk, needs_password_setup = (
+                                    _get_or_create_patient(
+                                        pac_row, lab_client_id, sync_log, counters
+                                    )
                                 )
                                 patient_cache[numero] = patient_pk
-                                if was_created:
-                                    users_created_this_run.add(patient_pk)
+                                if needs_password_setup:
+                                    users_needing_password_setup.add(patient_pk)
                             else:
                                 errors.append(
                                     {
@@ -395,7 +376,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         if studies_to_notify:
             queued = _dispatch_patient_notifications(
                 studies_to_notify=studies_to_notify,
-                users_created_this_run=users_created_this_run,
+                users_needing_password_setup=users_needing_password_setup,
             )
             counters["notifications_queued"] = queued
             logger.info(
@@ -461,20 +442,32 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
 def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
     """Get or create a patient User from a PACIENTES row.
 
+    Patients imported from LabWin are always created INACTIVE
+    (is_active=False, is_verified=False). They activate themselves by
+    clicking the password-setup link in the email we send (handled by
+    SetPasswordView, which flips both flags and creates the allauth
+    EmailAddress row).
+
+    Patients without email at import time stay inactive indefinitely; if a
+    later sync brings an email for that DNI, the "DNI revival" branch below
+    writes it and the caller treats them like a fresh-create so they get
+    the password-setup email.
+
     Returns:
-        (user_pk, was_created): Tuple of the User's pk and a flag indicating
-        whether THIS sync run created the User. The flag drives the
-        notification logic in sync_labwin_results:
-            was_created=False → "your study is now available" email
-            was_created=True  → "set up your password" email (if email exists)
+        (user_pk, needs_password_setup): Tuple of the User's pk and a flag
+        indicating whether to send the password-setup email this run.
+            needs_password_setup=False → "your study is now available" email
+                (the user already has a working portal account)
+            needs_password_setup=True  → "set up your password" email
+                (only sent if the user has an email at this point)
     """
     from apps.users.models import User
 
     source_key = str(pac_row["NUMERO_FLD"])
     fields = mappers.map_patient(pac_row)
+    new_email = fields.get("email")
 
-    # Check SyncedRecord first — if we previously imported this PACIENTES row,
-    # the User definitely existed before this sync run.
+    # Check SyncedRecord first — we previously imported this PACIENTES row.
     existing = SyncedRecord.objects.filter(
         source_table="PACIENTES",
         source_key=source_key,
@@ -482,22 +475,14 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
     ).first()
 
     if existing:
-        # Update existing patient
         user = User.objects.filter(pk=existing.target_uuid).first()
         if user:
-            update_fields = []
-            for field_name in ["phone_number", "direction", "location", "carnet"]:
-                new_val = fields.get(field_name)
-                if new_val and new_val != getattr(user, field_name, ""):
-                    setattr(user, field_name, new_val)
-                    update_fields.append(field_name)
-            if update_fields:
-                user.save(update_fields=update_fields)
-                counters["patients_updated"] += 1
-            return user.pk, False
-        # SyncedRecord exists but user was deleted, fall through to create
+            return _refresh_existing_patient(user, fields, new_email, counters)
+        # SyncedRecord exists but user was deleted — fall through to create
 
-    # Try to match by DNI — User exists from manual signup or an earlier sync.
+    # Try to match by DNI — User may exist from manual signup or earlier sync
+    # (where we didn't yet have a SyncedRecord — e.g. user signed up first,
+    # then their PACIENTES row landed in a sync).
     dni = fields.get("dni")
     if dni:
         user = User.objects.filter(
@@ -512,14 +497,15 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
                 lab_client_id,
                 sync_log,
             )
-            counters["patients_updated"] += 1
-            return user.pk, False
+            return _refresh_existing_patient(user, fields, new_email, counters)
 
-    # Create new patient.
-    # Email is unique on User; if another patient already has this email
-    # (common: spouses, family members sharing one address), drop the email
-    # for the new row instead of failing the whole study import.
-    email = fields.get("email")
+    # Create new patient. ALWAYS inactive — the user proves email control by
+    # clicking the password-setup link.
+    #
+    # Email collision: another patient already has this email (common for
+    # family members sharing an address). Drop it; they stay imported but
+    # without an email, awaiting the QR/manual-claim flow.
+    email = new_email
     if email and User.objects.filter(email=email).exists():
         logger.info(
             "Patient email %s already taken — creating new patient with email=None",
@@ -541,8 +527,8 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
             direction=fields.get("direction", ""),
             location=fields.get("location", ""),
             role="patient",
-            is_active=True,
-            is_verified=True,
+            is_active=False,
+            is_verified=False,
             lab_client_id=lab_client_id,
         )
         _ensure_synced_record(
@@ -554,7 +540,62 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
             sync_log,
         )
         counters["patients_created"] += 1
-        return user.pk, True
+
+        # Only send password-setup if we actually saved an email. Patients
+        # without email wait for a future sync that brings one (DNI revival)
+        # OR for the QR/manual-claim flow.
+        needs_setup = bool(email)
+        return user.pk, needs_setup
+
+
+def _refresh_existing_patient(user, fields, new_email, counters):
+    """Update mutable fields on a patient that already exists in Postgres.
+
+    Returns:
+        (user_pk, needs_password_setup) tuple, same contract as
+        _get_or_create_patient.
+
+    The needs_password_setup flag is True only in the DNI-revival case:
+    the existing user has no email AND PACIENTES is now bringing one. In
+    that case we write the email, leave is_active=False (still hasn't
+    proven control), and route them through the password-setup flow.
+    """
+    update_fields = []
+
+    # DNI revival: existing user is email-less and PACIENTES has an email
+    # this time around. Write it (if it's not taken by someone else) and
+    # treat the user like a fresh-create for notification purposes.
+    needs_setup = False
+    if not user.email and new_email:
+        from apps.users.models import User
+
+        if User.objects.filter(email=new_email).exclude(pk=user.pk).exists():
+            logger.info(
+                "DNI revival skipped: email %s for user pk=%s already taken by another user",
+                new_email,
+                user.pk,
+            )
+        else:
+            user.email = new_email
+            update_fields.append("email")
+            needs_setup = True
+            logger.info(
+                "DNI revival: writing email for user pk=%s — will queue password-setup",
+                user.pk,
+            )
+
+    # Routine field refresh from the latest PACIENTES snapshot.
+    for field_name in ["phone_number", "direction", "location", "carnet"]:
+        new_val = fields.get(field_name)
+        if new_val and new_val != getattr(user, field_name, ""):
+            setattr(user, field_name, new_val)
+            update_fields.append(field_name)
+
+    if update_fields:
+        user.save(update_fields=update_fields)
+        counters["patients_updated"] += 1
+
+    return user.pk, needs_setup
 
 
 def _get_or_create_doctor(medico_row, lab_client_id, sync_log, counters):
@@ -821,29 +862,29 @@ def _ensure_synced_record(
     )
 
 
-def _dispatch_patient_notifications(studies_to_notify, users_created_this_run):
+def _dispatch_patient_notifications(studies_to_notify, users_needing_password_setup):
     """Queue patient notification emails for studies imported in this sync.
 
     One email per patient, batched across all their new studies. Updates
-    Study.notification_sent_at so re-syncs (rolling 2-day window) won't
+    Study.notification_sent_at so re-imports under the rolling window won't
     re-notify.
 
-    Two cases:
-      A. Patient was CREATED by this sync (in users_created_this_run)
-         AND has an email → queue "set up your password" email
-         (apps.notifications.tasks.send_password_setup_email).
-      B. Patient existed before AND has an email → queue "your studies
-         are available" email
-         (apps.notifications.tasks.send_studies_available_email).
+    Two routes:
+      A. Patient is in users_needing_password_setup (fresh-create or
+         DNI-revival) AND has an email → "set up your password" email.
+         Their account is is_active=False until they click the link.
+      B. Patient is already active (existed before, or set up password
+         on a previous run) AND has an email → batched "your N studies
+         are available" email.
 
-    Patients without email get nothing (the lab signup workflow is still
-    open — see CLAUDE.md "Workflow open question"). Their studies stay
-    unnotified (notification_sent_at=NULL) so when an email becomes
-    available later, the next sync will catch them.
+    Patients without email get nothing — their studies stay
+    notification_sent_at=NULL so a future sync that brings an email
+    (DNI-revival branch in _refresh_existing_patient) catches them.
 
     Args:
         studies_to_notify: dict {user_pk: [study_pk, ...]}
-        users_created_this_run: set of user_pks created during this sync run
+        users_needing_password_setup: set of user_pks that should get the
+            password-setup email this run
 
     Returns:
         Number of emails queued.
@@ -859,15 +900,15 @@ def _dispatch_patient_notifications(studies_to_notify, users_created_this_run):
     now = timezone.now()
     user_ids = list(studies_to_notify.keys())
 
-    # Single query to get email + flag for all candidate users
+    # Single query to get email for all candidate users
     users = {u.pk: u for u in User.objects.filter(pk__in=user_ids).only("pk", "email")}
 
     for user_pk, study_pks in studies_to_notify.items():
         user = users.get(user_pk)
         if user is None or not user.email:
             # No email → can't notify. Leave Study.notification_sent_at NULL
-            # so a future sync (after the patient gets an email via signup
-            # workflow) can re-attempt.
+            # so a future sync (after PACIENTES brings an email via the
+            # DNI-revival branch) can re-attempt.
             logger.info(
                 "skip notify user pk=%s: no email (studies pending=%d)",
                 user_pk,
@@ -876,24 +917,22 @@ def _dispatch_patient_notifications(studies_to_notify, users_created_this_run):
             continue
 
         try:
-            if user_pk in users_created_this_run:
-                # Brand new user — send password-setup invite. The first study
-                # they have triggers the invite; subsequent studies get
-                # notified once they log in.
+            if user_pk in users_needing_password_setup:
+                # Fresh-create or DNI-revival — send password-setup invite.
+                # User is is_active=False until they click the link.
                 send_password_setup_email.delay(str(user_pk))
                 logger.info(
-                    "queued password_setup email for new user pk=%s " "(studies=%d)",
+                    "queued password_setup email for user pk=%s (studies=%d)",
                     user_pk,
                     len(study_pks),
                 )
             else:
-                # Existing user — batched "you have N new studies" email.
+                # Already-active user — batched "you have N new studies".
                 send_studies_available_email.delay(
                     str(user_pk), [str(pk) for pk in study_pks]
                 )
                 logger.info(
-                    "queued studies_available email for existing user pk=%s "
-                    "(studies=%d)",
+                    "queued studies_available email for user pk=%s (studies=%d)",
                     user_pk,
                     len(study_pks),
                 )

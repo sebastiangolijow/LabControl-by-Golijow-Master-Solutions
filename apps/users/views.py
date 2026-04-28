@@ -544,14 +544,23 @@ class SetPasswordView(generics.GenericAPIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Set the password
+            # Set the password and activate the account.
+            #
+            # Patients imported from LabWin start as is_active=False,
+            # is_verified=False — clicking the password-setup link is what
+            # proves they own the email and unlocks login. We flip both flags
+            # plus create the allauth EmailAddress row (without which login
+            # would silently fail because allauth authenticates against
+            # EmailAddress, not User.email).
             user.set_password(password)
+            user.is_active = True
             user.is_verified = True
             user.verification_token = None
             user.verification_token_created_at = None
             user.save(
                 update_fields=[
                     "password",
+                    "is_active",
                     "is_verified",
                     "verification_token",
                     "verification_token_created_at",

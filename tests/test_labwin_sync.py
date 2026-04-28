@@ -359,11 +359,8 @@ class MockConnectorTests(BaseTestCase):
 # SyncTaskTests valid as today's date drifts past the default 90-day window,
 # override the window to a value that always covers the mock data. Tests that
 # specifically exercise the window logic live in SyncWindowTests below and
-# override these settings further.
-@override_settings(
-    LABWIN_SYNC_INITIAL_DAYS=10000,
-    LABWIN_SYNC_ROLLING_DAYS=10000,
-)
+# override this setting further.
+@override_settings(LABWIN_SYNC_WINDOW_DAYS=10000)
 class SyncTaskTests(BaseTestCase):
     """Integration tests for the sync_labwin_results task."""
 
@@ -566,13 +563,19 @@ class SyncTaskTests(BaseTestCase):
         }
 
         # Should not raise — should create the patient with email=None
-        new_pk, was_created = _get_or_create_patient(pac_row, 1, sync_log, counters)
+        new_pk, needs_setup = _get_or_create_patient(pac_row, 1, sync_log, counters)
 
         self.assertIsNotNone(new_pk)
-        self.assertTrue(was_created)
+        # needs_password_setup=False because we couldn't save an email — no
+        # password-setup link can be sent. The patient stays inactive,
+        # waiting for DNI-revival or the QR/manual-claim flow.
+        self.assertFalse(needs_setup)
         self.assertEqual(counters["patients_created"], 1)
         new_user = User.objects.get(pk=new_pk)
         self.assertIsNone(new_user.email)
+        # Imported patients are inactive until they go through password setup.
+        self.assertFalse(new_user.is_active)
+        self.assertFalse(new_user.is_verified)
         # Names preserved in source casing (mapper doesn't titlecase)
         self.assertEqual(new_user.first_name.upper(), "MARIA")
         self.assertEqual(new_user.last_name.upper(), "GARCIA")
@@ -584,14 +587,12 @@ class SyncTaskTests(BaseTestCase):
 
 
 class SyncWindowTests(BaseTestCase):
-    """Tests for the date-window cursor logic in sync_labwin_results.
+    """Tests for the date-window logic in sync_labwin_results.
 
-    The task uses two settings:
-      - LABWIN_SYNC_INITIAL_DAYS for the very first sync (no prior SyncLog)
-      - LABWIN_SYNC_ROLLING_DAYS for every subsequent sync
-
-    These tests verify that the connector receives the correct since_fecha
-    based on those settings and the prior-sync state.
+    The task uses one setting: LABWIN_SYNC_WINDOW_DAYS. Every run (other
+    than full_sync=True) re-imports DETERS where FECHA_FLD falls within
+    today - LABWIN_SYNC_WINDOW_DAYS. This catches studies that were sampled
+    weeks ago but only validated recently.
     """
 
     def _capture_since_fecha(self):
@@ -616,9 +617,9 @@ class SyncWindowTests(BaseTestCase):
 
         return captured, _CapturingConnector()
 
-    @override_settings(LABWIN_SYNC_INITIAL_DAYS=90)
-    def test_first_sync_uses_initial_window(self):
-        """No prior SyncLog → window starts LABWIN_SYNC_INITIAL_DAYS ago."""
+    @override_settings(LABWIN_SYNC_WINDOW_DAYS=90)
+    def test_window_starts_n_days_ago(self):
+        """Window cutoff is today - LABWIN_SYNC_WINDOW_DAYS."""
         captured, connector = self._capture_since_fecha()
 
         with patch("apps.labwin_sync.tasks.get_connector", return_value=connector):
@@ -628,9 +629,9 @@ class SyncWindowTests(BaseTestCase):
         self.assertEqual(captured["since_fecha"], expected)
         self.assertEqual(captured["since_numero"], -1)
 
-    @override_settings(LABWIN_SYNC_INITIAL_DAYS=30)
-    def test_initial_window_setting_is_honored(self):
-        """Different LABWIN_SYNC_INITIAL_DAYS produces a different cutoff."""
+    @override_settings(LABWIN_SYNC_WINDOW_DAYS=30)
+    def test_window_setting_is_honored(self):
+        """Different LABWIN_SYNC_WINDOW_DAYS produces a different cutoff."""
         captured, connector = self._capture_since_fecha()
 
         with patch("apps.labwin_sync.tasks.get_connector", return_value=connector):
@@ -639,17 +640,20 @@ class SyncWindowTests(BaseTestCase):
         expected = (date.today() - timedelta(days=30)).strftime("%Y%m%d")
         self.assertEqual(captured["since_fecha"], expected)
 
-    @override_settings(LABWIN_SYNC_ROLLING_DAYS=2)
-    def test_subsequent_sync_uses_rolling_window(self):
-        """A prior completed SyncLog → window starts LABWIN_SYNC_ROLLING_DAYS ago,
-        regardless of how far the prior sync got. The point is to re-scan
-        recent days for late-validated rows."""
-        # Simulate an earlier successful sync that processed up to a date
-        # well in the past.
+    @override_settings(LABWIN_SYNC_WINDOW_DAYS=90)
+    def test_window_independent_of_prior_sync(self):
+        """The window is always 'today - N days', regardless of how far a
+        prior sync got. last_synced_fecha is audit-only, not a cursor.
+
+        This is the contract that makes late-validated studies (e.g. a
+        2-month panel) get picked up: a sync today re-scans rows that the
+        previous sync had already seen.
+        """
+        # Simulate an earlier successful sync that processed up to last week
         SyncLog.objects.create(
             status="completed",
             lab_client_id=1,
-            last_synced_fecha="20200101",  # Far in the past
+            last_synced_fecha=(date.today() - timedelta(days=7)).strftime("%Y%m%d"),
             last_synced_numero=999999,
         )
 
@@ -657,15 +661,11 @@ class SyncWindowTests(BaseTestCase):
         with patch("apps.labwin_sync.tasks.get_connector", return_value=connector):
             sync_labwin_results(lab_client_id=1, full_sync=False)
 
-        # Window is "today minus 2 days", NOT the saved cursor value.
-        expected = (date.today() - timedelta(days=2)).strftime("%Y%m%d")
+        # Window goes 90 days back, not 7 days back (previous cursor ignored)
+        expected = (date.today() - timedelta(days=90)).strftime("%Y%m%d")
         self.assertEqual(captured["since_fecha"], expected)
-        self.assertEqual(captured["since_numero"], -1)
 
-    @override_settings(
-        LABWIN_SYNC_INITIAL_DAYS=10000,
-        LABWIN_SYNC_ROLLING_DAYS=10000,
-    )
+    @override_settings(LABWIN_SYNC_WINDOW_DAYS=10000)
     def test_full_sync_bypasses_window(self):
         """full_sync=True skips the date filter entirely (since_fecha=None)."""
         captured, connector = self._capture_since_fecha()
@@ -676,10 +676,7 @@ class SyncWindowTests(BaseTestCase):
         self.assertIsNone(captured["since_fecha"])
         self.assertIsNone(captured["since_numero"])
 
-    @override_settings(
-        LABWIN_SYNC_INITIAL_DAYS=10000,
-        LABWIN_SYNC_ROLLING_DAYS=10000,
-    )
+    @override_settings(LABWIN_SYNC_WINDOW_DAYS=10000)
     def test_resync_updates_result_when_changed(self):
         """Re-syncing a study where RESULT_FLD changed overwrites the result.
         This is the contract that makes the rolling window valuable: studies
@@ -716,10 +713,7 @@ class SyncWindowTests(BaseTestCase):
 # ======================
 
 
-@override_settings(
-    LABWIN_SYNC_INITIAL_DAYS=10000,
-    LABWIN_SYNC_ROLLING_DAYS=10000,
-)
+@override_settings(LABWIN_SYNC_WINDOW_DAYS=10000)
 class SyncNotificationTests(BaseTestCase):
     """Patient notification dispatch from sync_labwin_results.
 
@@ -927,6 +921,227 @@ class SyncNotificationTests(BaseTestCase):
         # args = (user_id_str, [study_id_str, ...])
         self.assertEqual(str(args[0]), str(existing.pk))
         self.assertGreater(len(args[1]), 1, "Expected multiple study_ids in the batch")
+
+
+# ======================
+# Patient Activation Tests
+# ======================
+
+
+@override_settings(LABWIN_SYNC_WINDOW_DAYS=10000)
+class PatientActivationTests(BaseTestCase):
+    """End-to-end activation contract for LabWin-imported patients.
+
+    Imported patients start is_active=False, is_verified=False (and have
+    no allauth EmailAddress row). They activate themselves via the
+    password-setup endpoint (`/api/v1/users/set-password/`), which flips
+    both flags and creates the EmailAddress.
+
+    These tests cover the full lifecycle:
+      1. Sync creates an inactive user
+      2. SetPasswordView activates them + creates EmailAddress
+      3. Login is gated correctly (works after, blocked before)
+      4. DNI revival: existing email-less user gets an email via a later sync
+    """
+
+    def test_imported_patient_with_email_is_inactive(self):
+        """Sync creates new patient with email — they should be is_active=False
+        and is_verified=False until they set their password."""
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        # SAMPLE_PACIENTES has at least one row with EMAIL_FLD set; pick one
+        # of the new users by checking SyncedRecord.
+        synced_user = (
+            User.objects.filter(role="patient", lab_client_id=1)
+            .exclude(email__isnull=True)
+            .first()
+        )
+        self.assertIsNotNone(synced_user)
+        self.assertFalse(synced_user.is_active)
+        self.assertFalse(synced_user.is_verified)
+
+    def test_imported_patient_without_email_is_inactive(self):
+        """Same contract for emailless patients — they're created inactive
+        and stay that way until DNI revival or QR claim."""
+        # Patch fetch_pacientes so the user mapped to NUMERO=100001 (which
+        # has DETERS rows in the mock) has no email.
+        emailless_pac = {
+            100001: {
+                "NUMERO_FLD": 100001,
+                "NOMBRE_FLD": "TESTUSER, NOEMAIL",
+                "HCLIN_FLD": "11122233",
+                "SEXO_FLD": 1,
+                "FNACIM_FLD": "19800101",
+                "MUTUAL_FLD": 0,
+                "MEDICO_FLD": 0,
+                "NUMMEDICO_FLD": 0,
+                "CARNET_FLD": "",
+                "TELEFONO_FLD": "",
+                "CELULAR_FLD": "",
+                "DIRECCION_FLD": "",
+                "LOCALIDAD_FLD": "",
+                "EMAIL_FLD": "",  # No email
+                "DEBEBONO_FLD": "0",
+            },
+        }
+
+        with patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
+            mock_pac.return_value = emailless_pac
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        user = User.objects.filter(dni="11122233").first()
+        self.assertIsNotNone(user)
+        self.assertIsNone(user.email)
+        self.assertFalse(user.is_active)
+        self.assertFalse(user.is_verified)
+
+    def test_set_password_activates_user_and_creates_emailaddress(self):
+        """The set-password endpoint flips both flags AND writes the allauth
+        EmailAddress row. Without that row, allauth can't authenticate even
+        if User.email/password are set."""
+        from allauth.account.models import EmailAddress
+        from rest_framework.test import APIClient
+
+        # Import a patient and verify they're inactive
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+        user = (
+            User.objects.filter(role="patient", lab_client_id=1)
+            .exclude(email__isnull=True)
+            .first()
+        )
+        self.assertFalse(user.is_active)
+        self.assertFalse(EmailAddress.objects.filter(user=user).exists())
+
+        # Generate a verification token (same flow as the email task)
+        token = user.generate_verification_token()
+
+        # Hit the set-password endpoint
+        client = APIClient()
+        response = client.post(
+            "/api/v1/users/set-password/",
+            {
+                "email": user.email,
+                "token": token,
+                "password": "NewSecurePass123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+
+        user.refresh_from_db()
+        self.assertTrue(user.is_active, "user should be activated")
+        self.assertTrue(user.is_verified, "user should be verified")
+        self.assertTrue(
+            EmailAddress.objects.filter(user=user, verified=True, primary=True).exists(),
+            "allauth EmailAddress row must exist after set-password",
+        )
+        # Token cleared
+        self.assertIsNone(user.verification_token)
+
+    def test_set_password_works_when_user_starts_unverified(self):
+        """Confirm the endpoint doesn't gate on is_verified=True — that's
+        the whole point of the flow for imported patients."""
+        from rest_framework.test import APIClient
+
+        # Manually create an inactive, unverified user
+        user = User.objects.create_user(
+            email="inactive@example.com",
+            first_name="In",
+            last_name="Active",
+            role="patient",
+            lab_client_id=1,
+            is_active=False,
+            is_verified=False,
+        )
+        token = user.generate_verification_token()
+
+        client = APIClient()
+        response = client.post(
+            "/api/v1/users/set-password/",
+            {"email": user.email, "token": token, "password": "Pass123456!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.is_verified)
+
+    def test_dni_revival_when_existing_emailless_user_gets_email(self):
+        """If a user exists with the right DNI but no email, and a later
+        PACIENTES row brings an email, the sync writes the email and routes
+        them through password-setup (so they'll get an activation email)."""
+        # Pre-create an inactive user with DNI but no email
+        existing = self.create_patient(
+            email=None,
+            dni="30123456",
+            lab_client_id=1,
+            is_active=False,
+            is_verified=False,
+        )
+        self.assertIsNone(existing.email)
+
+        # Patch the mock connector so PACIENTES NUMERO=100001 (which has
+        # DNI 30123456 in the sample data and DETERS rows referencing it)
+        # brings an email.
+        from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES as _SP
+
+        revived_pac = dict(_SP[100001])
+        revived_pac["EMAIL_FLD"] = "newly-arrived@example.com"
+
+        with patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
+            mock_pac.return_value = {100001: revived_pac}
+
+            password_patcher = patch(
+                "apps.notifications.tasks.send_password_setup_email.delay"
+            )
+            available_patcher = patch(
+                "apps.notifications.tasks.send_studies_available_email.delay"
+            )
+            with password_patcher as mock_password, available_patcher as mock_available:
+                sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        # The existing user's email was written
+        existing.refresh_from_db()
+        self.assertEqual(existing.email, "newly-arrived@example.com")
+        # And they were routed through password-setup, not studies-available
+        password_user_ids = {str(c.args[0]) for c in mock_password.call_args_list}
+        available_user_ids = {str(c.args[0]) for c in mock_available.call_args_list}
+        self.assertIn(str(existing.pk), password_user_ids)
+        self.assertNotIn(str(existing.pk), available_user_ids)
+
+    def test_login_blocked_before_set_password(self):
+        """An imported, still-inactive patient cannot log in — Django auth
+        rejects is_active=False users."""
+        from rest_framework.test import APIClient
+
+        user = User.objects.create_user(
+            email="blocked@example.com",
+            first_name="Blocked",
+            last_name="User",
+            role="patient",
+            lab_client_id=1,
+            is_active=False,
+            is_verified=False,
+            password="SomePass123!",
+        )
+        # Manually create an EmailAddress so we're testing is_active gate
+        # in isolation (not the missing-EmailAddress one)
+        from allauth.account.models import EmailAddress
+
+        EmailAddress.objects.create(
+            user=user, email=user.email, primary=True, verified=False
+        )
+
+        client = APIClient()
+        response = client.post(
+            "/api/v1/auth/login/",
+            {"email": user.email, "password": "SomePass123!"},
+            format="json",
+        )
+        # Should fail; exact code is 400 or 401 depending on the auth backend
+        self.assertIn(response.status_code, (400, 401, 403))
 
 
 # ======================

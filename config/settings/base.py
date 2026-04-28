@@ -282,13 +282,17 @@ LABWIN_DEFAULT_LAB_CLIENT_ID = env.int("LABWIN_DEFAULT_LAB_CLIENT_ID", default=1
 LABWIN_MOCK_FDB_PATH = env("LABWIN_MOCK_FDB_PATH", default="")
 
 # Sync window. The lab's full backup contains 14+ years of records, but only
-# recent data is relevant for the patient portal.
-#   - INITIAL_DAYS: how far back the *first* sync (no prior cursor) reaches.
-#   - ROLLING_DAYS: how far back every subsequent sync reaches, so late-validated
-#     rows from yesterday get picked up. Re-syncs are idempotent
-#     (see _get_or_create_study_with_practices).
-LABWIN_SYNC_INITIAL_DAYS = env.int("LABWIN_SYNC_INITIAL_DAYS", default=90)
-LABWIN_SYNC_ROLLING_DAYS = env.int("LABWIN_SYNC_ROLLING_DAYS", default=2)
+# recent data is relevant for the patient portal — and some studies (long
+# panels, microbiology, etc.) take up to ~3 months to validate. Every sync
+# re-imports everything in this window; re-imports are idempotent
+# (see _get_or_create_study_with_practices), so studies that were already in
+# Postgres get refreshed (RESULT_FLD updates, is_paid/is_validated flips, new
+# StudyPractices) and studies that just finished validating get created.
+#
+# The DETERS query filters on FECHA_FLD (sample/order date), not validation
+# date, so a single window covers both "recent samples" AND "old samples whose
+# results just landed today". 90 days = the lab's max turnaround time.
+LABWIN_SYNC_WINDOW_DAYS = env.int("LABWIN_SYNC_WINDOW_DAYS", default=90)
 
 # LabWin FTP Configuration (for fetching PDF results)
 LABWIN_FTP_USE_MOCK = env.bool("LABWIN_FTP_USE_MOCK", default=True)

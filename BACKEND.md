@@ -6,7 +6,7 @@
 **Database**: PostgreSQL 15 with UUID primary keys
 **Task Queue**: Celery + Redis
 **API Framework**: Django REST Framework 3.x
-**Test suite**: 464 passing
+**Test suite**: 475 passing
 
 ---
 
@@ -1601,11 +1601,11 @@ apps/labwin_sync/
 ### Sync Flow
 
 1. Celery Beat triggers `sync_labwin_results` nightly at 2 AM (currently manual until the lab signup workflow is locked in)
-2. Task computes the **date window** (rolling-window strategy, since 2026-04-28):
-   - **First run** for this `lab_client_id` → window starts `LABWIN_SYNC_INITIAL_DAYS` ago (default 90)
-   - **Every subsequent run** → window starts `LABWIN_SYNC_ROLLING_DAYS` ago (default 2), regardless of how far the prior sync got. This re-scans the last couple of days every night so late-validated rows from yesterday get picked up.
-   - `full_sync=True` bypasses the window entirely (one-off re-imports).
-   - Older data (the lab's 14+ years of history pre-window) is intentionally skipped per business decision: only recent data is valid for the patient portal.
+2. Task computes the **date window** (single rolling window, finalized 2026-04-28):
+   - Every run → window starts `LABWIN_SYNC_WINDOW_DAYS` ago (default 90). Connector filters DETERS on `FECHA_FLD` (sample/order date), so a study sampled 60 days ago but only validated yesterday gets picked up by today's sync. Long studies (~3 month max turnaround) are covered.
+   - `full_sync=True` bypasses the window entirely (one-off re-imports of all history).
+   - Older data (the lab has 14+ years of history) is skipped per business decision.
+   - `last_synced_fecha` / `last_synced_numero` on SyncLog are still written for audit but no longer drive the cursor.
 3. Connects to LabWin via connector factory (mock or real based on `LABWIN_USE_MOCK`)
 4. Fetches validated DETERS where `FECHA_FLD >= window_start`, in batches of 500
 5. For each batch: fetches PACIENTES, MEDICOS, NOMEN for referenced IDs
@@ -1643,10 +1643,20 @@ LABWIN_FDB_USER=SYSDBA
 LABWIN_FDB_PASSWORD=<from 1Password: "LabControl LabWin SYSDBA">
 LABWIN_SYNC_BATCH_SIZE=500
 LABWIN_DEFAULT_LAB_CLIENT_ID=1
-# Date window — see "Sync Flow" above
-LABWIN_SYNC_INITIAL_DAYS=90
-LABWIN_SYNC_ROLLING_DAYS=2
+# Date window — see "Sync Flow" above. Every sync re-imports the last N days.
+LABWIN_SYNC_WINDOW_DAYS=90
 ```
+
+### Patient Activation Contract (added 2026-04-28)
+
+Patients imported by `sync_labwin_results` start as `is_active=False, is_verified=False`. They activate themselves via the password-setup flow:
+
+1. **Sync** creates the inactive User and queues `send_password_setup_email` (only if PACIENTES has an email; emailless patients stay inactive and unnotified).
+2. The patient clicks the link in the email → frontend posts to `POST /api/v1/users/set-password/` with `{email, token, password}`.
+3. **`SetPasswordView`** validates the token, sets the password, flips `is_active=True` and `is_verified=True`, and **creates the `allauth.account.models.EmailAddress` row**. The EmailAddress row is mandatory — django-allauth authenticates against it, not against `User.email`. Without it, login silently fails with "no user found" even though the User exists.
+4. The patient can now log in.
+
+**DNI revival**: if a sync finds a User by DNI who has no email AND PACIENTES brings one, `_refresh_existing_patient` writes the email and routes them through password-setup (not the studies-available branch).
 
 ### Production Data Ingestion — Backup Pipeline
 
