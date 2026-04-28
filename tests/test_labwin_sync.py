@@ -1033,7 +1033,9 @@ class PatientActivationTests(BaseTestCase):
         self.assertTrue(user.is_active, "user should be activated")
         self.assertTrue(user.is_verified, "user should be verified")
         self.assertTrue(
-            EmailAddress.objects.filter(user=user, verified=True, primary=True).exists(),
+            EmailAddress.objects.filter(
+                user=user, verified=True, primary=True
+            ).exists(),
             "allauth EmailAddress row must exist after set-password",
         )
         # Token cleared
