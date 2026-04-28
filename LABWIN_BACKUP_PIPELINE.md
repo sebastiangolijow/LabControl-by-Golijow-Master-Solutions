@@ -107,8 +107,9 @@ LABWIN_FDB_PORT=3050
 │  │  celery_worker                                             │   │
 │  │     1. Lee último *.fbk.gz de incoming/                    │   │
 │  │     2. gunzip  →  /tmp/backup.fbk                          │   │
-│  │     3. docker exec firebird  gbak -r /tmp/backup.fbk ...   │   │
+│  │     3. firebirdsql.services.restore_database(...)          │   │
 │  │        → restaura a /firebird/data/BASEDAT.FDB             │   │
+│  │        (Services API, no docker exec)                      │   │
 │  │     4. invoca sync_labwin_results()  (task existente)      │   │
 │  │     5. mueve .fbk.gz a processed/ (o failed/)              │   │
 │  │     6. rotación: borra processed/ > 30 días                │   │
@@ -728,17 +729,17 @@ python manage.py import_backup --sync-only
 - [x] Crear directorios `/srv/labwin_backups/{incoming,processed,failed}` *(2026-04-24)*
 - [x] Test manual: subir un archivo dummy desde una máquina externa *(2026-04-24 — laptop de Sebastian → `/incoming/labwin_backup_test.txt` OK, luego eliminado)*
 - [x] **Deploy del script en PC del lab + primer upload real** *(2026-04-24 — `BASEDAT_20260424_180940.fbk.gz` 69.9 MB en `/incoming/`)*
-- [ ] Agregar servicio `firebird` a `docker-compose.prod.yml`
-- [ ] Validar que el contenedor inicia y acepta conexiones desde `web`
-- [ ] Probar restore del `.fbk.gz` real del lab → validar que es un backup consistente usable
+- [x] Agregar servicio `firebird` a `docker-compose.prod.yml` *(2026-04-25 — jacobalberty/firebird:2.5-ss)*
+- [x] Validar que el contenedor inicia y acepta conexiones desde `web` *(2026-04-25 — Services API verificada desde celery_worker)*
+- [x] Probar restore del `.fbk.gz` real del lab → validar que es un backup consistente usable *(2026-04-25 — 70 MB → 2.2 GB DB en 155 s, 218,843 PACIENTES + 940,198 DETERS queryables)*
 
-### Fase B — Código del backend (~1–2 días)
-- [ ] Implementar `apps/labwin_sync/services/backup_import.py`
-- [ ] Implementar `apps/labwin_sync/tasks.py::import_uploaded_backup`
-- [ ] Tests unitarios (mock del filesystem + mock del connector Firebird)
-- [ ] Management command `import_backup`
-- [ ] Actualizar Celery Beat schedule
-- [ ] Documentar nuevas env vars en `.env.example`
+### Fase B — Código del backend (~1–2 días) — ✅ Completa 2026-04-25
+- [x] Implementar `apps/labwin_sync/services/backup_import.py`
+- [x] Implementar `apps/labwin_sync/tasks.py::import_uploaded_backup`
+- [x] Tests unitarios (24 tests, 100% passing — discovery, validate, move, run happy/failure, task wrapper, command flags)
+- [x] Management command `import_backup` *(soporta `--file`, `--restore-only`, `--sync-only`, `--use-celery`)*
+- [ ] Actualizar Celery Beat schedule *(pendiente — gated en decisión del lab sobre signup)*
+- [x] Documentar nuevas env vars en `.env.production.template`
 
 ### Fase C — Script del lab (~0.5 día)
 - [x] Implementar `upload_backup.py` *(2026-04-24 — con gbak + gzip + SFTP + host verification + rotación + log)*
@@ -753,14 +754,14 @@ python manage.py import_backup --sync-only
 - [x] Confirmar que el archivo llegó al VPS *(2026-04-24 — 69.9 MB en `/incoming/`)*
 - [ ] Importar tarea programada (Task Scheduler) para correr automático 02:00 AM
 
-### Fase E — Validación end-to-end (~1 día)
-- [ ] Disparar `import_backup` manual → verificar restore OK
-- [ ] Verificar que `sync_labwin_results` crea/actualiza registros
-- [ ] Validar contadores en Django Admin → `SyncLog`
-- [ ] Monitorear la primera ejecución automática 04:00 AM
-- [ ] Documentar tiempos reales (upload + restore + sync) para ajustar schedules
+### Fase E — Validación end-to-end (~1 día) — ✅ Completa 2026-04-25
+- [x] Disparar `import_backup` manual → verificar restore OK *(2026-04-25 — restore en 155 s)*
+- [x] Verificar que `sync_labwin_results` crea/actualiza registros *(2026-04-25 — `--sync-only` con `LABWIN_USE_MOCK=False`, 1,316 studies + 1,030 patients nuevos en 73 s, 0 errores)*
+- [x] Validar contadores en Django Admin → `SyncLog` *(2026-04-25 — counters consistentes con la slice ingerida)*
+- [x] Documentar tiempos reales (upload + restore + sync) para ajustar schedules *(ver tabla "Baseline medido" abajo)*
+- [ ] Monitorear la primera ejecución automática 04:00 AM *(pendiente — schedule no activado)*
 
-### Fase F — Monitoreo y alertas (~0.5 día)
+### Fase F — Monitoreo y alertas (~0.5 día) — ⏳ Pendiente
 - [ ] Endpoint de health check: "último sync exitoso hace N horas"
 - [ ] Email/webhook si no hay backup nuevo en 36h
 - [ ] Dashboard en Django Admin con últimos 30 días de `SyncLog`

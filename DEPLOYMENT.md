@@ -1,6 +1,6 @@
 # LabControl Production Deployment Guide
 
-**Last Updated**: March 22, 2026
+**Last Updated**: April 25, 2026
 **Environment**: Staging/Production
 **Server**: Hostinger VPS
 
@@ -24,6 +24,16 @@
 ---
 
 ## 🔧 Recent Updates & Fixes
+
+### April 25, 2026: Phase B of LabWin Backup Pipeline shipped + operational hardening
+
+- **LabWin backup ingestion working end-to-end.** Real `BASEDAT_*.fbk.gz` (70 MB) restored into the new `firebird` container in 155s via `firebirdsql.services.restore_database`. `--sync-only` then ingested 1,316 studies + 1,030 patients in ~73s, total 3,062 studies / 2,877 patients in Postgres.
+- **New container**: `labcontrol_firebird` (jacobalberty/firebird:2.5-ss) added to `docker-compose.prod.yml`. All 7 containers now report `(healthy)`.
+- **Healthchecks fixed**: web (uses `/health/` via `http.client`), nginx (`nc -z localhost 443`), celery_beat (reads PID 1 cmdline).
+- **Search**: Postgres `unaccent` extension enabled; `'si'` now matches 164 patients (was 1). `apps/core/search.unaccent_icontains_q()` helper, used by `UserFilter` / `StudyFilter`.
+- **FTP PDF parser** updated for `{NUMERO}-{DNI}-{NAME}.pdf` format. 24 real PDFs attached.
+- **Logging tools added** (see "Reading production logs" below): `make logs-prod*` from laptop, `labcontrol-logs` shell wrapper on the VPS.
+- **Security**: scrubbed plaintext secrets from docs. `.env.production` removed from git index (existing values still in history — rotation pending).
 
 ### March 22, 2026: SSL Certificate & Port Preservation Fix
 
@@ -160,13 +170,14 @@ cd backups/2026-03-22-working-config
 # View running containers
 docker ps
 
-# Expected containers:
+# Expected containers (all 7 LabControl services healthy as of 2026-04-25):
 # - labcontrol_nginx        (Port 8443->443)
 # - labcontrol_web          (Django + Gunicorn)
 # - labcontrol_db           (PostgreSQL)
 # - labcontrol_redis        (Redis)
 # - labcontrol_celery_worker
 # - labcontrol_celery_beat
+# - labcontrol_firebird     (jacobalberty/firebird:2.5-ss — hosts restored LabWin DB, no host port)
 # - root-traefik-1          (Ports 80, 443)
 # - root-n8n-1
 ```
@@ -628,15 +639,22 @@ FIREBIRD_SYSDBA_PASSWORD=<same as above>
 
 ### Triggering Backup Ingestion
 
-- **Scheduled**: Celery Beat runs `import_uploaded_backup` at 04:00 AM daily
-- **CLI manual**: `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only]`
+- **Scheduled**: Celery Beat will run `import_uploaded_backup` at 04:00 AM daily — schedule is **not yet enabled** (gated on the lab's signup workflow decision; see CLAUDE.md "Workflow open question")
+- **CLI manual** (working in production today): `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only] [--use-celery]`
 - **Admin UI**: (future) button in Django Admin → SyncLog view
 
 ### Status
 
-**Current state:** Designed but not yet implemented. The LabControl codebase still runs with `LABWIN_USE_MOCK=True` in production.
+**Current state (2026-04-25):** Phase A + Phase B both complete. Restore + sync validated end-to-end against the real lab DB (3,062 studies + 2,877 patients ingested). The `firebird` container is live; `BackupImporter` service, `import_uploaded_backup` task, and `import_backup` management command are all in production.
 
-**To enable:** Follow the phased plan (A through F) in `LABWIN_BACKUP_PIPELINE.md`. Estimated effort: 3–5 days of dev + a 2-hour onsite visit to the lab.
+`.env.production` still has `LABWIN_USE_MOCK=True` as the default — the flip is gated on the lab's decision about the no-email patient signup workflow. Today's flow runs **manually** via the management command; Celery Beat schedule activation is pending the same decision.
+
+**Remaining work** (phases C–F in `LABWIN_BACKUP_PIPELINE.md`):
+- Lab decision on patient onboarding flow (~52% of PACIENTES rows have empty `EMAIL_FLD`)
+- Flip `LABWIN_USE_MOCK=False` in `.env.production`
+- Celery Beat schedule (cron 04:00) + sync window switch to rolling "yesterday + today"
+- Task Scheduler on the lab PC for automated 02:00 upload (currently manual)
+- Phase F: monitoring + alerting (no-backup-in-36h, sync health endpoint)
 
 ---
 
@@ -1154,11 +1172,17 @@ docker exec -i labcontrol_db psql -U labcontrol_user -d labcontrol_db < backup.s
 
 ---
 
-**Document Version**: 3.0
+**Document Version**: 4.0
 **Maintained By**: Development Team
-**Last Reviewed**: April 18, 2026
+**Last Reviewed**: April 25, 2026
 
 ## 📜 Change Log
+
+### Version 4.0 - April 25, 2026
+- Updated LabWin Backup Ingestion Pipeline §Status — Phase A + B shipped, sync validated against real DB (3,062 studies / 2,877 patients)
+- Added `labcontrol_firebird` to expected container list (now 7 LabControl services)
+- Added "April 25, 2026" entry to Recent Updates & Fixes (Phase B, healthcheck fixes, search via unaccent, FTP filename fix, log tooling)
+- Reading production logs section now references `make logs-prod*` and `labcontrol-logs` (added 2026-04-25)
 
 ### Version 3.0 - April 18, 2026
 - Added FTP Server Configuration section with credentials and setup details

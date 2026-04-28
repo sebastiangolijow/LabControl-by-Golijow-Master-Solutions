@@ -1,11 +1,12 @@
 # LabControl Backend - Agent Context
 
-**Last Updated**: April 18, 2026
+**Last Updated**: April 25, 2026
 **Python**: 3.11
 **Django**: 4.2
 **Database**: PostgreSQL 15 with UUID primary keys
 **Task Queue**: Celery + Redis
 **API Framework**: Django REST Framework 3.x
+**Test suite**: 459 passing
 
 ---
 
@@ -1637,27 +1638,39 @@ LABWIN_DEFAULT_LAB_CLIENT_ID=1
 
 ### Production Data Ingestion — Backup Pipeline
 
-**⚠️ IMPORTANTE:** En producción el VPS **no puede conectarse directo** al Firebird de la PC del laboratorio (la PC no tiene IP pública ni puertos abiertos). Los datos llegan vía un pipeline de backups nocturnos:
+**Status (2026-04-25)**: Phase A + B shipped. End-to-end sync validated against the real DB — 3,062 studies + 2,877 patients ingested. `LABWIN_USE_MOCK=True` is still the default in `.env.production`; flip to `False` is gated on the lab's decision about the no-email patient signup workflow (see CLAUDE.md "Workflow open question").
+
+**⚠️ IMPORTANTE:** El VPS **no puede conectarse directo** al Firebird de la PC del laboratorio (la PC no tiene IP pública ni puertos abiertos). Los datos llegan vía un pipeline de backups nocturnos:
 
 ```
-PC Lab ─[gbak + SFTP nightly]─► VPS /srv/labwin_backups/incoming/
-                                     │
-                                     ▼
-                             Celery task: import_uploaded_backup
-                                     │
-                                     ├─► gbak -r en contenedor Firebird (docker)
-                                     └─► sync_labwin_results() (flow existente)
+PC Lab ─[gbak + gzip + SFTP, 02:00]─► VPS /srv/labwin_backups/incoming/
+                                            │
+                                            │ (Celery Beat 04:00 — pendiente)
+                                            ▼
+                                    import_uploaded_backup task
+                                            │
+                                            ├─► firebirdsql.services.restore_database
+                                            │   → contenedor labcontrol_firebird
+                                            └─► sync_labwin_results()
 ```
 
-Este flow se dispara vía Celery Beat a las 04:00 AM (después del upload del lab a las 02:00 AM), y reemplaza el schedule standalone de `sync_labwin_results` en producción.
+Cuando se active el schedule, este flow reemplaza el schedule standalone de `sync_labwin_results` en producción.
 
-**Ver guía completa:** [`LABWIN_BACKUP_PIPELINE.md`](./LABWIN_BACKUP_PIPELINE.md) — arquitectura, plan de implementación por fases, seguridad, y modos de fallo.
+**Ver guía completa:** [`LABWIN_BACKUP_PIPELINE.md`](./LABWIN_BACKUP_PIPELINE.md) — arquitectura, status real por fase, seguridad, modos de fallo, y métricas baseline.
 
-**Componentes nuevos requeridos para `LABWIN_USE_MOCK=False` en prod:**
-- Usuario SFTP `backup_user` con chroot en el VPS
-- Servicio `firebird` en `docker-compose.prod.yml` (jacobalberty/firebird:2.5-ss)
+**Componentes que ya están en producción (2026-04-25):**
+- Usuario SFTP `backup_user` con chroot a `/srv/labwin_backups/` (key auth ed25519)
+- Servicio `firebird` (jacobalberty/firebird:2.5-ss) en `docker-compose.prod.yml`, accesible como `firebird:3050` desde la docker network
+- Service class `apps/labwin_sync/services/backup_import.BackupImporter`
 - Task `apps.labwin_sync.tasks.import_uploaded_backup`
-- Script `deployment/lab_workstation/upload_backup.py` instalado en la PC del lab
+- Management command `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only] [--use-celery]`
+- Script `upload_backup.py` corriendo manualmente en la PC del lab (Task Scheduler 02:00 todavía pendiente)
+
+**Pendientes para activar el flujo automático completo:**
+- Decisión del lab sobre signup de pacientes sin email
+- Flip `LABWIN_USE_MOCK=False` en `.env.production`
+- Celery Beat schedule (cron 04:00) y cambio del sync window de "todo desde 2026-02-01" a rolling "ayer + hoy"
+- Task Scheduler en la PC del lab para corrida automática 02:00
 
 ### Management Command
 
@@ -1774,31 +1787,16 @@ python manage.py fetch_ftp_pdfs --lab-client-id 1 # Specify lab client
 4. **Cleanup task**: Separate task to clean up FTP files after verification
 5. **Mock connector**: In-memory PDFs matching DETERS NUMERO_FLDs for testing
 
-#### First Lab Upload Test (2026-04-22)
+#### Real Filename Format (validated 2026-04-25)
 
-Lab team performed a first end-to-end FTP push test from their LabWin machine. Four files landed on the VPS at `10:16`:
+Files arrive named `{NUMERO}-{DNI}-{NAME}.pdf` (e.g. `220197-39592918-SIRI,FRANCO.pdf`), not the originally-assumed `{NUMERO}.pdf`. The connector parser was updated 2026-04-25 to extract the protocol number as the first dash-separated segment. **24 real PDFs attached end-to-end** in the first run; 32 of 56 PDFs were skipped because their NUMERO falls outside the imported-study range (those studies aren't yet in Postgres — see CLAUDE.md TODO "PDF import workflow for files outside the imported-study NUMERO range").
 
-- `220197-39592918-SIRI,FRANCO.pdf` + `.txt`
-- `231316-33678470-GALARZA,CINTIA SOLEDAD.pdf` + `.txt`
-
-Auth and transfer worked. **Two mismatches with the current implementation** need to be resolved before `fetch_ftp_pdfs` can pick these up:
-
-1. **Upload directory** — Files arrived in the chroot root (`/`), not `/results`. Our task reads from `LABWIN_FTP_DIRECTORY=/results`. Fix: ask lab to `cd results` before uploading, or change the env var.
-2. **Filename format** — Files are named `{NUMERO}-{DNI}-{NAME}.pdf` (e.g. `220197-39592918-SIRI,FRANCO.pdf`). The task currently expects `{NUMERO}.pdf`. Fix: either have the lab export just `{NUMERO}.pdf`, or update the connector to extract the protocol number as the first dash-separated segment.
-
-Verified via:
-```bash
-sshpass -p '...' ssh deploy@72.60.137.226 "docker exec labcontrol_web python -c \"
-from ftplib import FTP
-import os; ftp = FTP(); ftp.connect('host.docker.internal', 21); ftp.login('labwin_ftp', os.environ['LABWIN_FTP_PASSWORD'])
-ftp.retrlines('LIST')
-\""
-```
+The original 2026-04-22 push also landed files in the chroot root (`/`) instead of `/results`; lab now uploads via `cd results` before transferring.
 
 ### Future Phases
 
-- **Phase 2**: Replace mock with real Firebird credentials from lab
-- **Phase 3**: Parse pipe-delimited `RESULT_FLD` into UserDetermination records (requires RESULTS template table from LabWin)
+- **Phase 2**: ✅ Done 2026-04-25 — Phase B of the LabWin backup pipeline ingested real Firebird data via `firebirdsql.services.restore_database` (no remote Firebird credentials needed, lab pushes backups via SFTP — see LABWIN_BACKUP_PIPELINE.md).
+- **Phase 3**: Parse pipe-delimited `RESULT_FLD` into UserDetermination records (requires RESULTS template table from LabWin) — still pending.
 
 ---
 
@@ -2214,17 +2212,21 @@ See **DEPLOYMENT.md** for complete production deployment guide.
 - URL: https://labmolecuar-portal-clientes-staging.com:8443
 - App location: `/opt/labcontrol/`
 - Deployment: Docker Compose (`docker-compose.prod.yml`)
-- Containers: web, nginx, db, redis, celery_worker, celery_beat
+- Containers (7, all healthy as of 2026-04-25): web, nginx, db, redis, celery_worker, celery_beat, **firebird** (jacobalberty/firebird:2.5-ss — added Phase B, hosts the restored LabWin DB)
 - Database: PostgreSQL (Docker volume)
 - Static files: Nginx + WhiteNoise
 - Media files: Nginx volume mount
 - Backup: `/opt/labcontrol/backups/2026-03-22-working-config/`
+- Log tailing (added 2026-04-25): `make logs-prod*` from laptop, `labcontrol-logs` wrapper on the VPS
 
 **Critical deployment notes**:
 - **NEVER rsync `.env.production`** — it overwrites server credentials with local template values
+- **Always `docker compose build` before `up -d --force-recreate`** when changing Python code — the web/celery_worker/celery_beat images COPY `apps/` at build time, so a recreate-only spins up the OLD code (symptom: `docker exec <container> grep` shows the previous version)
 - **Rebuild ALL celery images** when adding new Celery tasks — celery_worker and celery_beat use separate Docker images that must be rebuilt independently
 - After rebuilding, recreate containers: `docker compose -f docker-compose.prod.yml up -d --force-recreate celery_worker celery_beat`
+- **For compose-level config changes (healthchecks, env, volumes)** use `up -d --force-recreate <svc>`, NOT `restart`. `restart` only restarts the running container — it doesn't re-read `docker-compose.yml`, so new healthcheck/env/volumes/network changes are silently ignored.
 - `firebirdsql` requires v1.4.5+ (v1.3.0 has a circular import bug that fails during Docker build)
+- `passlib` is required by `firebirdsql.services.restore_database` — already in `requirements/base.txt`
 
 ---
 
@@ -2251,13 +2253,19 @@ See **DEPLOYMENT.md** for complete production deployment guide.
 **Solution**: Use `firebirdsql>=1.4.5` (v1.3.0 has a known circular import bug)
 
 **Issue**: Celery tasks not registered after deployment
-**Solution**: Rebuild celery Docker images (`docker compose -f docker-compose.prod.yml build celery_worker celery_beat`) and recreate containers. The worker loads tasks on startup from the image.
+**Solution**: Rebuild celery Docker images (`docker compose -f docker-compose.prod.yml build celery_worker celery_beat`) and recreate containers (`up -d --force-recreate`, not `restart`). The worker loads tasks on startup from the image, and `restart` doesn't re-read compose-level config.
 
 **Issue**: `.env.production` overwritten during rsync deploy
 **Solution**: Exclude `.env.production` from rsync. If overwritten, restore from backup: `cp /opt/labcontrol/backups/2026-03-22-working-config/.env.production.backup /opt/labcontrol/.env.production`
 
+**Issue**: `firebirdsql.services.restore_database` fails with `ModuleNotFoundError: passlib`
+**Solution**: Add `passlib` to `requirements/base.txt`, rebuild celery images. Required for the Services API auth.
+
+**Issue**: Backup restore fails with charset errors / mojibake in patient names
+**Solution**: Set `LABWIN_FDB_CHARSET=ISO8859_1` in `.env.production`. The source DB has charset `NONE`, so the connector has to declare an explicit charset.
+
 ---
 
-**Document Version**: 1.1
-**Last Updated**: April 18, 2026
+**Document Version**: 1.2
+**Last Updated**: April 25, 2026
 **Maintained By**: Development Team
