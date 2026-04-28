@@ -504,9 +504,11 @@ class SyncTaskTests(BaseTestCase):
 
     def test_sync_error_handling_continues(self):
         """Sync continues processing after individual row errors."""
+        # _get_or_create_patient now returns (pk, was_created); a falsy first
+        # element makes the caller treat the patient as missing without raising.
         with patch(
             "apps.labwin_sync.tasks._get_or_create_patient",
-            side_effect=[Exception("test error"), None],
+            side_effect=[Exception("test error"), (None, False)],
         ):
             # Should not raise, should complete with errors
             result = sync_labwin_results(lab_client_id=1, full_sync=True)
@@ -564,9 +566,10 @@ class SyncTaskTests(BaseTestCase):
         }
 
         # Should not raise — should create the patient with email=None
-        new_pk = _get_or_create_patient(pac_row, 1, sync_log, counters)
+        new_pk, was_created = _get_or_create_patient(pac_row, 1, sync_log, counters)
 
         self.assertIsNotNone(new_pk)
+        self.assertTrue(was_created)
         self.assertEqual(counters["patients_created"], 1)
         new_user = User.objects.get(pk=new_pk)
         self.assertIsNone(new_user.email)
@@ -706,6 +709,220 @@ class SyncWindowTests(BaseTestCase):
         sp.refresh_from_db()
         self.assertEqual(sp.result, "999")
         self.assertNotEqual(sp.result, original_result)
+
+
+# ======================
+# Patient Notification Tests
+# ======================
+
+
+@override_settings(
+    LABWIN_SYNC_INITIAL_DAYS=10000,
+    LABWIN_SYNC_ROLLING_DAYS=10000,
+)
+class SyncNotificationTests(BaseTestCase):
+    """Patient notification dispatch from sync_labwin_results.
+
+    Two flows:
+      A. Existing User (matched by DNI or SyncedRecord) → studies-available email
+      B. New User created from PACIENTES with email → password-setup email
+      C. New User created from PACIENTES without email → no email, study stays
+         unnotified (notification_sent_at=NULL) for a future retry.
+    """
+
+    def _patch_email_tasks(self):
+        """Patch both email Celery tasks so we can assert on .delay calls
+        without actually sending."""
+        return (
+            patch("apps.notifications.tasks.send_password_setup_email.delay"),
+            patch("apps.notifications.tasks.send_studies_available_email.delay"),
+        )
+
+    def test_existing_user_gets_studies_available_email(self):
+        """A patient who exists in Postgres before this sync (matched by DNI)
+        receives a 'studies are available' email, not a password-setup one.
+
+        The mock dataset has multiple patients; this asserts that THIS specific
+        pre-existing patient ends up in the available-email branch, not the
+        password-setup branch.
+        """
+        # Pre-existing patient with DNI matching SAMPLE_PACIENTES NUMERO=300001
+        existing = self.create_patient(
+            email="garcia@example.com",
+            dni="30123456",
+            lab_client_id=1,
+        )
+
+        password_patcher, available_patcher = self._patch_email_tasks()
+        with password_patcher as mock_password, available_patcher as mock_available:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        # Collect all user_ids each task was called with
+        password_user_ids = {str(c.args[0]) for c in mock_password.call_args_list}
+        available_user_ids = {str(c.args[0]) for c in mock_available.call_args_list}
+
+        existing_pk = str(existing.pk)
+        self.assertIn(
+            existing_pk,
+            available_user_ids,
+            "Existing user should have received a studies-available email",
+        )
+        self.assertNotIn(
+            existing_pk,
+            password_user_ids,
+            "Existing user should NOT have received a password-setup email",
+        )
+
+    def test_new_user_with_email_gets_password_setup(self):
+        """A patient newly created from a PACIENTES row that has an email
+        receives a password-setup email."""
+        password_patcher, available_patcher = self._patch_email_tasks()
+        with password_patcher as mock_password, available_patcher as mock_available:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        # SAMPLE_PACIENTES has at least one row with EMAIL_FLD set; the new
+        # user(s) created from those rows should get password setup.
+        # mock_password is called per new user.
+        self.assertGreater(
+            mock_password.call_count,
+            0,
+            "Expected at least one password-setup email for new users with email",
+        )
+
+    def test_new_user_without_email_gets_nothing(self):
+        """If a PACIENTES row has no email, no notification is queued AND
+        the study's notification_sent_at stays NULL so we can retry later."""
+        # Patch the mock connector to return a PACIENTES row with EMAIL_FLD=""
+        emailless_pac = {
+            "NUMERO_FLD": 999777,
+            "NOMBRE_FLD": "SINMAIL, JUAN",
+            "HCLIN_FLD": "11122233",
+            "SEXO_FLD": 1,
+            "FNACIM_FLD": "19800101",
+            "MUTUAL_FLD": 0,
+            "MEDICO_FLD": 0,
+            "NUMMEDICO_FLD": 0,
+            "CARNET_FLD": "",
+            "TELEFONO_FLD": "",
+            "CELULAR_FLD": "",
+            "DIRECCION_FLD": "",
+            "LOCALIDAD_FLD": "",
+            "EMAIL_FLD": "",
+            "DEBEBONO_FLD": "0",
+        }
+        emailless_deters = [
+            {
+                "NUMERO_FLD": 999777,
+                "ABREV_FLD": "GLU-Bi",
+                "RESULT_FLD": "100",
+                "RESULTREP_FLD": "",
+                "VALIDADO_FLD": "1",
+                "FECHA_FLD": "20251028",
+                "HORA_FLD": "10:00",
+                "ORDEN_FLD": 1,
+                "OPERADOR_FLD": "TEST",
+                "SUCURSAL_FLD": 1,
+            }
+        ]
+
+        with patch.object(MockLabWinConnector, "fetch_validated_deters") as mock_deters, \
+             patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
+            mock_deters.return_value = iter([emailless_deters])
+            mock_pac.return_value = {999777: emailless_pac}
+
+            password_patcher, available_patcher = self._patch_email_tasks()
+            with password_patcher as mock_password, available_patcher as mock_available:
+                sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        # Patient has no email → neither task was called for this patient
+        mock_password.assert_not_called()
+        mock_available.assert_not_called()
+
+        # Study was created but notification_sent_at stays NULL (will retry
+        # next sync if the patient gets an email)
+        study = Study.objects.filter(protocol_number="LW-999777").first()
+        self.assertIsNotNone(study)
+        self.assertIsNone(study.notification_sent_at)
+
+    def test_resync_does_not_renotify(self):
+        """The rolling 2-day window means we re-import yesterday's studies
+        every night. notification_sent_at must prevent re-notifying the
+        same patient about the same study."""
+        password_patcher, available_patcher = self._patch_email_tasks()
+        with password_patcher as mock_password_1, available_patcher as mock_available_1:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        first_password_count = mock_password_1.call_count
+        first_available_count = mock_available_1.call_count
+        self.assertGreater(
+            first_password_count + first_available_count,
+            0,
+            "First sync should have notified at least one patient",
+        )
+
+        # Re-sync — every study now has notification_sent_at set
+        with password_patcher as mock_password_2, available_patcher as mock_available_2:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        self.assertEqual(
+            mock_password_2.call_count,
+            0,
+            "Re-sync should NOT re-send password-setup emails",
+        )
+        self.assertEqual(
+            mock_available_2.call_count,
+            0,
+            "Re-sync should NOT re-send studies-available emails",
+        )
+
+    def test_batch_one_email_per_patient(self):
+        """A patient with N new studies in one sync run gets ONE email,
+        not N. The batched send_studies_available_email task is called
+        once per user with all study_ids."""
+        # Pre-existing patient who will match by DNI to multiple PACIENTES
+        # rows. SAMPLE_DETERS has 3 NUMEROs (300001, 300002, 300003); the
+        # PACIENTES rows for them have different DNIs by default. We need
+        # to make all three resolve to one existing User.
+        existing = self.create_patient(
+            email="multi@example.com",
+            dni="30123456",  # Matches SAMPLE_PACIENTES NUMERO=300001
+            lab_client_id=1,
+        )
+
+        # Patch fetch_pacientes so that all three NUMEROs map to the SAME
+        # DNI (and thus the same existing User by DNI lookup).
+        with patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
+            def _all_same_dni(numeros):
+                # SAMPLE_PACIENTES is a dict keyed by NUMERO_FLD
+                from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES as _SP
+
+                result = {}
+                for n in numeros:
+                    base = _SP.get(n)
+                    if base:
+                        row = dict(base)
+                        row["HCLIN_FLD"] = "30123456"  # All map to existing user
+                        row["EMAIL_FLD"] = "multi@example.com"
+                        result[n] = row
+                return result
+
+            mock_pac.side_effect = _all_same_dni
+
+            password_patcher, available_patcher = self._patch_email_tasks()
+            with password_patcher as mock_password, available_patcher as mock_available:
+                sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        # Existing user was already created; should get studies-available
+        # called exactly once with N study_ids in the list.
+        self.assertEqual(
+            mock_available.call_count,
+            1,
+            f"Expected exactly 1 batched email for the patient, got {mock_available.call_count}",
+        )
+        args, _ = mock_available.call_args
+        # args = (user_id_str, [study_id_str, ...])
+        self.assertEqual(str(args[0]), str(existing.pk))
+        self.assertGreater(len(args[1]), 1, "Expected multiple study_ids in the batch")
 
 
 # ======================

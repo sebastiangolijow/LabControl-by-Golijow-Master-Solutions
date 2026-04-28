@@ -225,6 +225,19 @@ class Study(BaseModel, LabClientModel):
         help_text=_("Date and time when the results were delivered/completed"),
     )
 
+    # Patient notification tracking. Set when an "available" / "password setup"
+    # email is dispatched for this study by sync_labwin_results, so re-syncs
+    # (rolling 2-day window) don't re-notify the patient every night.
+    notification_sent_at = models.DateTimeField(
+        _("notification sent at"),
+        null=True,
+        blank=True,
+        help_text=_(
+            "When the 'study available' or 'password setup' email was sent "
+            "to the patient. Null = patient has not been notified yet."
+        ),
+    )
+
     # Notes
     notes = models.TextField(_("notes"), blank=True)
     internal_notes = models.TextField(

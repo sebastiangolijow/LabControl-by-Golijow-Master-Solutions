@@ -318,3 +318,93 @@ def send_password_setup_email(self, user_id):
                 user_id,
             )
             return f"Failed after retries: {str(e)}"
+
+
+@shared_task(bind=True, max_retries=3)
+def send_studies_available_email(self, user_id, study_ids):
+    """Notify an existing patient that one or more new studies are available.
+
+    Used by sync_labwin_results when a study is created/imported for a
+    patient who already has a portal account. Reuses the result_ready.html
+    template (which is single-study-flavored) by setting study_type_name to
+    a summary string when there are multiple studies — the template's
+    highlight box reads naturally either way.
+
+    Args:
+        user_id: UUID of the patient (str or UUID).
+        study_ids: List of study UUIDs included in this notification.
+            Used for the subject line and a future "click to view all"
+            deep link; today the email simply directs them to the portal.
+    """
+    from apps.studies.models import Study
+    from apps.users.models import User
+
+    try:
+        user = User.objects.get(pk=user_id)
+        if not user.email:
+            logger.info(
+                "send_studies_available_email: user pk=%s has no email, skipping",
+                user.pk,
+            )
+            return f"User {user_id} has no email"
+
+        # Pull the study names for the email subject. We don't list every
+        # study in the body — the patient logs in to see them.
+        study_names = list(
+            Study.objects.filter(pk__in=study_ids)
+            .values_list("protocol_number", flat=True)[:5]
+        )
+        count = len(study_ids)
+
+        if count == 1:
+            study_type_name = "Tu nuevo resultado"
+            subject = "Tu nuevo resultado está disponible"
+        else:
+            study_type_name = f"Tus {count} nuevos resultados"
+            subject = f"Tienes {count} nuevos resultados disponibles"
+
+        context = {
+            "patient_name": user.get_full_name() or user.email,
+            "study_type_name": study_type_name,
+            "login_url": f"{settings.FRONTEND_URL or 'http://localhost:8000'}/login",
+        }
+
+        html_content = render_to_string("emails/result_ready.html", context)
+        text_content = strip_tags(html_content)
+
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.email],
+        )
+        email.attach_alternative(html_content, "text/html")
+        email.send(fail_silently=False)
+
+        logger.info(
+            "send_studies_available_email: sent to user pk=%s for %d studies (%s%s)",
+            user.pk,
+            count,
+            ", ".join(study_names),
+            "..." if count > len(study_names) else "",
+        )
+        return f"Email sent to {user.email} for {count} studies"
+
+    except User.DoesNotExist:
+        logger.warning("send_studies_available_email: user pk=%s not found", user_id)
+        return f"User {user_id} not found"
+
+    except Exception as e:
+        logger.exception(
+            "send_studies_available_email: error for user pk=%s (%d studies)",
+            user_id,
+            len(study_ids) if study_ids else 0,
+        )
+        try:
+            raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+        except self.MaxRetriesExceededError:
+            logger.error(
+                "send_studies_available_email: max retries exceeded for user pk=%s",
+                user_id,
+            )
+            return f"Failed after retries: {str(e)}"

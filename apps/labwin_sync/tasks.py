@@ -137,7 +137,23 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         "studies_created": 0,
         "studies_updated": 0,
         "study_practices_created": 0,
+        "notifications_queued": 0,
     }
+
+    # Notification batching state. We accumulate per-user lists during the sync
+    # loop and dispatch one email per user at the end (so a patient with 5 new
+    # studies gets 1 email, not 5). See _dispatch_patient_notifications.
+    #
+    # users_created_this_run: User pks that THIS sync run created from PACIENTES.
+    #     Drives the "set up your password" email branch.
+    # studies_to_notify: {user_pk: [study_pk, ...]} for studies whose
+    #     notification_sent_at is currently NULL (i.e. patient hasn't been
+    #     emailed yet about this study). Includes both fresh-create and re-sync
+    #     cases — the timestamp is the source of truth, not "did we create the
+    #     study just now".
+    users_created_this_run = set()
+    studies_to_notify = defaultdict(list)
+
     total_processed = 0
     max_numero = since_numero
     max_fecha = since_fecha or ""
@@ -265,10 +281,12 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                     # up in another batch
                                     patient_cache[numero] = None
                                     continue
-                                patient_pk = _get_or_create_patient(
+                                patient_pk, was_created = _get_or_create_patient(
                                     pac_row, lab_client_id, sync_log, counters
                                 )
                                 patient_cache[numero] = patient_pk
+                                if was_created:
+                                    users_created_this_run.add(patient_pk)
                             else:
                                 errors.append(
                                     {
@@ -306,7 +324,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         is_paid = mappers.map_is_paid(pac_row)
 
                         # Create/update study and its practices
-                        _get_or_create_study_with_practices(
+                        study_pk = _get_or_create_study_with_practices(
                             numero,
                             rows,
                             patient_pk,
@@ -318,6 +336,21 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                             is_paid=is_paid,
                             is_validated=True,
                         )
+
+                        # Queue this study for patient notification if we
+                        # haven't notified them yet about it. The DB flag
+                        # (Study.notification_sent_at) is the source of truth,
+                        # so re-syncs (rolling 2-day window) don't re-notify.
+                        if study_pk and patient_pk:
+                            from apps.studies.models import Study as _Study
+
+                            already_notified = (
+                                _Study.objects.filter(pk=study_pk)
+                                .exclude(notification_sent_at=None)
+                                .exists()
+                            )
+                            if not already_notified:
+                                studies_to_notify[patient_pk].append(study_pk)
 
                         # Track cursor (use max fecha/numero from this group)
                         for row in rows:
@@ -355,6 +388,23 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                             "errors": len(errors),
                         },
                     )
+
+        # Dispatch patient notifications. One email per patient (batched even
+        # if they have N new studies in this run). Marks Study.notification_sent_at
+        # so the rolling-window re-sync tomorrow won't re-notify.
+        if studies_to_notify:
+            queued = _dispatch_patient_notifications(
+                studies_to_notify=studies_to_notify,
+                users_created_this_run=users_created_this_run,
+            )
+            counters["notifications_queued"] = queued
+            logger.info(
+                "sync_labwin: queued %d patient notifications "
+                "(%d total studies across %d patients)",
+                queued,
+                sum(len(v) for v in studies_to_notify.values()),
+                len(studies_to_notify),
+            )
 
         # Success
         sync_log.status = "completed" if not errors else "partial"
@@ -409,13 +459,22 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
 
 
 def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
-    """Get or create a patient User from a PACIENTES row. Returns User pk."""
+    """Get or create a patient User from a PACIENTES row.
+
+    Returns:
+        (user_pk, was_created): Tuple of the User's pk and a flag indicating
+        whether THIS sync run created the User. The flag drives the
+        notification logic in sync_labwin_results:
+            was_created=False → "your study is now available" email
+            was_created=True  → "set up your password" email (if email exists)
+    """
     from apps.users.models import User
 
     source_key = str(pac_row["NUMERO_FLD"])
     fields = mappers.map_patient(pac_row)
 
-    # Check SyncedRecord first
+    # Check SyncedRecord first — if we previously imported this PACIENTES row,
+    # the User definitely existed before this sync run.
     existing = SyncedRecord.objects.filter(
         source_table="PACIENTES",
         source_key=source_key,
@@ -435,10 +494,10 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
             if update_fields:
                 user.save(update_fields=update_fields)
                 counters["patients_updated"] += 1
-            return user.pk
+            return user.pk, False
         # SyncedRecord exists but user was deleted, fall through to create
 
-    # Try to match by DNI
+    # Try to match by DNI — User exists from manual signup or an earlier sync.
     dni = fields.get("dni")
     if dni:
         user = User.objects.filter(
@@ -454,7 +513,7 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
                 sync_log,
             )
             counters["patients_updated"] += 1
-            return user.pk
+            return user.pk, False
 
     # Create new patient.
     # Email is unique on User; if another patient already has this email
@@ -495,7 +554,7 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
             sync_log,
         )
         counters["patients_created"] += 1
-        return user.pk
+        return user.pk, True
 
 
 def _get_or_create_doctor(medico_row, lab_client_id, sync_log, counters):
@@ -760,6 +819,108 @@ def _ensure_synced_record(
             "sync_log": sync_log,
         },
     )
+
+
+def _dispatch_patient_notifications(studies_to_notify, users_created_this_run):
+    """Queue patient notification emails for studies imported in this sync.
+
+    One email per patient, batched across all their new studies. Updates
+    Study.notification_sent_at so re-syncs (rolling 2-day window) won't
+    re-notify.
+
+    Two cases:
+      A. Patient was CREATED by this sync (in users_created_this_run)
+         AND has an email → queue "set up your password" email
+         (apps.notifications.tasks.send_password_setup_email).
+      B. Patient existed before AND has an email → queue "your studies
+         are available" email
+         (apps.notifications.tasks.send_studies_available_email).
+
+    Patients without email get nothing (the lab signup workflow is still
+    open — see CLAUDE.md "Workflow open question"). Their studies stay
+    unnotified (notification_sent_at=NULL) so when an email becomes
+    available later, the next sync will catch them.
+
+    Args:
+        studies_to_notify: dict {user_pk: [study_pk, ...]}
+        users_created_this_run: set of user_pks created during this sync run
+
+    Returns:
+        Number of emails queued.
+    """
+    from apps.notifications.tasks import (
+        send_password_setup_email,
+        send_studies_available_email,
+    )
+    from apps.studies.models import Study
+    from apps.users.models import User
+
+    queued = 0
+    now = timezone.now()
+    user_ids = list(studies_to_notify.keys())
+
+    # Single query to get email + flag for all candidate users
+    users = {
+        u.pk: u
+        for u in User.objects.filter(pk__in=user_ids).only("pk", "email")
+    }
+
+    for user_pk, study_pks in studies_to_notify.items():
+        user = users.get(user_pk)
+        if user is None or not user.email:
+            # No email → can't notify. Leave Study.notification_sent_at NULL
+            # so a future sync (after the patient gets an email via signup
+            # workflow) can re-attempt.
+            logger.info(
+                "skip notify user pk=%s: no email (studies pending=%d)",
+                user_pk,
+                len(study_pks),
+            )
+            continue
+
+        try:
+            if user_pk in users_created_this_run:
+                # Brand new user — send password-setup invite. The first study
+                # they have triggers the invite; subsequent studies get
+                # notified once they log in.
+                send_password_setup_email.delay(str(user_pk))
+                logger.info(
+                    "queued password_setup email for new user pk=%s "
+                    "(studies=%d)",
+                    user_pk,
+                    len(study_pks),
+                )
+            else:
+                # Existing user — batched "you have N new studies" email.
+                send_studies_available_email.delay(
+                    str(user_pk), [str(pk) for pk in study_pks]
+                )
+                logger.info(
+                    "queued studies_available email for existing user pk=%s "
+                    "(studies=%d)",
+                    user_pk,
+                    len(study_pks),
+                )
+
+            # Mark these studies as notified. Done in bulk per user to keep
+            # the SQL footprint small even when one patient has many studies.
+            Study.objects.filter(pk__in=study_pks).update(
+                notification_sent_at=now,
+                updated_at=now,
+            )
+            queued += 1
+        except Exception:
+            # Email dispatch failure shouldn't fail the whole sync. The
+            # studies stay un-notified (notification_sent_at=NULL) so the
+            # next sync retries.
+            logger.exception(
+                "failed to queue notification for user pk=%s "
+                "(studies=%d) — will retry on next sync",
+                user_pk,
+                len(study_pks),
+            )
+
+    return queued
 
 
 @shared_task(bind=True, max_retries=3, time_limit=1800)
