@@ -860,10 +860,7 @@ def _dispatch_patient_notifications(studies_to_notify, users_created_this_run):
     user_ids = list(studies_to_notify.keys())
 
     # Single query to get email + flag for all candidate users
-    users = {
-        u.pk: u
-        for u in User.objects.filter(pk__in=user_ids).only("pk", "email")
-    }
+    users = {u.pk: u for u in User.objects.filter(pk__in=user_ids).only("pk", "email")}
 
     for user_pk, study_pks in studies_to_notify.items():
         user = users.get(user_pk)
@@ -885,8 +882,7 @@ def _dispatch_patient_notifications(studies_to_notify, users_created_this_run):
                 # notified once they log in.
                 send_password_setup_email.delay(str(user_pk))
                 logger.info(
-                    "queued password_setup email for new user pk=%s "
-                    "(studies=%d)",
+                    "queued password_setup email for new user pk=%s " "(studies=%d)",
                     user_pk,
                     len(study_pks),
                 )

@@ -351,8 +351,9 @@ def send_studies_available_email(self, user_id, study_ids):
         # Pull the study names for the email subject. We don't list every
         # study in the body — the patient logs in to see them.
         study_names = list(
-            Study.objects.filter(pk__in=study_ids)
-            .values_list("protocol_number", flat=True)[:5]
+            Study.objects.filter(pk__in=study_ids).values_list(
+                "protocol_number", flat=True
+            )[:5]
         )
         count = len(study_ids)
 

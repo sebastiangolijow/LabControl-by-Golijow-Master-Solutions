@@ -825,8 +825,11 @@ class SyncNotificationTests(BaseTestCase):
             }
         ]
 
-        with patch.object(MockLabWinConnector, "fetch_validated_deters") as mock_deters, \
-             patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
+        with patch.object(
+            MockLabWinConnector, "fetch_validated_deters"
+        ) as mock_deters, patch.object(
+            MockLabWinConnector, "fetch_pacientes"
+        ) as mock_pac:
             mock_deters.return_value = iter([emailless_deters])
             mock_pac.return_value = {999777: emailless_pac}
 
@@ -892,6 +895,7 @@ class SyncNotificationTests(BaseTestCase):
         # Patch fetch_pacientes so that all three NUMEROs map to the SAME
         # DNI (and thus the same existing User by DNI lookup).
         with patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
+
             def _all_same_dni(numeros):
                 # SAMPLE_PACIENTES is a dict keyed by NUMERO_FLD
                 from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES as _SP
