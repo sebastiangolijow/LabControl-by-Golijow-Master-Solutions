@@ -269,9 +269,7 @@ class TestStudyFilterUnit(BaseTestCase):
         from django.core.files.base import ContentFile
 
         with_pdf = self.create_study(protocol_number="UF-PDF-1")
-        with_pdf.results_file.save(
-            "r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
-        )
+        with_pdf.results_file.save("r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True)
         self.create_study(protocol_number="UF-NOPDF-1")
 
         qs = self._filter({"has_pdf": "true"})
@@ -283,9 +281,7 @@ class TestStudyFilterUnit(BaseTestCase):
         from django.core.files.base import ContentFile
 
         with_pdf = self.create_study(protocol_number="UF-PDF-2")
-        with_pdf.results_file.save(
-            "r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
-        )
+        with_pdf.results_file.save("r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True)
         self.create_study(protocol_number="UF-NOPDF-2")
 
         qs = self._filter({"has_pdf": "false"})
@@ -297,9 +293,7 @@ class TestStudyFilterUnit(BaseTestCase):
         from django.core.files.base import ContentFile
 
         with_pdf = self.create_study(protocol_number="UF-PDF-3")
-        with_pdf.results_file.save(
-            "r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
-        )
+        with_pdf.results_file.save("r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True)
         self.create_study(protocol_number="UF-NOPDF-3")
 
         qs = self._filter({})

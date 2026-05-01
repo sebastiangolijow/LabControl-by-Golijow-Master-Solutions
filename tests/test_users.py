@@ -720,9 +720,7 @@ class ResetTestDataCommandTests(BaseTestCase):
         call_command("reset_test_data", "--dry-run", stdout=out)
 
         self.assertEqual(User.objects.filter(role="patient").count(), 2)
-        self.assertEqual(
-            User.objects.filter(pk=seeded["patient_a"].pk).count(), 1
-        )
+        self.assertEqual(User.objects.filter(pk=seeded["patient_a"].pk).count(), 1)
         from apps.studies.models import Study
 
         self.assertEqual(Study.objects.count(), 1)

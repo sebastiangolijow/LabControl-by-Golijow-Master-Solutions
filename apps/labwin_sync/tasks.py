@@ -1352,9 +1352,7 @@ def cleanup_misplaced_uploads(self):
     try:
         result = _run(dry_run=False)
     except Exception:
-        logger.exception(
-            "cleanup_misplaced_uploads FAILED | %s", memory_summary()
-        )
+        logger.exception("cleanup_misplaced_uploads FAILED | %s", memory_summary())
         raise
 
     logger.info(

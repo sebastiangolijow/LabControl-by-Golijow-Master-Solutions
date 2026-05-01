@@ -57,9 +57,7 @@ class StudyFilter(django_filters.FilterSet):
         ?has_pdf=false → only studies missing the results_file
         """
         if value is True:
-            return queryset.exclude(results_file="").exclude(
-                results_file__isnull=True
-            )
+            return queryset.exclude(results_file="").exclude(results_file__isnull=True)
         if value is False:
             from django.db.models import Q
 

@@ -207,8 +207,7 @@ class Command(BaseCommand):
 
         mb = result["bytes_freed"] / 1024 / 1024
         self.stdout.write(
-            f"\nDeleted: {len(result['deleted'])} files "
-            f"({mb:.1f} MB freed)"
+            f"\nDeleted: {len(result['deleted'])} files " f"({mb:.1f} MB freed)"
         )
         for name in result["deleted"]:
             self.stdout.write(f"  - {name}")

@@ -1719,9 +1719,7 @@ class BackupImporterRunTests(BaseTestCase):
 
     @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
     @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
-    def test_dedup_does_not_skip_when_prior_run_failed(
-        self, mock_restore, mock_sync
-    ):
+    def test_dedup_does_not_skip_when_prior_run_failed(self, mock_restore, mock_sync):
         """A previous FAILED SyncLog with the same filename shouldn't block a
         retry — the lab's upload may have been corrupt and re-uploaded."""
         # Pre-seed a failed SyncLog for this filename
@@ -2317,9 +2315,7 @@ class DisablePatientEmailsTests(BaseTestCase):
 
         # Studies belonging to patients that had an email should have
         # notification_sent_at set even though no email was queued.
-        any_marked = Study.objects.filter(
-            notification_sent_at__isnull=False
-        ).exists()
+        any_marked = Study.objects.filter(notification_sent_at__isnull=False).exists()
         self.assertTrue(
             any_marked,
             "DISABLE_PATIENT_EMAILS must still mark studies as notified",
@@ -2403,9 +2399,7 @@ class SyncLoggerTests(BaseTestCase):
             mock_deters.return_value = iter([emailless_deters])
             mock_pac.return_value = {999666: emailless_pac}
 
-            with self.assertLogs(
-                "apps.labwin_sync.tasks", level="WARNING"
-            ) as captured:
+            with self.assertLogs("apps.labwin_sync.tasks", level="WARNING") as captured:
                 sync_labwin_results(lab_client_id=1, full_sync=True)
 
         joined = "\n".join(captured.output)
@@ -2418,9 +2412,7 @@ class SyncLoggerTests(BaseTestCase):
     def test_summary_line_logged_at_end(self):
         """sync_labwin_results emits a SUMMARY line with all counters
         suitable for grepping in production logs."""
-        with self.assertLogs(
-            "apps.labwin_sync.tasks", level="INFO"
-        ) as captured:
+        with self.assertLogs("apps.labwin_sync.tasks", level="INFO") as captured:
             sync_labwin_results(lab_client_id=1, full_sync=True)
 
         joined = "\n".join(captured.output)
@@ -2464,9 +2456,7 @@ class ReferenceRangePopulationTests(BaseTestCase):
             with open(references_path, "w", newline="") as f:
                 w = _csv.writer(f)
                 w.writerow(["ABREV_FLD", "RESULTS_FLD"])
-                w.writerow(
-                    ["TEST-RR", "{L=2}Reference: 70-110 mg/dL{CrLf}{FB=1}"]
-                )
+                w.writerow(["TEST-RR", "{L=2}Reference: 70-110 mg/dL{CrLf}{FB=1}"])
 
             call_command(
                 "import_labwin_practices",
@@ -2525,7 +2515,9 @@ class CleanupMisplacedFDBTests(BaseTestCase):
         fake_ftp.mlsd.side_effect = [iter(results_entries), iter(root_entries)]
 
         # Patch get_ftp_connector → return a mock connector wrapping fake_ftp
-        from apps.labwin_sync.management.commands import cleanup_misplaced_fdb as cmd_mod
+        from apps.labwin_sync.management.commands import (
+            cleanup_misplaced_fdb as cmd_mod,
+        )
 
         mock_connector = MagicMock()
         mock_connector._ftp = fake_ftp
@@ -2538,9 +2530,7 @@ class CleanupMisplacedFDBTests(BaseTestCase):
         self.assertTrue(
             any("BASEDAT_20260501_0200.FDB" in d for d in result["deleted"])
         )
-        self.assertTrue(
-            any("BASEDAT_old.fbk.gz" in d for d in result["deleted"])
-        )
+        self.assertTrue(any("BASEDAT_old.fbk.gz" in d for d in result["deleted"]))
 
         # One PDF moved from / to /results/
         self.assertEqual(len(result["moved"]), 1)
@@ -2549,19 +2539,21 @@ class CleanupMisplacedFDBTests(BaseTestCase):
         self.assertEqual(dst, "/results/999000-99999-ORPHAN,PDF.pdf")
 
         # The legitimate PDF in /results/ was not touched
-        legit_touched = any(
-            "LEGIT,PATIENT" in d for d in result["deleted"]
-        ) or any("LEGIT,PATIENT" in src for src, _ in result["moved"])
+        legit_touched = any("LEGIT,PATIENT" in d for d in result["deleted"]) or any(
+            "LEGIT,PATIENT" in src for src, _ in result["moved"]
+        )
         self.assertFalse(legit_touched, "Legitimate PDFs must not be touched")
 
         # Bytes freed reflects both deleted files
         self.assertEqual(result["bytes_freed"], 2400000000 + 70000000)
 
     def test_dry_run_makes_no_ftp_changes(self):
+        from apps.labwin_sync.management.commands import (
+            cleanup_misplaced_fdb as cmd_mod,
+        )
         from apps.labwin_sync.management.commands.cleanup_misplaced_fdb import (
             cleanup_misplaced_uploads,
         )
-        from apps.labwin_sync.management.commands import cleanup_misplaced_fdb as cmd_mod
 
         fake_ftp = MagicMock()
         fake_ftp.mlsd.side_effect = [

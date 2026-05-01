@@ -207,10 +207,13 @@ class BackupImporter:
             # filename. Matches by exact filename: the lab's upload script
             # stamps `BASEDAT_YYYYMMDD_HHMMSS.fbk.gz`, so two distinct
             # backups never collide unless the lab re-uploads the same file.
-            if not explicit_file and SyncLog.objects.filter(
-                status="completed",
-                backup_filename=backup_path.name,
-            ).exists():
+            if (
+                not explicit_file
+                and SyncLog.objects.filter(
+                    status="completed",
+                    backup_filename=backup_path.name,
+                ).exists()
+            ):
                 result.status = "skipped"
                 result.error = (
                     f"backup {backup_path.name} already imported in a prior run"

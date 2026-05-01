@@ -108,7 +108,9 @@ class Command(BaseCommand):
 
             # Studies cascade to StudyPractice and UserDetermination.
             n_studies, _ = Study.objects.all().delete()
-            logger.info("reset_test_data: deleted studies (cascade) — count=%d", n_studies)
+            logger.info(
+                "reset_test_data: deleted studies (cascade) — count=%d", n_studies
+            )
 
             # Patients cascade to Appointments, Invoices, Notifications.
             n_patients, _ = User.objects.filter(role="patient").delete()

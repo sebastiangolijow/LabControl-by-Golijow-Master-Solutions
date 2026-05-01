@@ -92,9 +92,7 @@ class Command(BaseCommand):
                 task3.interval = None
                 task3.save(update_fields=["crontab", "interval"])
                 self.stdout.write(
-                    self.style.SUCCESS(
-                        "↻ Updated: Sync LabWin Results → Nightly 4 AM"
-                    )
+                    self.style.SUCCESS("↻ Updated: Sync LabWin Results → Nightly 4 AM")
                 )
             else:
                 self.stdout.write(
@@ -182,9 +180,7 @@ class Command(BaseCommand):
             )
         else:
             self.stdout.write(
-                self.style.WARNING(
-                    "○ Already exists: Cleanup Misplaced FTP Uploads"
-                )
+                self.style.WARNING("○ Already exists: Cleanup Misplaced FTP Uploads")
             )
 
         self.stdout.write(self.style.SUCCESS("\n✓ Periodic tasks setup complete!"))
