@@ -25,6 +25,35 @@
 
 ## 🔧 Recent Updates & Fixes
 
+### May 1, 2026: Real-data sync activated + 3 follow-ups + scheduled at 04:00
+
+**Production state changes:**
+- `LABWIN_USE_MOCK=True` → `False` in `.env.production`. Sync now hits the restored Firebird DB instead of the mock connector.
+- `DISABLE_PATIENT_EMAILS=True` set as a kill switch — `_dispatch_patient_notifications` skips the patient `.delay()` calls but still marks `Study.notification_sent_at`. Verified silent: `emails_skipped=3,040, notifications_queued=0`, zero actual `.delay()` invocations in worker logs. Admin/system emails (password reset, etc.) still work.
+- Beat schedule for `Sync LabWin Results` moved from `0 2 * * *` → `0 4 * * *` to give 2h headroom after the lab's 02:00 SFTP upload.
+- New Beat task `Cleanup Misplaced FTP Uploads` (daily 03:50) — defends against the lab pushing duplicate `.FDB` files via FTP. **REMOVE once lab fixes the duplicate upload** (see CLAUDE.md TODO).
+- Migration `studies.0006_historicalstudy_notification_sent_at_and_more` (committed 2026-04-28 but never deployed) was applied during the deploy. Surfaced via a `ProgrammingError` mid-`reset_test_data`; future deploys should run `migrate` first.
+- Two new `labwin_sync` migrations applied: `0002_synclog_counters_extension` (3 counter fields), `0003_synclog_backup_filename` (dedup).
+
+**Final ingestion state**: 3,040 patients / 3,749 studies / 25,439 StudyPractices / 1,720 doctors / 15 PDFs attached. Date window 2026-01-31 → 2026-04-29 (90 days). All 7 containers healthy.
+
+**Operational cleanup performed:**
+- 16.5 GB freed by `cleanup_misplaced_fdb` (7 stray `.FDB` files in FTP `/results/`).
+- 1 orphan PDF moved from `/home/labwin_ftp/` → `/home/labwin_ftp/results/`.
+- Database wiped of stale studies/patients via `reset_test_data --confirm`, re-ingested cleanly with the windowed sync (NO `--full` — the flag bypasses the 90-day window per `tasks.py:87`).
+- Stale "started" SyncLog from a runaway `--full` task marked as failed for clean audit trail.
+
+**New management commands** (apps/users + apps/labwin_sync):
+- `python manage.py reset_test_data --confirm` — wipes patients + studies (cascade), preserves admins/lab_staff/doctors/practices/SyncLog.
+- `python manage.py cleanup_misplaced_fdb [--dry-run]` — scans FTP, deletes stray DB files, moves orphan PDFs to `/results/`.
+
+**Key gotchas surfaced today:**
+- `python manage.py sync_labwin --full` IGNORES the 90-day window (deliberate per inline comment, used for one-off re-imports of all history). Use the non-`--full` form for normal operation.
+- `web` container does NOT mount `/srv/labwin_backups/` — only `celery_worker` does. Use `--use-celery` for `import_backup`.
+- `setup_periodic_tasks.py` was using `get_or_create` which silently skipped existing rows. Now updates the schedule on the row when it has drifted.
+
+**Ops runbook tweak**: when changing periodic task schedules in code, also re-run `python manage.py setup_periodic_tasks` on the VPS to apply to the running Beat scheduler.
+
 ### April 25, 2026: Phase B of LabWin Backup Pipeline shipped + operational hardening
 
 - **LabWin backup ingestion working end-to-end.** Real `BASEDAT_*.fbk.gz` (70 MB) restored into the new `firebird` container in 155s via `firebirdsql.services.restore_database`. `--sync-only` then ingested 1,316 studies + 1,030 patients in ~73s, total 3,062 studies / 2,877 patients in Postgres.

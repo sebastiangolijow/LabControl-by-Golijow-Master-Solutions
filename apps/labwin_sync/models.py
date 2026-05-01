@@ -49,6 +49,9 @@ class SyncLog(models.Model):
     practices_created = models.IntegerField(default=0)
     studies_created = models.IntegerField(default=0)
     studies_updated = models.IntegerField(default=0)
+    study_practices_created = models.IntegerField(default=0)
+    notifications_queued = models.IntegerField(default=0)
+    emails_skipped = models.IntegerField(default=0)
 
     # Error tracking
     errors = models.JSONField(default=list, blank=True)
@@ -60,6 +63,11 @@ class SyncLog(models.Model):
 
     # Celery task ID for correlation
     celery_task_id = models.CharField(max_length=255, blank=True)
+
+    # Source backup filename (for `import_uploaded_backup` runs). Used for
+    # dedup: BackupImporter skips a file if a previous SyncLog with the same
+    # filename already completed successfully. Empty for non-backup syncs.
+    backup_filename = models.CharField(max_length=255, blank=True, db_index=True)
 
     class Meta:
         verbose_name = _("sync log")

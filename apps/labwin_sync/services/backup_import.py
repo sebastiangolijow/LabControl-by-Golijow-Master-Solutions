@@ -203,6 +203,26 @@ class BackupImporter:
                 result.backup_size_bytes / 1_048_576,
             )
 
+            # 1b. Dedup — skip if a previous SyncLog already imported this
+            # filename. Matches by exact filename: the lab's upload script
+            # stamps `BASEDAT_YYYYMMDD_HHMMSS.fbk.gz`, so two distinct
+            # backups never collide unless the lab re-uploads the same file.
+            if not explicit_file and SyncLog.objects.filter(
+                status="completed",
+                backup_filename=backup_path.name,
+            ).exists():
+                result.status = "skipped"
+                result.error = (
+                    f"backup {backup_path.name} already imported in a prior run"
+                )
+                logger.info(
+                    "BackupImporter: skipping %s — already in a completed SyncLog",
+                    backup_path.name,
+                )
+                # Still move it out of incoming/ so we don't keep re-checking it.
+                self.move_to_processed(backup_path)
+                return result
+
             # 2. Validate
             self.validate_backup(backup_path)
 
@@ -251,9 +271,18 @@ class BackupImporter:
                 self.move_to_failed(backup_path)
 
         finally:
-            sync_log.status = "completed" if result.status == "completed" else "failed"
+            # Map our richer result.status onto the SyncLog status enum.
+            # "skipped" counts as completed (no-op success — file was an
+            # already-imported duplicate); only "failed" maps to failed.
+            if result.status == "failed":
+                sync_log.status = "failed"
+            else:
+                sync_log.status = "completed"
             sync_log.completed_at = timezone.now()
-            if result.error:
+            if result.backup_filename:
+                # Persist filename for dedup on the next run.
+                sync_log.backup_filename = result.backup_filename
+            if result.error and result.status == "failed":
                 sync_log.errors = [{"stage": "backup_import", "error": result.error}]
                 sync_log.error_count = 1
             sync_log.save()

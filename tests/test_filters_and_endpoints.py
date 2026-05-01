@@ -189,6 +189,124 @@ class TestStudyFilter(BaseTestCase):
             s["protocol_number"] == completed_study.protocol_number for s in results
         )
 
+    def test_study_filter_has_pdf_true_returns_only_studies_with_pdf(self):
+        """?has_pdf=true returns only studies with a results_file attached.
+
+        Patients ask for "show me only my completed reports" — this filter
+        backs that UI toggle.
+        """
+        from django.core.files.base import ContentFile
+
+        client, admin = self.authenticate_as_admin()
+        with_pdf = self.create_study(protocol_number="W-PDF-001", status="completed")
+        with_pdf.results_file.save(
+            "report.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
+        )
+        _without_pdf = self.create_study(
+            protocol_number="W-NOPDF-001", status="completed"
+        )
+
+        response = client.get("/api/v1/studies/?has_pdf=true")
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data["results"]
+        assert any(s["protocol_number"] == "W-PDF-001" for s in results)
+        assert not any(s["protocol_number"] == "W-NOPDF-001" for s in results)
+
+    def test_study_filter_has_pdf_false_returns_only_studies_without_pdf(self):
+        """?has_pdf=false returns the inverse — used for admin "find studies
+        still missing a result" workflows."""
+        from django.core.files.base import ContentFile
+
+        client, admin = self.authenticate_as_admin()
+        with_pdf = self.create_study(protocol_number="W-PDF-002", status="completed")
+        with_pdf.results_file.save(
+            "report.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
+        )
+        _without_pdf = self.create_study(
+            protocol_number="W-NOPDF-002", status="completed"
+        )
+
+        response = client.get("/api/v1/studies/?has_pdf=false")
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data["results"]
+        assert not any(s["protocol_number"] == "W-PDF-002" for s in results)
+        assert any(s["protocol_number"] == "W-NOPDF-002" for s in results)
+
+    def test_study_filter_has_pdf_omitted_returns_all(self):
+        """When the param is absent, the filter is a no-op."""
+        from django.core.files.base import ContentFile
+
+        client, admin = self.authenticate_as_admin()
+        with_pdf = self.create_study(protocol_number="W-PDF-003")
+        with_pdf.results_file.save(
+            "report.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
+        )
+        self.create_study(protocol_number="W-NOPDF-003")
+
+        response = client.get("/api/v1/studies/")
+        assert response.status_code == status.HTTP_200_OK
+        protocols = {s["protocol_number"] for s in response.data["results"]}
+        assert "W-PDF-003" in protocols
+        assert "W-NOPDF-003" in protocols
+
+
+class TestStudyFilterUnit(BaseTestCase):
+    """StudyFilter unit tests (no HTTP — bypasses Redis rate-limit middleware
+    that's not running in the local test environment).
+
+    The class-level TestStudyFilter exercises the same filter via the API,
+    which is the integration path. These cover the same logic at the
+    filterset level so we still get coverage when Redis isn't available.
+    """
+
+    def _filter(self, params):
+        from apps.studies.filters import StudyFilter
+        from apps.studies.models import Study
+
+        return StudyFilter(params, queryset=Study.objects.all()).qs
+
+    def test_has_pdf_true_filters_to_studies_with_results_file(self):
+        from django.core.files.base import ContentFile
+
+        with_pdf = self.create_study(protocol_number="UF-PDF-1")
+        with_pdf.results_file.save(
+            "r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
+        )
+        self.create_study(protocol_number="UF-NOPDF-1")
+
+        qs = self._filter({"has_pdf": "true"})
+        protocols = set(qs.values_list("protocol_number", flat=True))
+        assert "UF-PDF-1" in protocols
+        assert "UF-NOPDF-1" not in protocols
+
+    def test_has_pdf_false_filters_to_studies_without_results_file(self):
+        from django.core.files.base import ContentFile
+
+        with_pdf = self.create_study(protocol_number="UF-PDF-2")
+        with_pdf.results_file.save(
+            "r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
+        )
+        self.create_study(protocol_number="UF-NOPDF-2")
+
+        qs = self._filter({"has_pdf": "false"})
+        protocols = set(qs.values_list("protocol_number", flat=True))
+        assert "UF-PDF-2" not in protocols
+        assert "UF-NOPDF-2" in protocols
+
+    def test_has_pdf_omitted_returns_all(self):
+        from django.core.files.base import ContentFile
+
+        with_pdf = self.create_study(protocol_number="UF-PDF-3")
+        with_pdf.results_file.save(
+            "r.pdf", ContentFile(b"%PDF-1.4 fake"), save=True
+        )
+        self.create_study(protocol_number="UF-NOPDF-3")
+
+        qs = self._filter({})
+        protocols = set(qs.values_list("protocol_number", flat=True))
+        assert "UF-PDF-3" in protocols
+        assert "UF-NOPDF-3" in protocols
+
 
 class TestDoctorPermissions(BaseTestCase):
     """Test cases for doctor role permissions."""

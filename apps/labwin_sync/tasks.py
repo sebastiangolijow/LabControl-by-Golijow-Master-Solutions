@@ -6,6 +6,8 @@ Tasks:
 - fetch_ftp_pdfs: Fetch PDF result files from FTP server and attach to studies.
 - cleanup_ftp_pdfs: Remove successfully processed PDFs from FTP server.
 - import_uploaded_backup: Restore latest .fbk.gz backup and trigger sync (Phase B).
+- cleanup_misplaced_uploads: Scrub stray .FDB / orphan PDF uploads on FTP.
+  REMOVE-ONCE-LAB-FIXES-DUPLICATE-UPLOAD (see CLAUDE.md TODO).
 """
 
 import logging
@@ -116,6 +118,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         "studies_updated": 0,
         "study_practices_created": 0,
         "notifications_queued": 0,
+        "emails_skipped": 0,
     }
 
     # Notification batching state. We accumulate per-user lists during the sync
@@ -374,15 +377,18 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         # if they have N new studies in this run). Marks Study.notification_sent_at
         # so the rolling-window re-sync tomorrow won't re-notify.
         if studies_to_notify:
-            queued = _dispatch_patient_notifications(
+            queued, skipped = _dispatch_patient_notifications(
                 studies_to_notify=studies_to_notify,
                 users_needing_password_setup=users_needing_password_setup,
             )
             counters["notifications_queued"] = queued
+            counters["emails_skipped"] = skipped
             logger.info(
-                "sync_labwin: queued %d patient notifications "
+                "sync_labwin: queued %d patient notifications, "
+                "skipped %d (DISABLE_PATIENT_EMAILS or no email) "
                 "(%d total studies across %d patients)",
                 queued,
+                skipped,
                 sum(len(v) for v in studies_to_notify.values()),
                 len(studies_to_notify),
             )
@@ -411,6 +417,26 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             **counters,
             "error_count": len(errors),
         }
+        logger.info(
+            "sync_labwin_results SUMMARY — "
+            "patients_created=%d patients_updated=%d "
+            "studies_created=%d studies_updated=%d study_practices_created=%d "
+            "doctors_created=%d practices_created=%d "
+            "notifications_queued=%d emails_skipped=%d "
+            "errors=%d batches=%d | %s",
+            counters.get("patients_created", 0),
+            counters.get("patients_updated", 0),
+            counters.get("studies_created", 0),
+            counters.get("studies_updated", 0),
+            counters.get("study_practices_created", 0),
+            counters.get("doctors_created", 0),
+            counters.get("practices_created", 0),
+            counters.get("notifications_queued", 0),
+            counters.get("emails_skipped", 0),
+            len(errors),
+            batch_index,
+            memory_summary(),
+        )
         logger.info(
             "sync_labwin_results END — %s | batches=%d | %s",
             result["message"],
@@ -507,9 +533,12 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
     # without an email, awaiting the QR/manual-claim flow.
     email = new_email
     if email and User.objects.filter(email=email).exists():
-        logger.info(
-            "Patient email %s already taken — creating new patient with email=None",
+        logger.warning(
+            "patient email collision — creating new patient with email=None: "
+            "email=%s dni=%s lab_client_id=%s",
             email,
+            fields.get("dni") or "<none>",
+            lab_client_id,
         )
         email = None
 
@@ -540,6 +569,26 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
             sync_log,
         )
         counters["patients_created"] += 1
+
+        if email:
+            logger.info(
+                "patient created: user_pk=%s dni=%s email=%s lab_client_id=%s",
+                user.pk,
+                user.dni or "<none>",
+                email,
+                lab_client_id,
+            )
+        else:
+            # Hot data-quality signal — surfaces in `make logs-prod-errors`
+            # so the lab can see how many PACIENTES rows are emailless.
+            logger.warning(
+                "patient created without email — cannot send activation: "
+                "user_pk=%s dni=%s name=%s lab_client_id=%s",
+                user.pk,
+                user.dni or "<none>",
+                f"{user.first_name} {user.last_name}".strip() or "<none>",
+                lab_client_id,
+            )
 
         # Only send password-setup if we actually saved an email. Patients
         # without email wait for a future sync that brings one (DNI revival)
@@ -843,6 +892,16 @@ def _get_or_create_study_with_practices(
             sync_log,
         )
         counters["studies_created"] += 1
+        logger.info(
+            "study created: pk=%s protocol=%s patient_pk=%s practices=%d "
+            "is_paid=%s is_validated=%s",
+            study.pk,
+            study.protocol_number,
+            patient_pk,
+            len(deters_rows),
+            study.is_paid,
+            study.is_validated,
+        )
         return study.pk
 
 
@@ -881,13 +940,18 @@ def _dispatch_patient_notifications(studies_to_notify, users_needing_password_se
     notification_sent_at=NULL so a future sync that brings an email
     (DNI-revival branch in _refresh_existing_patient) catches them.
 
+    Kill switch: when settings.DISABLE_PATIENT_EMAILS is True the .delay()
+    calls are short-circuited but Study.notification_sent_at is still set
+    so the same studies aren't queued forever during test runs.
+
     Args:
         studies_to_notify: dict {user_pk: [study_pk, ...]}
         users_needing_password_setup: set of user_pks that should get the
             password-setup email this run
 
     Returns:
-        Number of emails queued.
+        (queued, skipped) — counts of emails actually queued vs skipped
+        (skipped covers both the no-email case and DISABLE_PATIENT_EMAILS).
     """
     from apps.notifications.tasks import (
         send_password_setup_email,
@@ -897,8 +961,10 @@ def _dispatch_patient_notifications(studies_to_notify, users_needing_password_se
     from apps.users.models import User
 
     queued = 0
+    skipped = 0
     now = timezone.now()
     user_ids = list(studies_to_notify.keys())
+    disable_emails = getattr(settings, "DISABLE_PATIENT_EMAILS", False)
 
     # Single query to get email for all candidate users
     users = {u.pk: u for u in User.objects.filter(pk__in=user_ids).only("pk", "email")}
@@ -914,10 +980,33 @@ def _dispatch_patient_notifications(studies_to_notify, users_needing_password_se
                 user_pk,
                 len(study_pks),
             )
+            skipped += 1
+            continue
+
+        kind = (
+            "password_setup"
+            if user_pk in users_needing_password_setup
+            else "studies_available"
+        )
+
+        if disable_emails:
+            # Mark studies as notified anyway so the rolling window doesn't
+            # re-queue them every run during test mode.
+            Study.objects.filter(pk__in=study_pks).update(
+                notification_sent_at=now,
+                updated_at=now,
+            )
+            skipped += 1
+            logger.info(
+                "DISABLE_PATIENT_EMAILS=True — skipped %s for user pk=%s (studies=%d)",
+                kind,
+                user_pk,
+                len(study_pks),
+            )
             continue
 
         try:
-            if user_pk in users_needing_password_setup:
+            if kind == "password_setup":
                 # Fresh-create or DNI-revival — send password-setup invite.
                 # User is is_active=False until they click the link.
                 send_password_setup_email.delay(str(user_pk))
@@ -955,7 +1044,7 @@ def _dispatch_patient_notifications(studies_to_notify, users_needing_password_se
                 len(study_pks),
             )
 
-    return queued
+    return queued, skipped
 
 
 @shared_task(bind=True, max_retries=3, time_limit=1800)
@@ -1246,3 +1335,35 @@ def import_uploaded_backup(self, lab_client_id=None, explicit_file=None):
         memory_summary(),
     )
     return payload
+
+
+# REMOVE-ONCE-LAB-FIXES-DUPLICATE-UPLOAD: see CLAUDE.md TODO. Defends against
+# the lab pushing nightly .FDB files via FTP into /results/ and orphan PDFs
+# into the chroot root. Beat schedule runs at 03:50 (10 min before the
+# expected fetch_ftp_pdfs slot).
+@shared_task(bind=True, max_retries=2)
+def cleanup_misplaced_uploads(self):
+    """Scrub stray .FDB / orphan PDF uploads from the LabWin FTP."""
+    from apps.labwin_sync.management.commands.cleanup_misplaced_fdb import (
+        cleanup_misplaced_uploads as _run,
+    )
+
+    logger.info("cleanup_misplaced_uploads START | %s", memory_summary())
+    try:
+        result = _run(dry_run=False)
+    except Exception:
+        logger.exception(
+            "cleanup_misplaced_uploads FAILED | %s", memory_summary()
+        )
+        raise
+
+    logger.info(
+        "cleanup_misplaced_uploads END — deleted=%d moved=%d bytes_freed=%d "
+        "errors=%d | %s",
+        len(result["deleted"]),
+        len(result["moved"]),
+        result["bytes_freed"],
+        len(result["errors"]),
+        memory_summary(),
+    )
+    return result

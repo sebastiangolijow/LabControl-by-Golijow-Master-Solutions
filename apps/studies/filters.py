@@ -15,6 +15,9 @@ class StudyFilter(django_filters.FilterSet):
     practice = django_filters.UUIDFilter(
         field_name="study_practices__practice", label="Practice"
     )
+    has_pdf = django_filters.BooleanFilter(
+        method="filter_has_pdf", label="Has PDF attached"
+    )
 
     class Meta:
         model = Study
@@ -46,6 +49,22 @@ class StudyFilter(django_filters.FilterSet):
                 "study_practices__practice__name",
             )
         ).distinct()
+
+    def filter_has_pdf(self, queryset, name, value):
+        """Filter studies by whether they have a PDF result attached.
+
+        ?has_pdf=true  → only studies with a non-empty results_file
+        ?has_pdf=false → only studies missing the results_file
+        """
+        if value is True:
+            return queryset.exclude(results_file="").exclude(
+                results_file__isnull=True
+            )
+        if value is False:
+            from django.db.models import Q
+
+            return queryset.filter(Q(results_file="") | Q(results_file__isnull=True))
+        return queryset
 
 
 class DeterminationFilter(django_filters.FilterSet):

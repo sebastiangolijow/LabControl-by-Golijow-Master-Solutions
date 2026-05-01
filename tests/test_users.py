@@ -1,6 +1,11 @@
 """Tests for users app following TDD principles."""
 
+from io import StringIO
+
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import override_settings
 from rest_framework import status
 
 from tests.base import BaseTestCase
@@ -684,3 +689,145 @@ class TestDoctorRoleBasedValidation(BaseTestCase):
         # Verify both doctors exist
         doctors = User.objects.filter(role="doctor", last_name="NoEmail")
         assert doctors.count() == 2
+
+
+class ResetTestDataCommandTests(BaseTestCase):
+    """The reset_test_data management command wipes patients + studies but
+    must preserve everything else (admins, lab_staff, doctors, practices)."""
+
+    def _seed(self):
+        admin = self.create_admin()
+        staff = self.create_lab_staff()
+        doctor = self.create_doctor()
+        patient_a = self.create_patient(email="a@example.com")
+        patient_b = self.create_patient(email="b@example.com", dni="11222333")
+        practice = self.create_practice()
+        study_a = self.create_study(patient_a, practice=practice)
+        return {
+            "admin": admin,
+            "staff": staff,
+            "doctor": doctor,
+            "patient_a": patient_a,
+            "patient_b": patient_b,
+            "practice": practice,
+            "study_a": study_a,
+        }
+
+    @override_settings(DEBUG=True, DISABLE_PATIENT_EMAILS=False)
+    def test_dry_run_changes_nothing(self):
+        seeded = self._seed()
+        out = StringIO()
+        call_command("reset_test_data", "--dry-run", stdout=out)
+
+        self.assertEqual(User.objects.filter(role="patient").count(), 2)
+        self.assertEqual(
+            User.objects.filter(pk=seeded["patient_a"].pk).count(), 1
+        )
+        from apps.studies.models import Study
+
+        self.assertEqual(Study.objects.count(), 1)
+        self.assertIn("DRY RUN", out.getvalue())
+
+    @override_settings(DEBUG=True, DISABLE_PATIENT_EMAILS=False)
+    def test_confirm_deletes_patients_and_studies_only(self):
+        seeded = self._seed()
+        from apps.studies.models import Practice, Study
+
+        call_command("reset_test_data", "--confirm", stdout=StringIO())
+
+        # Patients + studies gone
+        self.assertEqual(User.objects.filter(role="patient").count(), 0)
+        self.assertEqual(Study.objects.count(), 0)
+
+        # Everything else preserved
+        self.assertEqual(
+            User.objects.filter(pk=seeded["admin"].pk).count(),
+            1,
+            "Admin must not be deleted",
+        )
+        self.assertEqual(
+            User.objects.filter(pk=seeded["staff"].pk).count(),
+            1,
+            "Lab staff must not be deleted",
+        )
+        self.assertEqual(
+            User.objects.filter(pk=seeded["doctor"].pk).count(),
+            1,
+            "Doctor must not be deleted",
+        )
+        self.assertEqual(
+            Practice.objects.filter(pk=seeded["practice"].pk).count(),
+            1,
+            "Practice catalog must not be deleted",
+        )
+
+    @override_settings(DEBUG=True)
+    def test_refuses_without_confirm_or_dry_run(self):
+        self._seed()
+        with self.assertRaises(CommandError):
+            call_command("reset_test_data")
+
+    @override_settings(DEBUG=False, DISABLE_PATIENT_EMAILS=False)
+    def test_refuses_in_live_production_posture(self):
+        # DEBUG=False AND DISABLE_PATIENT_EMAILS=False → live prod, must refuse
+        self._seed()
+        with self.assertRaises(CommandError):
+            call_command("reset_test_data", "--confirm")
+
+    @override_settings(DEBUG=False, DISABLE_PATIENT_EMAILS=True)
+    def test_runs_in_prod_when_emails_are_disabled(self):
+        # Production-like settings but with the kill switch on — explicit
+        # "we are doing a controlled test reset" posture.
+        self._seed()
+        from apps.studies.models import Study
+
+        call_command("reset_test_data", "--confirm", stdout=StringIO())
+        self.assertEqual(User.objects.filter(role="patient").count(), 0)
+        self.assertEqual(Study.objects.count(), 0)
+
+    @override_settings(DEBUG=True, DISABLE_PATIENT_EMAILS=False)
+    def test_cleans_up_synced_records_for_deleted_users_and_studies(self):
+        """Without this cleanup, the next sync would see the SyncedRecord
+        and skip re-importing the PACIENTES row, leaving orphaned state."""
+        from apps.labwin_sync.models import SyncedRecord, SyncLog
+
+        seeded = self._seed()
+        sync_log = SyncLog.objects.create(lab_client_id=1)
+
+        SyncedRecord.objects.create(
+            source_table="PACIENTES",
+            source_key="100001",
+            target_model="User",
+            target_uuid=seeded["patient_a"].pk,
+            lab_client_id=1,
+            sync_log=sync_log,
+        )
+        SyncedRecord.objects.create(
+            source_table="DETERS",
+            source_key="100001",
+            target_model="Study",
+            target_uuid=seeded["study_a"].pk,
+            lab_client_id=1,
+            sync_log=sync_log,
+        )
+
+        call_command("reset_test_data", "--confirm", stdout=StringIO())
+
+        # SyncedRecord rows for the deleted patient + study must be gone
+        self.assertEqual(
+            SyncedRecord.objects.filter(target_model="User").count(),
+            0,
+            "User SyncedRecords must be cleaned up",
+        )
+        self.assertEqual(
+            SyncedRecord.objects.filter(target_model="Study").count(),
+            0,
+            "Study SyncedRecords must be cleaned up",
+        )
+
+        # SyncLog itself is preserved (audit trail)
+        self.assertEqual(
+            SyncLog.objects.filter(pk=sync_log.pk).count(),
+            1,
+            "SyncLog history must be preserved",
+        )

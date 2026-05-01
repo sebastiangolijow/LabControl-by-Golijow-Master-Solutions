@@ -57,10 +57,14 @@ class Command(BaseCommand):
                 self.style.WARNING("○ Already exists: Cleanup Old Notifications")
             )
 
-        # Nightly LabWin sync at 2 AM
-        nightly_2am, _ = CrontabSchedule.objects.get_or_create(
+        # Nightly LabWin sync at 4 AM. The lab pushes their backup at 02:00,
+        # which takes ~2 min. Restore + sync on our side takes ~3 min. Running
+        # at 04:00 gives 2h headroom — enough to absorb a slow upload or a
+        # network blip without colliding. Matches the original
+        # LABWIN_BACKUP_PIPELINE.md design.
+        nightly_4am, _ = CrontabSchedule.objects.get_or_create(
             minute="0",
-            hour="2",
+            hour="4",
             day_of_week="*",
             day_of_month="*",
             month_of_year="*",
@@ -70,19 +74,34 @@ class Command(BaseCommand):
             name="Sync LabWin Results",
             defaults={
                 "task": "apps.labwin_sync.tasks.sync_labwin_results",
-                "crontab": nightly_2am,
+                "crontab": nightly_4am,
                 "enabled": True,
                 "kwargs": json.dumps({"lab_client_id": 1}),
             },
         )
         if created3:
             self.stdout.write(
-                self.style.SUCCESS("✓ Created: Sync LabWin Results (Nightly 2 AM)")
+                self.style.SUCCESS("✓ Created: Sync LabWin Results (Nightly 4 AM)")
             )
         else:
-            self.stdout.write(
-                self.style.WARNING("○ Already exists: Sync LabWin Results")
-            )
+            # Idempotent reschedule: get_or_create doesn't update existing
+            # rows, so explicitly retarget the crontab if the schedule has
+            # drifted (e.g. an old 02:00 row from before the cutover).
+            if task3.crontab_id != nightly_4am.id:
+                task3.crontab = nightly_4am
+                task3.interval = None
+                task3.save(update_fields=["crontab", "interval"])
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        "↻ Updated: Sync LabWin Results → Nightly 4 AM"
+                    )
+                )
+            else:
+                self.stdout.write(
+                    self.style.WARNING(
+                        "○ Already exists: Sync LabWin Results (Nightly 4 AM)"
+                    )
+                )
 
         # Fetch FTP PDFs every 30 minutes
         from django_celery_beat.models import IntervalSchedule
@@ -130,6 +149,43 @@ class Command(BaseCommand):
             )
         else:
             self.stdout.write(self.style.WARNING("○ Already exists: Cleanup FTP PDFs"))
+
+        # REMOVE-ONCE-LAB-FIXES-DUPLICATE-UPLOAD: cleanup misplaced .FDB
+        # uploads daily at 03:50 (10 min before fetch_ftp_pdfs's 04:00 slot
+        # when that gets enabled).
+        nightly_350am, _ = CrontabSchedule.objects.get_or_create(
+            minute="50",
+            hour="3",
+            day_of_week="*",
+            day_of_month="*",
+            month_of_year="*",
+        )
+
+        task6, created6 = PeriodicTask.objects.get_or_create(
+            name="Cleanup Misplaced FTP Uploads",
+            defaults={
+                "task": "apps.labwin_sync.tasks.cleanup_misplaced_uploads",
+                "crontab": nightly_350am,
+                "enabled": True,
+                "description": (
+                    "REMOVE-ONCE-LAB-FIXES-DUPLICATE-UPLOAD — defends against "
+                    "lab pushing nightly .FDB files via FTP. Disable + delete "
+                    "this task once the lab confirms the duplicate upload is fixed."
+                ),
+            },
+        )
+        if created6:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "✓ Created: Cleanup Misplaced FTP Uploads (Daily 3:50 AM)"
+                )
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING(
+                    "○ Already exists: Cleanup Misplaced FTP Uploads"
+                )
+            )
 
         self.stdout.write(self.style.SUCCESS("\n✓ Periodic tasks setup complete!"))
         self.stdout.write(

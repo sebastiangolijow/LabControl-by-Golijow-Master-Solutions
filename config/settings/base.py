@@ -254,6 +254,13 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@labcontrol.com")
 
+# Patient-facing email kill switch. When True, sync_labwin_results will skip
+# the password-setup and studies-available emails (still marks studies as
+# notified so they don't re-queue) but admin/system emails keep working.
+# Used to validate the ingestion pipeline against real lab data without
+# spamming patients during test runs.
+DISABLE_PATIENT_EMAILS = env.bool("DISABLE_PATIENT_EMAILS", default=False)
+
 # Frontend URL (for email verification links, password reset, etc.)
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 

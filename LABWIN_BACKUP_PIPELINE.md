@@ -6,7 +6,7 @@
 
 ---
 
-## 📊 Estado actual (2026-04-25)
+## 📊 Estado actual (2026-05-01)
 
 | Componente | Estado | Notas |
 |---|---|---|
@@ -27,11 +27,17 @@
 | Bugs reales surgidos por la data del lab y arreglados | ✅ | (1) Email collisions entre familiares → skip duplicate email; (2) `varchar(20)` overflow en phones con anotaciones → bumped to 50; (3) duplicate `(study, practice)` (lab repite ABREV) → dropped unique_together; (4) charset `NONE` en la DB → `LABWIN_FDB_CHARSET=ISO8859_1`; (5) pet/vet patients filtrados con regla combinada `dni='' AND (last_name 167* OR has vet practice)`, 583 mascotas eliminadas + skip rule en mappers |
 | `Study.is_paid` + `Study.is_validated` | ✅ | `is_paid` mapeado de `DEBEBONO_FLD` (lab confirmó: `'1'` = debe bono → unpaid). `is_validated=True` para todo lo importado (connector ya filtra `VALIDADO_FLD='1'`). Re-sync actualiza ambos flags en studies existentes |
 | FTP PDF fetch validado end-to-end | ✅ | 2026-04-25 — fix de filename parsing para `{NUMERO}-{DNI}-{NOMBRE}.pdf`. 24 PDFs reales attached. 32 skipped porque su NUMERO está fuera del rango importado |
-| `LABWIN_USE_MOCK=False` en prod (default) | ⏳ | Pendiente — gated en decisión del lab sobre flujo de signup de pacientes sin email |
-| Beat schedule (cron 04:00 AM) | ⏳ | Pendiente — gated en lo mismo. Sync window también cambia: rolling "ayer + hoy" en vez de "todo desde 2026-02-01" |
-| Task Scheduler en la PC del lab | ⏳ | Pendiente — upload corre manual |
-| Limpieza de `.FDB` viejos en `/home/labwin_ftp/results/` | ⏳ | 2 archivos de 2.3 GB cada uno, probablemente corruptos |
-| Workflow para pacientes sin email en LabWin | ⏳ | Sebastián consulta con el lab. Ver [CLAUDE.md "Workflow open question"](CLAUDE.md#workflow-open-question-waiting-on-lab) |
+| `LABWIN_USE_MOCK=False` en prod | ✅ | Flipped 2026-05-01. Real Firebird sync activo. Flag `DISABLE_PATIENT_EMAILS=True` paralelo desactiva los emails a pacientes mientras se valida — admin/system emails siguen funcionando. |
+| Beat schedule activo | ✅ | `Sync LabWin Results` cron `0 4 * * *` (movido de 02:00 a 04:00 el 2026-05-01 para dar 2h headroom después del upload del lab). `setup_periodic_tasks` ahora es idempotente — re-correrlo actualiza filas existentes. `Fetch FTP PDFs` cada 30 min. `Cleanup Misplaced FTP Uploads` daily 03:50. |
+| Backup file dedup | ✅ | `SyncLog.backup_filename` field (migration `0003_synclog_backup_filename`) + check en `BackupImporter.run()`. Si el lab sube el mismo archivo dos veces, el segundo run retorna `status=skipped` sin re-restaurar (que toma 2.5 min). |
+| Loggers + counters extendidos | ✅ | WARNING para pacientes sin email + email collision. INFO para creación de patient/study. SUMMARY line al final del sync con 9 counters greppeable. SyncLog persiste `study_practices_created`, `notifications_queued`, `emails_skipped`. |
+| Cleanup de uploads mal ubicados | ✅ | Management command `cleanup_misplaced_fdb` + Celery task `cleanup_misplaced_uploads` (Beat 03:50 daily). Borra `.FDB`/`.fbk` strays en `/` y `/results/`, mueve PDFs huérfanos del root chroot a `/results/`. **REMOVE-ONCE-LAB-FIXES** — ver CLAUDE.md TODO. Primera ejecución 2026-05-01: 16.5 GB liberados. |
+| Reset/test data tooling | ✅ | `reset_test_data --confirm` para wipear pacientes + estudios sin tocar admins/lab_staff/doctors/practices. Refuses si `DEBUG=False AND DISABLE_PATIENT_EMAILS=False`. |
+| Task Scheduler en la PC del lab | ⚠️ | **Configurado pero NO está disparando.** auth.log del VPS muestra que `backup_user` no se conectó vía SFTP ni el 30/04 ni el 01/05 (último: 2026-04-29 15:14 manual). Lab tiene que verificar Task Scheduler History "Last Run Result" + Event Viewer. |
+| PDF export del lab a `/results/` | ⚠️ | A veces los PDFs caen en `/` (root chroot) en vez de `/results/`. El cleanup task los mueve, pero hay que arreglar la fuente. |
+| Lab subiendo `.FDB` duplicados via FTP | ⚠️ | Tarea separada en la PC del lab pushea raw `.FDB` files (~2.4 GB cada uno) al FTP `/results/` daily. Hay que apagar esa tarea — no es el pipeline correcto. Mientras tanto el cleanup task los borra automáticamente. |
+| Limpieza de `.FDB` viejos en `/home/labwin_ftp/results/` | ✅ | 2026-05-01 — los 7 archivos acumulados (16.5 GB) borrados por `cleanup_misplaced_fdb`. Beat task corre nightly 03:50 para defender contra acumulación futura. |
+| Workflow para pacientes sin email en LabWin | ⏳ | Sebastián consulta con el lab. Ver [CLAUDE.md "Workflow open question"](CLAUDE.md#workflow-open-question-waiting-on-lab). Mientras tanto, `DISABLE_PATIENT_EMAILS=True` evita spam durante validación. |
 
 **Tiempos reales medidos en el primer upload (DB de 347 MB en caliente):**
 - `gbak -b -g`: 67 s

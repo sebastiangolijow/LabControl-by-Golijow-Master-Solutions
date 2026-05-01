@@ -1676,6 +1676,90 @@ class BackupImporterRunTests(BaseTestCase):
         log = SyncLog.objects.latest("started_at")
         self.assertEqual(log.status, "completed")
 
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_run_persists_backup_filename_to_synclog(self, mock_restore, mock_sync):
+        backup = _make_fake_backup(self.incoming)
+        mock_sync.return_value = {"message": "Sync OK"}
+
+        self._importer().run()
+
+        log = SyncLog.objects.latest("started_at")
+        self.assertEqual(log.backup_filename, backup.name)
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_dedup_skips_already_imported_backup(self, mock_restore, mock_sync):
+        """A second run against the same filename returns 'skipped' without
+        calling restore or sync."""
+        backup = _make_fake_backup(self.incoming)
+        mock_sync.return_value = {"message": "Sync OK"}
+
+        # First run — should succeed normally
+        result1 = self._importer().run()
+        self.assertEqual(result1.status, "completed")
+        mock_restore.assert_called_once()
+        mock_sync.assert_called_once()
+
+        # Re-create the same-named file in incoming/ (simulating the lab
+        # uploading the same backup twice)
+        _make_fake_backup(self.incoming, name=backup.name)
+        mock_restore.reset_mock()
+        mock_sync.reset_mock()
+
+        # Second run — must skip
+        result2 = self._importer().run()
+
+        self.assertEqual(result2.status, "skipped")
+        self.assertIn("already imported", result2.error)
+        mock_restore.assert_not_called()
+        mock_sync.assert_not_called()
+        # File still moved out of incoming/ so we don't keep re-checking
+        self.assertEqual(len(list(self.incoming.glob("*.fbk.gz"))), 0)
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_dedup_does_not_skip_when_prior_run_failed(
+        self, mock_restore, mock_sync
+    ):
+        """A previous FAILED SyncLog with the same filename shouldn't block a
+        retry — the lab's upload may have been corrupt and re-uploaded."""
+        # Pre-seed a failed SyncLog for this filename
+        SyncLog.objects.create(
+            status="failed",
+            backup_filename="BASEDAT_20260424.fbk.gz",
+            lab_client_id=1,
+            error_count=1,
+        )
+        _make_fake_backup(self.incoming)
+        mock_sync.return_value = {"message": "Sync OK"}
+
+        result = self._importer().run()
+
+        self.assertEqual(result.status, "completed")
+        mock_restore.assert_called_once()
+
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.trigger_sync")
+    @patch("apps.labwin_sync.services.backup_import.BackupImporter.restore_to_firebird")
+    def test_dedup_skipped_synclog_is_completed_not_failed(
+        self, mock_restore, mock_sync
+    ):
+        """The SyncLog row created during a 'skipped' run should have
+        status=completed (it's a successful no-op, not a failure)."""
+        backup = _make_fake_backup(self.incoming)
+        mock_sync.return_value = {"message": "Sync OK"}
+        self._importer().run()  # First run → completed
+
+        _make_fake_backup(self.incoming, name=backup.name)
+        before = SyncLog.objects.count()
+        self._importer().run()  # Second run → skipped
+        after = SyncLog.objects.count()
+
+        self.assertEqual(after, before + 1)
+        latest = SyncLog.objects.latest("started_at")
+        self.assertEqual(latest.status, "completed")
+        self.assertEqual(latest.error_count, 0)
+
 
 class ImportUploadedBackupTaskTests(BaseTestCase):
     """The thin Celery wrapper task."""
@@ -2177,3 +2261,327 @@ class SyncSkipsPetsTests(BaseTestCase):
             Study.objects.filter(protocol_number="LW-100001").exists(),
             "Human's study should be created",
         )
+
+
+# ======================
+# DISABLE_PATIENT_EMAILS kill-switch
+# ======================
+
+
+class DisablePatientEmailsTests(BaseTestCase):
+    """Test-mode kill switch for patient-facing emails.
+
+    When DISABLE_PATIENT_EMAILS=True the sync still marks studies as
+    notified (so they don't re-queue every run) but neither
+    send_password_setup_email nor send_studies_available_email is called.
+    """
+
+    def _patch_email_tasks(self):
+        return (
+            patch("apps.notifications.tasks.send_password_setup_email.delay"),
+            patch("apps.notifications.tasks.send_studies_available_email.delay"),
+        )
+
+    @override_settings(DISABLE_PATIENT_EMAILS=True)
+    def test_no_emails_sent_when_flag_on(self):
+        # Pre-existing patient that would normally trigger
+        # studies_available, plus the mock dataset has emailful new patients
+        # that would normally trigger password_setup. Both must be silenced.
+        self.create_patient(
+            email="garcia@example.com",
+            dni="30123456",
+            lab_client_id=1,
+        )
+
+        password_patcher, available_patcher = self._patch_email_tasks()
+        with password_patcher as mock_password, available_patcher as mock_available:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        mock_password.assert_not_called()
+        mock_available.assert_not_called()
+
+    @override_settings(DISABLE_PATIENT_EMAILS=True)
+    def test_studies_still_marked_notified(self):
+        # Without the notification_sent_at update the rolling window would
+        # re-queue these forever. The flag preserves that mark so test runs
+        # don't accumulate phantom backlog.
+        self.create_patient(
+            email="garcia@example.com",
+            dni="30123456",
+            lab_client_id=1,
+        )
+
+        password_patcher, available_patcher = self._patch_email_tasks()
+        with password_patcher, available_patcher:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        # Studies belonging to patients that had an email should have
+        # notification_sent_at set even though no email was queued.
+        any_marked = Study.objects.filter(
+            notification_sent_at__isnull=False
+        ).exists()
+        self.assertTrue(
+            any_marked,
+            "DISABLE_PATIENT_EMAILS must still mark studies as notified",
+        )
+
+    @override_settings(DISABLE_PATIENT_EMAILS=True)
+    def test_emails_skipped_counter_persists_to_synclog(self):
+        self.create_patient(
+            email="garcia@example.com",
+            dni="30123456",
+            lab_client_id=1,
+        )
+
+        password_patcher, available_patcher = self._patch_email_tasks()
+        with password_patcher, available_patcher:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        log = SyncLog.objects.order_by("-started_at").first()
+        self.assertIsNotNone(log)
+        self.assertGreater(
+            log.emails_skipped,
+            0,
+            "emails_skipped counter must reflect the kill-switch skips",
+        )
+        self.assertEqual(
+            log.notifications_queued,
+            0,
+            "Nothing should have been queued when the flag is on",
+        )
+
+
+# ======================
+# Patient-creation logger
+# ======================
+
+
+class SyncLoggerTests(BaseTestCase):
+    """Loggers added to _get_or_create_patient and _get_or_create_study_with_practices."""
+
+    def test_warning_logged_for_emailless_patient(self):
+        """When sync creates a patient without an email, a WARNING fires
+        with the user_pk + dni so the lab can see how many patients are
+        in the QR/manual-claim-only state."""
+        emailless_pac = {
+            "NUMERO_FLD": 999666,
+            "NOMBRE_FLD": "NOEMAIL, JUAN",
+            "HCLIN_FLD": "11122299",
+            "SEXO_FLD": 1,
+            "FNACIM_FLD": "19800101",
+            "MUTUAL_FLD": 0,
+            "MEDICO_FLD": 0,
+            "NUMMEDICO_FLD": 0,
+            "CARNET_FLD": "",
+            "TELEFONO_FLD": "",
+            "CELULAR_FLD": "",
+            "DIRECCION_FLD": "",
+            "LOCALIDAD_FLD": "",
+            "EMAIL_FLD": "",
+            "DEBEBONO_FLD": "0",
+        }
+        emailless_deters = [
+            {
+                "NUMERO_FLD": 999666,
+                "ABREV_FLD": "GLU-Bi",
+                "RESULT_FLD": "100",
+                "RESULTREP_FLD": "",
+                "VALIDADO_FLD": "1",
+                "FECHA_FLD": "20251028",
+                "HORA_FLD": "10:00",
+                "ORDEN_FLD": 1,
+                "OPERADOR_FLD": "TEST",
+                "SUCURSAL_FLD": 1,
+            }
+        ]
+
+        with patch.object(
+            MockLabWinConnector, "fetch_validated_deters"
+        ) as mock_deters, patch.object(
+            MockLabWinConnector, "fetch_pacientes"
+        ) as mock_pac:
+            mock_deters.return_value = iter([emailless_deters])
+            mock_pac.return_value = {999666: emailless_pac}
+
+            with self.assertLogs(
+                "apps.labwin_sync.tasks", level="WARNING"
+            ) as captured:
+                sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        joined = "\n".join(captured.output)
+        self.assertIn(
+            "patient created without email",
+            joined,
+            "Expected the emailless-patient WARNING log line",
+        )
+
+    def test_summary_line_logged_at_end(self):
+        """sync_labwin_results emits a SUMMARY line with all counters
+        suitable for grepping in production logs."""
+        with self.assertLogs(
+            "apps.labwin_sync.tasks", level="INFO"
+        ) as captured:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        joined = "\n".join(captured.output)
+        self.assertIn("sync_labwin_results SUMMARY", joined)
+        # Field labels we promise to keep stable for log-tail tooling
+        for field in (
+            "patients_created=",
+            "studies_created=",
+            "study_practices_created=",
+            "notifications_queued=",
+            "emails_skipped=",
+        ):
+            self.assertIn(field, joined, f"SUMMARY missing {field}")
+
+
+# ======================
+# Reference range population (CSV path)
+# ======================
+
+
+class ReferenceRangePopulationTests(BaseTestCase):
+    """import_labwin_practices now writes Practice.reference_range from
+    the cleaned RESULTS_FLD, not just the raw result_template."""
+
+    def test_extract_and_save_reference_range(self):
+        import csv as _csv
+
+        with tempfile.TemporaryDirectory() as tmp:
+            practices_path = Path(tmp) / "practicas.csv"
+            references_path = Path(tmp) / "referencias.csv"
+
+            # practices.csv — minimal CODIGO,DETERMINACION
+            with open(practices_path, "w", newline="") as f:
+                w = _csv.writer(f)
+                w.writerow(["CODIGO", "DETERMINACION"])
+                w.writerow(["TEST-RR", "Test Practice With Range"])
+
+            # references.csv — RESULTS_FLD with LabWin formatting tags around
+            # the actual range text. extract_reference_range should clean it
+            # down to readable English.
+            with open(references_path, "w", newline="") as f:
+                w = _csv.writer(f)
+                w.writerow(["ABREV_FLD", "RESULTS_FLD"])
+                w.writerow(
+                    ["TEST-RR", "{L=2}Reference: 70-110 mg/dL{CrLf}{FB=1}"]
+                )
+
+            call_command(
+                "import_labwin_practices",
+                f"--practices={practices_path}",
+                f"--references={references_path}",
+            )
+
+        practice = Practice.objects.get(code="TEST-RR")
+        # The cleaned form should contain the range text without the tags
+        self.assertIn("70-110", practice.reference_range)
+        self.assertIn("mg/dL", practice.reference_range)
+        # Raw template should also be persisted (separate field)
+        self.assertIn("{L=2}", practice.result_template)
+
+
+# ======================
+# cleanup_misplaced_fdb command
+# ======================
+
+
+class CleanupMisplacedFDBTests(BaseTestCase):
+    """The cleanup command deletes stray .FDB-likes and moves orphan PDFs
+    to /results/. We mock the FTP connector entirely so no network is
+    required."""
+
+    def test_deletes_fdb_files_and_moves_orphan_pdfs(self):
+        from apps.labwin_sync.management.commands.cleanup_misplaced_fdb import (
+            cleanup_misplaced_uploads,
+        )
+
+        # Build a fake ftplib.FTP object that records calls. The connector's
+        # `connect()` sets `self._ftp` to the real ftplib.FTP. We replace
+        # the whole connector path through get_ftp_connector + monkey-patch.
+        fake_ftp = MagicMock()
+
+        # /results listing: one stray .FDB and one normal .pdf
+        results_entries = [
+            (".", {"type": "cdir"}),
+            ("..", {"type": "pdir"}),
+            (
+                "BASEDAT_20260501_0200.FDB",
+                {"type": "file", "size": "2400000000"},
+            ),
+            ("100123-12345-LEGIT,PATIENT.pdf", {"type": "file", "size": "200000"}),
+        ]
+        # / listing: one stray .FDB and one orphan .pdf
+        root_entries = [
+            (".", {"type": "cdir"}),
+            ("..", {"type": "pdir"}),
+            ("BASEDAT_old.fbk.gz", {"type": "file", "size": "70000000"}),
+            ("999000-99999-ORPHAN,PDF.pdf", {"type": "file", "size": "100000"}),
+        ]
+
+        # mlsd is called twice: once in /results, once in /. Side-effect
+        # in order.
+        fake_ftp.mlsd.side_effect = [iter(results_entries), iter(root_entries)]
+
+        # Patch get_ftp_connector → return a mock connector wrapping fake_ftp
+        from apps.labwin_sync.management.commands import cleanup_misplaced_fdb as cmd_mod
+
+        mock_connector = MagicMock()
+        mock_connector._ftp = fake_ftp
+
+        with patch.object(cmd_mod, "get_ftp_connector", return_value=mock_connector):
+            result = cleanup_misplaced_uploads(dry_run=False)
+
+        # Two .FDB-like files deleted (/results/BASEDAT_..FDB + /BASEDAT_old.fbk.gz)
+        self.assertEqual(len(result["deleted"]), 2)
+        self.assertTrue(
+            any("BASEDAT_20260501_0200.FDB" in d for d in result["deleted"])
+        )
+        self.assertTrue(
+            any("BASEDAT_old.fbk.gz" in d for d in result["deleted"])
+        )
+
+        # One PDF moved from / to /results/
+        self.assertEqual(len(result["moved"]), 1)
+        src, dst = result["moved"][0]
+        self.assertEqual(src, "/999000-99999-ORPHAN,PDF.pdf")
+        self.assertEqual(dst, "/results/999000-99999-ORPHAN,PDF.pdf")
+
+        # The legitimate PDF in /results/ was not touched
+        legit_touched = any(
+            "LEGIT,PATIENT" in d for d in result["deleted"]
+        ) or any("LEGIT,PATIENT" in src for src, _ in result["moved"])
+        self.assertFalse(legit_touched, "Legitimate PDFs must not be touched")
+
+        # Bytes freed reflects both deleted files
+        self.assertEqual(result["bytes_freed"], 2400000000 + 70000000)
+
+    def test_dry_run_makes_no_ftp_changes(self):
+        from apps.labwin_sync.management.commands.cleanup_misplaced_fdb import (
+            cleanup_misplaced_uploads,
+        )
+        from apps.labwin_sync.management.commands import cleanup_misplaced_fdb as cmd_mod
+
+        fake_ftp = MagicMock()
+        fake_ftp.mlsd.side_effect = [
+            iter(
+                [
+                    (
+                        "BASEDAT_test.FDB",
+                        {"type": "file", "size": "100"},
+                    ),
+                ]
+            ),
+            iter([]),
+        ]
+        mock_connector = MagicMock()
+        mock_connector._ftp = fake_ftp
+
+        with patch.object(cmd_mod, "get_ftp_connector", return_value=mock_connector):
+            result = cleanup_misplaced_uploads(dry_run=True)
+
+        self.assertEqual(len(result["deleted"]), 1)
+        # delete() / rename() must NOT have been called in dry-run
+        fake_ftp.delete.assert_not_called()
+        fake_ftp.rename.assert_not_called()

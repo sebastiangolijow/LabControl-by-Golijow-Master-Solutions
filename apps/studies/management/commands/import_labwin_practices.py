@@ -182,6 +182,7 @@ class Command(BaseCommand):
 
                     references[code] = {
                         "result_template": results_fld.strip()[:2000],
+                        "reference_range": extract_reference_range(results_fld),
                     }
 
                 return references
@@ -199,6 +200,7 @@ class Command(BaseCommand):
                     "code": code,
                     "name": name,
                     "result_template": ref.get("result_template", ""),
+                    "reference_range": ref.get("reference_range", ""),
                 }
             )
         return merged
@@ -244,6 +246,8 @@ class Command(BaseCommand):
 
                     if item["result_template"]:
                         defaults["result_template"] = item["result_template"]
+                    if item["reference_range"]:
+                        defaults["reference_range"] = item["reference_range"]
 
                     practice, was_created = Practice.objects.update_or_create(
                         code=item["code"],
