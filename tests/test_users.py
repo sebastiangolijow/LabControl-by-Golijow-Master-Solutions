@@ -829,3 +829,76 @@ class ResetTestDataCommandTests(BaseTestCase):
             1,
             "SyncLog history must be preserved",
         )
+
+
+class UserViewSetVisibilityTests(BaseTestCase):
+    """UserViewSet.get_queryset() must let admins/lab_staff see inactive
+    users, since LabWin imports patients with is_active=False until they
+    activate via the password-setup email. Doctors should NOT see inactive
+    rows — those aren't useful to them and could leak un-claimed patient
+    data.
+
+    Tests the queryset directly (no HTTP) so they don't depend on Redis.
+    """
+
+    def _viewset_qs_for(self, user):
+        from rest_framework.test import APIRequestFactory
+
+        from apps.users.views import UserViewSet
+
+        factory = APIRequestFactory()
+        request = factory.get("/api/v1/users/")
+        request.user = user
+        viewset = UserViewSet()
+        viewset.request = request
+        viewset.action = "list"
+        return viewset.get_queryset()
+
+    def test_admin_sees_inactive_users(self):
+        admin = self.create_admin()
+        active = self.create_patient(email="active@x.com", is_active=True)
+        inactive = self.create_patient(email="inactive@x.com", is_active=False)
+
+        qs = self._viewset_qs_for(admin)
+        pks = set(qs.values_list("pk", flat=True))
+        self.assertIn(active.pk, pks)
+        self.assertIn(
+            inactive.pk,
+            pks,
+            "Admin must see inactive users (LabWin imports start inactive)",
+        )
+
+    def test_lab_staff_sees_inactive_users_in_their_lab(self):
+        staff = self.create_lab_staff(lab_client_id=1)
+        active = self.create_patient(
+            email="active@x.com", is_active=True, lab_client_id=1
+        )
+        inactive = self.create_patient(
+            email="inactive@x.com", is_active=False, lab_client_id=1
+        )
+        other_lab = self.create_patient(
+            email="otherlab@x.com", is_active=True, lab_client_id=99
+        )
+
+        qs = self._viewset_qs_for(staff)
+        pks = set(qs.values_list("pk", flat=True))
+        self.assertIn(active.pk, pks)
+        self.assertIn(inactive.pk, pks)
+        self.assertNotIn(other_lab.pk, pks, "Lab staff confined to their lab_client_id")
+
+    def test_doctor_does_not_see_inactive_users(self):
+        doctor = self.create_doctor()
+        active = self.create_patient(email="active@x.com", is_active=True)
+        inactive = self.create_patient(email="inactive@x.com", is_active=False)
+        # Both patients have a study ordered by this doctor
+        self.create_study(patient=active, ordered_by=doctor)
+        self.create_study(patient=inactive, ordered_by=doctor)
+
+        qs = self._viewset_qs_for(doctor)
+        pks = set(qs.values_list("pk", flat=True))
+        self.assertIn(active.pk, pks)
+        self.assertNotIn(
+            inactive.pk,
+            pks,
+            "Doctors should not see un-activated patients",
+        )

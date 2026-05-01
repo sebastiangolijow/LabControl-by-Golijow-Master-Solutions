@@ -68,18 +68,22 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         Filter queryset based on user role and permissions.
 
-        - Superusers and admins can see all users
-        - Lab staff can see users in their lab
-        - Doctors can only see patients
-        - Others can only see themselves
-        - Only active users are shown (is_active=True)
+        - Superusers and admins see ALL users (active and inactive). They
+          need this to manage patients imported from LabWin who haven't
+          activated yet (is_active=False until they click password-setup).
+          The list view exposes ?is_active=true|false for explicit filtering.
+        - Lab staff see all users in their lab (active and inactive), same
+          rationale as admins.
+        - Doctors see only their own active patients — they should never see
+          unactivated rows.
+        - Everyone else sees only themselves.
         """
         user = self.request.user
 
         if user.is_superuser or user.role == "admin":
-            return User.objects.filter(is_active=True)
+            return User.objects.all()
         elif user.role == "lab_staff" and user.lab_client_id:
-            return User.objects.filter(lab_client_id=user.lab_client_id, is_active=True)
+            return User.objects.filter(lab_client_id=user.lab_client_id)
         elif user.role == "doctor":
             # Doctors can only see their own patients (patients with studies ordered by them)
             return user.patients.filter(is_active=True)
