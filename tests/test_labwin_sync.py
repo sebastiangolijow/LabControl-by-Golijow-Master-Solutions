@@ -2164,8 +2164,8 @@ class SyncSkipsDerivacionTests(BaseTestCase):
         """Helper: add a PACIENTES row pointing at a no-doctor sentinel."""
         from apps.labwin_sync.connectors.mock import (
             SAMPLE_DETERS,
-            SAMPLE_PACIENTES,
             SAMPLE_MEDICOS,
+            SAMPLE_PACIENTES,
         )
 
         # If we're using NUMMEDICO=175 (the sentinel), inject a matching

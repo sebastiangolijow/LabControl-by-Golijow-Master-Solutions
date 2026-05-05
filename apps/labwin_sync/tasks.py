@@ -246,9 +246,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                 medico_row = (
                                     medicos.get(num_medico) if num_medico else None
                                 )
-                                if mappers.is_derivacion_doctor(
-                                    num_medico, medico_row
-                                ):
+                                if mappers.is_derivacion_doctor(num_medico, medico_row):
                                     counters["derivacion_skipped"] += 1
                                     # Cache as None so other batches that
                                     # reference the same NUMERO short-circuit.

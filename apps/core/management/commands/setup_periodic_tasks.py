@@ -130,15 +130,11 @@ class Command(BaseCommand):
                 )
             else:
                 self.stdout.write(
-                    self.style.WARNING(
-                        "○ Already disabled: Sync LabWin Results"
-                    )
+                    self.style.WARNING("○ Already disabled: Sync LabWin Results")
                 )
         except PeriodicTask.DoesNotExist:
             self.stdout.write(
-                self.style.WARNING(
-                    "○ Sync LabWin Results not present (skipped)"
-                )
+                self.style.WARNING("○ Sync LabWin Results not present (skipped)")
             )
 
         # Fetch FTP PDFs every 30 minutes
