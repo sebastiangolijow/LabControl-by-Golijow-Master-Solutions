@@ -9,6 +9,7 @@ Handles name parsing, date conversion, and field mapping for:
 """
 
 import logging
+import re
 from datetime import date, datetime
 
 from django.utils import timezone as django_tz
@@ -214,6 +215,62 @@ VET_NAME_KEYWORDS = (
 )
 
 PET_LAST_NAME_PREFIX = "167"
+
+# --- Derivación / "Sin Consigna" sentinels ---
+#
+# Per the lab (Fran Siri, 2026-05-05): every PACIENTES row has a referring
+# doctor — patients who walk in without a referral are pointed at the
+# "Sin Consigna" sentinel doctor in MEDICOS. There is no "sin dato" / null
+# medical-doctor case in their workflow.
+#
+# Confirmed against the live Firebird DB:
+#   - NUMMEDICO_FLD = 0   → unset (51,874 PACIENTES all-time, vet protocols
+#                            sampled in last 90d ALL use this value)
+#   - NUMMEDICO_FLD = 175 → MEDICOS row with NOMBRE_FLD = 'No Consigna'
+#                            (15,535 PACIENTES all-time)
+#
+# We treat both as "derivación" — these protocols are not patient-portal-
+# eligible (vet results, internal-use-only studies). The sync skips them.
+#
+# We also defensively match by NAME (regex `^(no|sin)\s+consigna`) so a
+# spelling drift in MEDICOS ("Sin Consigna" vs "No Consigna" vs "NO CONS.")
+# or a future re-numbering of the sentinel doesn't silently let derivación
+# protocols leak into the portal.
+
+NO_CONSIGNA_NUMERO = 175  # current sentinel ID in MEDICOS
+NO_CONSIGNA_UNSET = 0  # NULL / unset NUMMEDICO_FLD on PACIENTES
+
+_NO_CONSIGNA_NAME_RE = re.compile(r"^\s*(no|sin)\s+consigna", re.IGNORECASE)
+
+
+def is_derivacion_doctor(num_medico, medico_row=None):
+    """Return True if this PACIENTES.NUMMEDICO_FLD points at a no-doctor sentinel.
+
+    Args:
+        num_medico: PACIENTES.NUMMEDICO_FLD value (int, 0, or None).
+        medico_row: optional MEDICOS row dict (the connector caches these
+            by NUMERO_FLD). When provided, we also match defensively on
+            NOMBRE_FLD so an ID renumber in MEDICOS doesn't break the filter.
+
+    Returns True for:
+        - NUMMEDICO_FLD None / 0 / empty string
+        - NUMMEDICO_FLD == NO_CONSIGNA_NUMERO (175 in current DB)
+        - medico_row.NOMBRE_FLD matches /^(no|sin)\\s+consigna/i
+
+    Returns False for any real referring doctor.
+    """
+    if num_medico in (None, 0, "", "0"):
+        return True
+    try:
+        if int(num_medico) == NO_CONSIGNA_NUMERO:
+            return True
+    except (TypeError, ValueError):
+        pass
+    if medico_row:
+        name = medico_row.get("NOMBRE_FLD") or ""
+        if _NO_CONSIGNA_NAME_RE.match(name):
+            return True
+    return False
 
 
 def is_vet_practice(practice_code, practice_name):

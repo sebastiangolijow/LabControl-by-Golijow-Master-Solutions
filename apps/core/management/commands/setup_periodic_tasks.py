@@ -57,49 +57,89 @@ class Command(BaseCommand):
                 self.style.WARNING("○ Already exists: Cleanup Old Notifications")
             )
 
-        # Nightly LabWin sync at 4 AM. The lab pushes their backup at 02:00,
-        # which takes ~2 min. Restore + sync on our side takes ~3 min. Running
-        # at 04:00 gives 2h headroom — enough to absorb a slow upload or a
-        # network blip without colliding. Matches the original
-        # LABWIN_BACKUP_PIPELINE.md design.
-        nightly_4am, _ = CrontabSchedule.objects.get_or_create(
-            minute="0",
-            hour="4",
+        # Nightly LabWin backup import at 02:30 ART (= 05:30 UTC; Beat runs in
+        # UTC per CELERY_TIMEZONE). The lab uploads .fbk.gz at 02:00 ART, which
+        # takes ~2 min. import_uploaded_backup restores the new file and then
+        # internally calls sync_labwin_results synchronously (BackupImporter.run
+        # → trigger_sync), so we get a fresh-data sync in one job. 30 min
+        # headroom is enough to absorb a slow upload or a network blip.
+        nightly_530utc, _ = CrontabSchedule.objects.get_or_create(
+            minute="30",
+            hour="5",
             day_of_week="*",
             day_of_month="*",
             month_of_year="*",
         )
 
-        task3, created3 = PeriodicTask.objects.get_or_create(
-            name="Sync LabWin Results",
+        task_import, created_import = PeriodicTask.objects.get_or_create(
+            name="Import LabWin Backup",
             defaults={
-                "task": "apps.labwin_sync.tasks.sync_labwin_results",
-                "crontab": nightly_4am,
+                "task": "apps.labwin_sync.tasks.import_uploaded_backup",
+                "crontab": nightly_530utc,
                 "enabled": True,
                 "kwargs": json.dumps({"lab_client_id": 1}),
+                "description": (
+                    "Restores the latest .fbk.gz from /srv/labwin_backups/incoming "
+                    "and triggers sync_labwin_results synchronously. Replaces the "
+                    "standalone Sync LabWin Results schedule (which ran against "
+                    "stale Firebird data)."
+                ),
             },
         )
-        if created3:
+        if created_import:
             self.stdout.write(
-                self.style.SUCCESS("✓ Created: Sync LabWin Results (Nightly 4 AM)")
+                self.style.SUCCESS(
+                    "✓ Created: Import LabWin Backup (Nightly 02:30 ART / 05:30 UTC)"
+                )
             )
         else:
-            # Idempotent reschedule: get_or_create doesn't update existing
-            # rows, so explicitly retarget the crontab if the schedule has
-            # drifted (e.g. an old 02:00 row from before the cutover).
-            if task3.crontab_id != nightly_4am.id:
-                task3.crontab = nightly_4am
-                task3.interval = None
-                task3.save(update_fields=["crontab", "interval"])
+            if task_import.crontab_id != nightly_530utc.id:
+                task_import.crontab = nightly_530utc
+                task_import.interval = None
+                task_import.enabled = True
+                task_import.save(update_fields=["crontab", "interval", "enabled"])
                 self.stdout.write(
-                    self.style.SUCCESS("↻ Updated: Sync LabWin Results → Nightly 4 AM")
+                    self.style.SUCCESS(
+                        "↻ Updated: Import LabWin Backup → 02:30 ART (05:30 UTC)"
+                    )
                 )
             else:
                 self.stdout.write(
                     self.style.WARNING(
-                        "○ Already exists: Sync LabWin Results (Nightly 4 AM)"
+                        "○ Already exists: Import LabWin Backup (02:30 ART / 05:30 UTC)"
                     )
                 )
+
+        # Disable the standalone Sync LabWin Results schedule. It runs against
+        # the stale Firebird container — the live data only arrives after
+        # import_uploaded_backup restores last night's .fbk.gz. Since that task
+        # chains to sync_labwin_results internally, leaving this row enabled
+        # would sync twice (once on fresh data, once on stale). We keep the
+        # PeriodicTask row + the task code itself so it can still be triggered
+        # ad-hoc via management command (`sync_labwin --use-celery`).
+        try:
+            existing_sync = PeriodicTask.objects.get(name="Sync LabWin Results")
+            if existing_sync.enabled:
+                existing_sync.enabled = False
+                existing_sync.save(update_fields=["enabled"])
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        "↻ Disabled: Sync LabWin Results "
+                        "(now driven by Import LabWin Backup)"
+                    )
+                )
+            else:
+                self.stdout.write(
+                    self.style.WARNING(
+                        "○ Already disabled: Sync LabWin Results"
+                    )
+                )
+        except PeriodicTask.DoesNotExist:
+            self.stdout.write(
+                self.style.WARNING(
+                    "○ Sync LabWin Results not present (skipped)"
+                )
+            )
 
         # Fetch FTP PDFs every 30 minutes
         from django_celery_beat.models import IntervalSchedule

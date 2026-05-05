@@ -52,6 +52,10 @@ class SyncLog(models.Model):
     study_practices_created = models.IntegerField(default=0)
     notifications_queued = models.IntegerField(default=0)
     emails_skipped = models.IntegerField(default=0)
+    # Protocols skipped because their PACIENTES.NUMMEDICO_FLD points at the
+    # "Sin Consigna" sentinel (175) or is unset (0). See
+    # mappers.is_derivacion_doctor.
+    derivacion_skipped = models.IntegerField(default=0)
 
     # Error tracking
     errors = models.JSONField(default=list, blank=True)

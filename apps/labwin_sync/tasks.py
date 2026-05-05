@@ -119,6 +119,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         "study_practices_created": 0,
         "notifications_queued": 0,
         "emails_skipped": 0,
+        "derivacion_skipped": 0,
     }
 
     # Notification batching state. We accumulate per-user lists during the sync
@@ -233,10 +234,33 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         if numero not in patient_cache:
                             pac_row = pacientes.get(numero)
                             if pac_row:
+                                # Skip "derivación" / "Sin Consigna" protocols.
+                                # Per the lab, every patient with a real
+                                # referring doctor has NUMMEDICO_FLD pointing
+                                # at a real MEDICOS row; walk-ins / vet /
+                                # internal studies are pointed at the "Sin
+                                # Consigna" sentinel (NUMERO=175) or have
+                                # NUMMEDICO_FLD=0. Both are not portal-
+                                # eligible.
+                                num_medico = pac_row.get("NUMMEDICO_FLD")
+                                medico_row = (
+                                    medicos.get(num_medico) if num_medico else None
+                                )
+                                if mappers.is_derivacion_doctor(
+                                    num_medico, medico_row
+                                ):
+                                    counters["derivacion_skipped"] += 1
+                                    # Cache as None so other batches that
+                                    # reference the same NUMERO short-circuit.
+                                    patient_cache[numero] = None
+                                    continue
                                 # Skip veterinary patients. Combined rule:
                                 # dni='' AND (last_name starts with '167'
                                 # OR any practice in this protocol is a
                                 # vet practice). See mappers.is_pet_candidate.
+                                # Kept as defense-in-depth — most vets are
+                                # already caught by the derivación filter
+                                # above (NUMMEDICO_FLD=0).
                                 fields = mappers.map_patient(pac_row)
                                 # Check if any DETERS row in this protocol
                                 # maps to a vet practice (via NOMEN cache).
@@ -423,6 +447,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             "studies_created=%d studies_updated=%d study_practices_created=%d "
             "doctors_created=%d practices_created=%d "
             "notifications_queued=%d emails_skipped=%d "
+            "derivacion_skipped=%d "
             "errors=%d batches=%d | %s",
             counters.get("patients_created", 0),
             counters.get("patients_updated", 0),
@@ -433,6 +458,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             counters.get("practices_created", 0),
             counters.get("notifications_queued", 0),
             counters.get("emails_skipped", 0),
+            counters.get("derivacion_skipped", 0),
             len(errors),
             batch_index,
             memory_summary(),

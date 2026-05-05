@@ -31,6 +31,7 @@ from apps.labwin_sync.connectors.mock import (
 from apps.labwin_sync.ftp import get_ftp_connector
 from apps.labwin_sync.ftp.mock import MockFTPConnector
 from apps.labwin_sync.mappers import (
+    is_derivacion_doctor,
     is_pet_candidate,
     is_vet_practice,
     map_doctor,
@@ -787,6 +788,8 @@ class SyncNotificationTests(BaseTestCase):
         """If a PACIENTES row has no email, no notification is queued AND
         the study's notification_sent_at stays NULL so we can retry later."""
         # Patch the mock connector to return a PACIENTES row with EMAIL_FLD=""
+        # NUMMEDICO_FLD=501 ("Lopez, Juan") — a real doctor, so the derivación
+        # filter doesn't preempt this test's emailless-patient path.
         emailless_pac = {
             "NUMERO_FLD": 999777,
             "NOMBRE_FLD": "SINMAIL, JUAN",
@@ -795,7 +798,7 @@ class SyncNotificationTests(BaseTestCase):
             "FNACIM_FLD": "19800101",
             "MUTUAL_FLD": 0,
             "MEDICO_FLD": 0,
-            "NUMMEDICO_FLD": 0,
+            "NUMMEDICO_FLD": 501,
             "CARNET_FLD": "",
             "TELEFONO_FLD": "",
             "CELULAR_FLD": "",
@@ -974,7 +977,9 @@ class PatientActivationTests(BaseTestCase):
                 "FNACIM_FLD": "19800101",
                 "MUTUAL_FLD": 0,
                 "MEDICO_FLD": 0,
-                "NUMMEDICO_FLD": 0,
+                # 501 = "Lopez, Juan" in SAMPLE_MEDICOS — a real doctor, so the
+                # derivación filter doesn't skip this protocol.
+                "NUMMEDICO_FLD": 501,
                 "CARNET_FLD": "",
                 "TELEFONO_FLD": "",
                 "CELULAR_FLD": "",
@@ -2112,6 +2117,178 @@ class IsPetCandidateTests(BaseTestCase):
         self.assertFalse(is_pet_candidate(None, None, None))
 
 
+class IsDerivacionDoctorTests(BaseTestCase):
+    """Unit tests for the no-doctor / Sin Consigna sentinel filter."""
+
+    def test_zero_is_derivacion(self):
+        self.assertTrue(is_derivacion_doctor(0))
+
+    def test_none_is_derivacion(self):
+        self.assertTrue(is_derivacion_doctor(None))
+
+    def test_empty_string_is_derivacion(self):
+        self.assertTrue(is_derivacion_doctor(""))
+        self.assertTrue(is_derivacion_doctor("0"))
+
+    def test_sentinel_id_175_is_derivacion(self):
+        # 175 is the current "No Consigna" row in MEDICOS (verified against prod)
+        self.assertTrue(is_derivacion_doctor(175))
+
+    def test_sentinel_by_name_no_consigna(self):
+        # Defense-in-depth: even if the ID changes, name-match should catch it
+        medico = {"NUMERO_FLD": 999, "NOMBRE_FLD": "No Consigna", "MATNAC_FLD": ""}
+        self.assertTrue(is_derivacion_doctor(999, medico))
+
+    def test_sentinel_by_name_sin_consigna(self):
+        medico = {"NUMERO_FLD": 999, "NOMBRE_FLD": "Sin Consigna", "MATNAC_FLD": ""}
+        self.assertTrue(is_derivacion_doctor(999, medico))
+
+    def test_sentinel_by_name_case_insensitive(self):
+        medico = {"NUMERO_FLD": 999, "NOMBRE_FLD": "NO CONSIGNA", "MATNAC_FLD": ""}
+        self.assertTrue(is_derivacion_doctor(999, medico))
+
+    def test_real_doctor_id_is_kept(self):
+        self.assertFalse(is_derivacion_doctor(501))
+        self.assertFalse(is_derivacion_doctor(2))
+        self.assertFalse(is_derivacion_doctor(128))
+
+    def test_real_doctor_with_row_is_kept(self):
+        medico = {"NUMERO_FLD": 501, "NOMBRE_FLD": "Lopez, Juan", "MATNAC_FLD": "MN1"}
+        self.assertFalse(is_derivacion_doctor(501, medico))
+
+
+class SyncSkipsDerivacionTests(BaseTestCase):
+    """Integration: sync should skip protocols whose patient has no real doctor."""
+
+    def _inject_derivacion_fixtures(self, numero, num_medico):
+        """Helper: add a PACIENTES row pointing at a no-doctor sentinel."""
+        from apps.labwin_sync.connectors.mock import (
+            SAMPLE_DETERS,
+            SAMPLE_PACIENTES,
+            SAMPLE_MEDICOS,
+        )
+
+        # If we're using NUMMEDICO=175 (the sentinel), inject a matching
+        # MEDICOS row so the lookup resolves (mirrors prod behavior).
+        if num_medico == 175 and 175 not in SAMPLE_MEDICOS:
+            SAMPLE_MEDICOS[175] = {
+                "NUMERO_FLD": 175,
+                "NOMBRE_FLD": "No Consigna",
+                "MATNAC_FLD": "",
+                "MATPROV_FLD": "",
+                "ESPECIALIDAD_FLD": "",
+                "TELEFONO_FLD": "",
+                "EMAIL_FLD": "",
+            }
+
+        SAMPLE_PACIENTES[numero] = {
+            "NUMERO_FLD": numero,
+            "NOMBRE_FLD": "Walkin,Juan",
+            "HCLIN_FLD": "30123456",  # has DNI — definitely human
+            "SEXO_FLD": 1,
+            "FNACIM_FLD": "",
+            "MUTUAL_FLD": 0,
+            "MEDICO_FLD": "",
+            "NUMMEDICO_FLD": num_medico,
+            "CARNET_FLD": "",
+            "TELEFONO_FLD": "",
+            "CELULAR_FLD": "",
+            "DIRECCION_FLD": "",
+            "LOCALIDAD_FLD": "",
+            "EMAIL_FLD": "",
+            "DEBEBONO_FLD": "",
+        }
+        SAMPLE_DETERS.append(
+            {
+                "NUMERO_FLD": numero,
+                "ABREV_FLD": "GLU-Bi",  # human practice, fixture exists
+                "RESULT_FLD": "100",
+                "RESULTREP_FLD": "100",
+                "VALIDADO_FLD": "1",
+                "FECHA_FLD": "20260415",
+                "HORA_FLD": "10:00",
+                "ORDEN_FLD": 1,
+                "OPERADOR_FLD": "",
+                "SUCURSAL_FLD": "",
+            }
+        )
+
+    def _cleanup(self, numero, cleanup_175=False):
+        from apps.labwin_sync.connectors.mock import (
+            SAMPLE_DETERS,
+            SAMPLE_MEDICOS,
+            SAMPLE_PACIENTES,
+        )
+
+        SAMPLE_PACIENTES.pop(numero, None)
+        SAMPLE_DETERS.pop()
+        if cleanup_175:
+            SAMPLE_MEDICOS.pop(175, None)
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_protocol_with_nummedico_zero_is_skipped(self):
+        protocol = 199101
+        self._inject_derivacion_fixtures(protocol, num_medico=0)
+        try:
+            result = sync_labwin_results(lab_client_id=1, full_sync=True)
+        finally:
+            self._cleanup(protocol)
+
+        self.assertFalse(
+            Study.objects.filter(protocol_number=f"LW-{protocol}").exists(),
+            "Protocol with NUMMEDICO_FLD=0 should be skipped",
+        )
+        self.assertFalse(
+            User.objects.filter(first_name="Juan", last_name="Walkin").exists(),
+            "Patient for a derivación-only protocol should not be created",
+        )
+        self.assertEqual(result.get("derivacion_skipped", 0), 1)
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_protocol_with_no_consigna_sentinel_id_is_skipped(self):
+        protocol = 199102
+        self._inject_derivacion_fixtures(protocol, num_medico=175)
+        try:
+            result = sync_labwin_results(lab_client_id=1, full_sync=True)
+        finally:
+            self._cleanup(protocol, cleanup_175=True)
+
+        self.assertFalse(
+            Study.objects.filter(protocol_number=f"LW-{protocol}").exists(),
+            "Protocol pointing at NUMERO=175 (No Consigna) should be skipped",
+        )
+        self.assertEqual(result.get("derivacion_skipped", 0), 1)
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_protocol_with_real_doctor_is_kept(self):
+        """Sanity: a normal patient with NUMMEDICO_FLD=501 (Lopez, Juan) still imports."""
+        protocol = 199103
+        self._inject_derivacion_fixtures(protocol, num_medico=501)
+        try:
+            result = sync_labwin_results(lab_client_id=1, full_sync=True)
+        finally:
+            self._cleanup(protocol)
+
+        self.assertTrue(
+            Study.objects.filter(protocol_number=f"LW-{protocol}").exists(),
+            "Protocol with a real doctor should be created normally",
+        )
+        self.assertEqual(result.get("derivacion_skipped", 0), 0)
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_derivacion_skipped_counter_persists_to_synclog(self):
+        protocol = 199104
+        self._inject_derivacion_fixtures(protocol, num_medico=0)
+        try:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+        finally:
+            self._cleanup(protocol)
+
+        latest = SyncLog.objects.order_by("-started_at").first()
+        self.assertIsNotNone(latest)
+        self.assertGreaterEqual(latest.derivacion_skipped, 1)
+
+
 class SyncSkipsPetsTests(BaseTestCase):
     """Sync should skip PACIENTES rows that match the combined pet rule."""
 
@@ -2137,7 +2314,11 @@ class SyncSkipsPetsTests(BaseTestCase):
             "FNACIM_FLD": "",
             "MUTUAL_FLD": 0,
             "MEDICO_FLD": "",
-            "NUMMEDICO_FLD": 0,
+            # Use a real doctor (501) so this fixture exercises the
+            # pet-detection path specifically. Without a real doctor the
+            # derivación filter catches the protocol first and these tests
+            # would be testing the wrong thing.
+            "NUMMEDICO_FLD": 501,
             "CARNET_FLD": "",
             "TELEFONO_FLD": "",
             "CELULAR_FLD": "",
@@ -2359,6 +2540,8 @@ class SyncLoggerTests(BaseTestCase):
         """When sync creates a patient without an email, a WARNING fires
         with the user_pk + dni so the lab can see how many patients are
         in the QR/manual-claim-only state."""
+        # NUMMEDICO_FLD=501 ("Lopez, Juan") — a real doctor, so the derivación
+        # filter doesn't preempt this test's emailless-patient warning path.
         emailless_pac = {
             "NUMERO_FLD": 999666,
             "NOMBRE_FLD": "NOEMAIL, JUAN",
@@ -2367,7 +2550,7 @@ class SyncLoggerTests(BaseTestCase):
             "FNACIM_FLD": "19800101",
             "MUTUAL_FLD": 0,
             "MEDICO_FLD": 0,
-            "NUMMEDICO_FLD": 0,
+            "NUMMEDICO_FLD": 501,
             "CARNET_FLD": "",
             "TELEFONO_FLD": "",
             "CELULAR_FLD": "",
