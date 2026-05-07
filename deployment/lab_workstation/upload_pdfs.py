@@ -149,7 +149,9 @@ def main(dry_run=False):
                     log.info("deleted local %s", pdf.name)
                     uploaded += 1
                 except Exception as e:
-                    log.error("upload OK but local delete FAILED for %s: %s", pdf.name, e)
+                    log.error(
+                        "upload OK but local delete FAILED for %s: %s", pdf.name, e
+                    )
                     # Don't count as uploaded since we couldn't clean up;
                     # next run will try again (idempotent on server side via temp-rename).
                     failed += 1
@@ -168,6 +170,8 @@ def main(dry_run=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LabControl PDF uploader")
-    parser.add_argument("--dry-run", action="store_true", help="List only, no upload, no delete")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="List only, no upload, no delete"
+    )
     args = parser.parse_args()
     sys.exit(main(dry_run=args.dry_run))
