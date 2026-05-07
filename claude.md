@@ -62,9 +62,14 @@ All migrations were deleted and recreated from scratch on **2026-02-17**. Fresh 
 
 ---
 
-## Status (2026-05-01)
+## Status (2026-05-07)
 
-**Production state**: real LabWin sync running against Firebird (`LABWIN_USE_MOCK=False`), patient emails disabled (`DISABLE_PATIENT_EMAILS=True`), nightly Beat at 04:00. Currently 3,040 patients / 3,749 studies / 1,720 doctors / 15 PDFs attached. All 7 containers healthy.
+**Production state**: real LabWin sync running against Firebird (`LABWIN_USE_MOCK=False`), patient emails disabled (`DISABLE_PATIENT_EMAILS=True`), nightly Beat at 04:00. Currently 3,040 patients / 3,749 studies / 1,720 doctors. All 7 containers healthy.
+
+### PDF upload pipeline (rebuilt 2026-05-07)
+LabWin's built-in FTP plugin is **hardcoded to active mode** (UI passive toggle is decorative even after reinstall). Active FTP through the lab's NAT is unreliable — our return SYN to the client's announced data port goes unanswered. End-to-end debug session 2026-05-07 confirmed every server-side fix (CT helper rules, allow_writeable_chroot, port_enable=NO, chroot path tweaks) is irrelevant to the underlying NAT problem.
+
+**Solution**: replaced LabWin's FTP plugin with a Python script (`deployment/lab_workstation/upload_pdfs.py`) that runs on the lab PC every 5 minutes via Task Scheduler. Watches `C:\sistema\PDFlabwin\`, uploads via passive FTP using `ftplib.set_pasv(True)`, deletes locally on success. Atomic `.uploading` → rename pattern. End-to-end validated 2026-05-07: 59 PDFs uploaded in ~2s, 13 attached to in-window studies, 0 errors. See [`PDF_UPLOAD_PIPELINE.md`](PDF_UPLOAD_PIPELINE.md) for the full rebuild story (or commit `<hash>` for the diff).
 
 ### TODO
 
@@ -72,7 +77,7 @@ All migrations were deleted and recreated from scratch on **2026-02-17**. Fresh 
 
 1. **Lab Task Scheduler not firing the nightly SFTP upload.** Last `backup_user` SFTP session on the VPS was 2026-04-29 15:14 (manual test). No 02:00 sessions on Apr 30 or May 1. Symptom: `/srv/labwin_backups/incoming/` is empty after 02:00. Lab to check Task Scheduler History "Last Run Result" + Event Viewer for the upload script.
 
-2. **Lab PDF export landing in wrong folder.** New PDFs sometimes appear in the FTP chroot root (`/`) instead of `/results/`. The `cleanup_misplaced_uploads` Beat task at 03:50 moves them, but the source should be fixed. Lab to verify the LabWin PDF export config points to `/results/`.
+2. ~~**Lab PDF export landing in wrong folder.**~~ **OBSOLETE 2026-05-07** — LabWin's FTP plugin is no longer used. PDFs go via `upload_pdfs.py` script on the lab PC, which uploads to the chroot root (`/` = `/home/labwin_ftp/`) directly. No more "wrong folder" possibility.
 
 3. **Lab pushing duplicate `.FDB` files via FTP** into `/home/labwin_ftp/results/` (~2.4 GB each, daily). 7 had accumulated as of 2026-05-01 (~16.5 GB) before we cleaned them up. **REMOVE-ONCE-LAB-FIXES-DUPLICATE-UPLOAD**: when lab confirms fix, delete:
    - `apps/labwin_sync/management/commands/cleanup_misplaced_fdb.py`
@@ -87,7 +92,7 @@ All migrations were deleted and recreated from scratch on **2026-02-17**. Fresh 
 
 - **Implement the chosen patient-onboarding flow** once the lab decides (4).
 - **Find the LabWin source for `RESULTS_FLD`** (reference range templates). `SHOW TABLE NOMEN` on the restored DB confirmed `RESULTS_FLD` / `VALORMIN` / `VALORMAX` are NOT on NOMEN — only `CONDICIONES_FLD VARCHAR(32765)`. Probably lives on a different table (`RESULTSTEMPLATES`?). Currently the CSV path via `import_labwin_practices` populates `Practice.reference_range` via `extract_reference_range()`, but it's manual. Worth a Firebird-side discovery follow-up so ranges sync automatically.
-- **PDF import for files outside the imported-study NUMERO range** — currently 41 of 56 real FTP PDFs get skipped because their parent Study isn't in the 90-day window. Either keep the PDFs in `_pending/` and re-attach when their Study lands, or extend the sync window for the specific NUMEROs that have PDFs waiting.
+- **PDF import for files outside the imported-study NUMERO range** — currently 46 of 59 real FTP PDFs get skipped because their parent Study isn't in the 90-day window (numbers updated after 2026-05-07 rebuild). They sit on the FTP server and re-attach correctly once their Study comes into window. Either keep them indefinitely (current behavior, fine) or move to `_pending/` with explicit retry/expiry, or extend the sync window for the specific NUMEROs that have PDFs waiting.
 - **Address the 2 stale 2.3 GB `.FDB` files in `/home/labwin_ftp/results/`** (probably corrupt). The `cleanup_misplaced_uploads` task already deletes these — verify they're gone after the next 03:50 run.
 - **Compress background images to WebP** (FRONTEND.md TODO).
 - **Eventually flip `DISABLE_PATIENT_EMAILS=False`** once lab signup workflow is finalized.

@@ -499,9 +499,13 @@ sudo certbot certificates
 
 ### Overview
 
-The VPS runs a vsftpd FTP server that receives PDF result files from LabWin. Docker containers connect to it via `host.docker.internal`.
+The VPS runs a vsftpd FTP server that receives PDF result files from the lab.
 
-### FTP Credentials (for lab team)
+**⚠️ Updated 2026-05-07** — LabWin's built-in FTP plugin is **no longer used** for the upload. It only supports active mode and active FTP through the lab's NAT was unreliable. The lab PC now runs a Python script (`deployment/lab_workstation/upload_pdfs.py`) every 5 minutes that uploads via passive FTP. See `deployment/lab_workstation/upload_pdfs.py` for the script and `PDF_UPLOAD_PIPELINE.md` for the full rebuild story.
+
+The vsftpd server config below is what the script connects to. Docker containers reach the same vsftpd via `host.docker.internal` for the fetch step.
+
+### FTP Credentials (used by `upload_pdfs.py` on the lab PC)
 
 | Setting | Value |
 |---------|-------|
@@ -509,9 +513,9 @@ The VPS runs a vsftpd FTP server that receives PDF result files from LabWin. Doc
 | **Port** | `21` |
 | **User** | `labwin_ftp` |
 | **Password** | *See 1Password → "LabControl LabWin FTP user". Mirrored on the server in `.env.production` as `LABWIN_FTP_PASSWORD` and in `/etc/vsftpd.userlist`.* |
-| **Directory** | `/results` |
+| **Directory** | `/` (chroot root → `/home/labwin_ftp/`) |
 | **Protocol** | FTP (plain, no TLS) |
-| **Passive Mode** | Yes (ports 30000-30100) |
+| **Passive Mode** | **REQUIRED** (ports 30000-30100). Active mode rejected by client policy in the upload script. |
 
 > When sharing the password with the lab team, send it via 1Password share-link or another out-of-band channel — never paste it into Slack/email.
 
