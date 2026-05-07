@@ -48,10 +48,18 @@ class Command(BaseCommand):
             action="store_true",
             help="Show what would be deleted without making changes",
         )
+        parser.add_argument(
+            "--include-doctors",
+            action="store_true",
+            help="Also delete all role='doctor' users (admin/lab_staff are "
+            "always preserved). Use when re-importing doctors from MEDICOS "
+            "from scratch.",
+        )
 
     def handle(self, *args, **options):
         confirm = options["confirm"]
         dry_run = options["dry_run"]
+        include_doctors = options["include_doctors"]
 
         if not confirm and not dry_run:
             raise CommandError(
@@ -117,6 +125,25 @@ class Command(BaseCommand):
             logger.info(
                 "reset_test_data: deleted patients (cascade) — count=%d", n_patients
             )
+
+            if include_doctors:
+                doctor_pks = list(
+                    User.objects.filter(role="doctor").values_list("pk", flat=True)
+                )
+                sr_doctors = SyncedRecord.objects.filter(
+                    target_model="User",
+                    target_uuid__in=doctor_pks,
+                    source_table="MEDICOS",
+                )
+                n_sr_doctors, _ = sr_doctors.delete()
+                logger.info(
+                    "reset_test_data: deleted SyncedRecords for doctors — count=%d",
+                    n_sr_doctors,
+                )
+                n_doctors, _ = User.objects.filter(role="doctor").delete()
+                logger.info(
+                    "reset_test_data: deleted doctors (cascade) — count=%d", n_doctors
+                )
 
         after = self._snapshot()
         self._report("AFTER", after)

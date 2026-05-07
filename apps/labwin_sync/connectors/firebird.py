@@ -13,6 +13,17 @@ from .base import LabWinConnector
 
 logger = logging.getLogger(__name__)
 
+# NOTE on PRV_DELETEDRECORD_FLD: this column is present on DETERS / MEDICOS /
+# NOMEN / PACIENTES, but in the live LabWin DB ~80–93% of rows have it NULL
+# and the rest are '0' — no row is ever marked deleted (column was designed
+# but never used). The connector previously filtered `WHERE PRV_DELETEDRECORD_FLD = '0'`,
+# which silently dropped every NULL row — i.e. ~87% of MEDICOS, ~93% of NOMEN,
+# ~86% of PACIENTES, ~81% of DETERS. That's why most synced studies ended up
+# with `ordered_by=NULL` (the referring doctor's MEDICOS row was filtered out).
+# Filter dropped 2026-05-07. If the lab ever starts using this column, switch
+# to `(PRV_DELETEDRECORD_FLD IS NULL OR PRV_DELETEDRECORD_FLD <> '1')` and
+# verify which value(s) actually denote deletion.
+
 # SQL for fetching validated DETERS rows incrementally
 DETERS_QUERY = """
     SELECT NUMERO_FLD, ABREV_FLD, RESULT_FLD, RESULTREP_FLD,
@@ -20,7 +31,6 @@ DETERS_QUERY = """
     FROM DETERS
     WHERE VALIDADO_FLD = '1'
       AND CARGADO_FLD = '1'
-      AND PRV_DELETEDRECORD_FLD = '0'
       AND (FECHA_FLD > ? OR (FECHA_FLD = ? AND NUMERO_FLD > ?))
     ORDER BY FECHA_FLD, NUMERO_FLD
 """
@@ -31,7 +41,6 @@ DETERS_QUERY_FULL = """
     FROM DETERS
     WHERE VALIDADO_FLD = '1'
       AND CARGADO_FLD = '1'
-      AND PRV_DELETEDRECORD_FLD = '0'
     ORDER BY FECHA_FLD, NUMERO_FLD
 """
 
@@ -49,14 +58,12 @@ MEDICOS_QUERY = """
            TELEFONO_FLD, EMAIL_FLD
     FROM MEDICOS
     WHERE NUMERO_FLD IN ({placeholders})
-      AND PRV_DELETEDRECORD_FLD = '0'
 """
 
 NOMEN_QUERY = """
     SELECT ABREV_FLD, NOMBRE_FLD, SECCION_FLD, DIASTARDA_FLD, MATERIAL_FLD
     FROM NOMEN
     WHERE ABREV_FLD IN ({placeholders})
-      AND PRV_DELETEDRECORD_FLD = '0'
 """
 
 DETERS_COLUMNS = [

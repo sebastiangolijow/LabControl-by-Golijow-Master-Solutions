@@ -705,6 +705,32 @@ def _get_or_create_doctor(medico_row, lab_client_id, sync_log, counters):
             )
             return user.pk
 
+    # Fallback: match by case-insensitive first+last name. Catches doctors
+    # imported via the doctor-CSV bootstrap (where matricula was set to
+    # NUMERO_FLD) when MEDICOS row exposes a different matricula source.
+    first_name = fields.get("first_name", "")
+    last_name = fields.get("last_name", "")
+    if first_name and last_name:
+        user = User.objects.filter(
+            first_name__iexact=first_name,
+            last_name__iexact=last_name,
+            role="doctor",
+        ).first()
+        if user:
+            # Backfill matricula if the existing row is missing it.
+            if matricula and not user.matricula:
+                user.matricula = matricula
+                user.save(update_fields=["matricula", "updated_at"])
+            _ensure_synced_record(
+                "MEDICOS",
+                source_key,
+                "User",
+                user.pk,
+                lab_client_id,
+                sync_log,
+            )
+            return user.pk
+
     # Create new doctor
     with transaction.atomic():
         user = User.objects.create_user(
@@ -847,6 +873,15 @@ def _get_or_create_study_with_practices(
         if study.is_validated != is_validated:
             study.is_validated = is_validated
             flag_updates.append("is_validated")
+        # Backfill ordered_by ONLY when currently NULL. We never overwrite an
+        # already-linked doctor (which may have been corrected manually).
+        # This catches the historical case where the connector silently dropped
+        # most MEDICOS rows via the buggy PRV_DELETEDRECORD_FLD filter — once
+        # that filter is gone, re-syncs link the doctor on previously orphaned
+        # studies.
+        if doctor_pk and study.ordered_by_id is None:
+            study.ordered_by_id = doctor_pk
+            flag_updates.append("ordered_by")
         if flag_updates:
             flag_updates.append("updated_at")
             study.save(update_fields=flag_updates)

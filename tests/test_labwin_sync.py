@@ -211,6 +211,45 @@ class MapDoctorTests(BaseTestCase):
         result = map_doctor(row)
         self.assertIsNone(result["email"])
 
+    def test_matricula_falls_back_to_matprov_when_matnac_empty(self):
+        row = {
+            "NUMERO_FLD": 1788,
+            "NOMBRE_FLD": "Burre, Jorge E",
+            "MATNAC_FLD": "",
+            "MATPROV_FLD": "18305",
+            "ESPECIALIDAD_FLD": "",
+            "TELEFONO_FLD": "",
+            "EMAIL_FLD": "",
+        }
+        result = map_doctor(row)
+        self.assertEqual(result["matricula"], "18305")
+
+    def test_matricula_falls_back_to_numero_when_both_empty(self):
+        row = {
+            "NUMERO_FLD": 1788,
+            "NOMBRE_FLD": "Doe, Jane",
+            "MATNAC_FLD": "",
+            "MATPROV_FLD": "",
+            "ESPECIALIDAD_FLD": "",
+            "TELEFONO_FLD": "",
+            "EMAIL_FLD": "",
+        }
+        result = map_doctor(row)
+        self.assertEqual(result["matricula"], "1788")
+
+    def test_matricula_prefers_matnac_over_matprov(self):
+        row = {
+            "NUMERO_FLD": 1788,
+            "NOMBRE_FLD": "Doe, Jane",
+            "MATNAC_FLD": "MN999",
+            "MATPROV_FLD": "MP111",
+            "ESPECIALIDAD_FLD": "",
+            "TELEFONO_FLD": "",
+            "EMAIL_FLD": "",
+        }
+        result = map_doctor(row)
+        self.assertEqual(result["matricula"], "MN999")
+
 
 class MapPracticeTests(BaseTestCase):
     """Tests for map_practice mapper."""
@@ -2760,3 +2799,105 @@ class CleanupMisplacedFDBTests(BaseTestCase):
         # delete() / rename() must NOT have been called in dry-run
         fake_ftp.delete.assert_not_called()
         fake_ftp.rename.assert_not_called()
+
+
+# ======================
+# Connector Query Filter Regression
+# ======================
+
+
+class ConnectorPRVDeletedFilterTests(BaseTestCase):
+    """Guards against re-introducing the `PRV_DELETEDRECORD_FLD = '0'` filter.
+
+    Why: in the live LabWin DB, ~80–93% of rows on DETERS / MEDICOS / NOMEN /
+    PACIENTES have this column NULL and the rest are '0' — no row is ever
+    actually marked deleted. The previous filter `WHERE PRV_DELETEDRECORD_FLD = '0'`
+    silently dropped every NULL row, which meant ~87% of MEDICOS rows never
+    reached the sync — that's why most synced studies ended up with
+    `ordered_by=NULL` (the referring doctor's MEDICOS row had been filtered
+    out before `_get_or_create_doctor` ever saw it). Bug shipped 2026-04-?,
+    fixed 2026-05-07.
+
+    If this column ever starts being used to denote deletion, switch to
+    `(PRV_DELETEDRECORD_FLD IS NULL OR PRV_DELETEDRECORD_FLD <> '<sentinel>')`
+    after confirming what value the lab uses to flag a deleted row.
+    """
+
+    def test_no_query_filters_on_prv_deletedrecord_fld(self):
+        from apps.labwin_sync.connectors import firebird
+
+        for query_name in (
+            "DETERS_QUERY",
+            "DETERS_QUERY_FULL",
+            "MEDICOS_QUERY",
+            "NOMEN_QUERY",
+            "PACIENTES_QUERY",
+        ):
+            sql = getattr(firebird, query_name)
+            self.assertNotIn(
+                "PRV_DELETEDRECORD_FLD",
+                sql,
+                f"{query_name} must not filter on PRV_DELETEDRECORD_FLD — "
+                "see ConnectorPRVDeletedFilterTests docstring for context.",
+            )
+
+
+# ======================
+# Backfill ordered_by on existing studies
+# ======================
+
+
+@override_settings(LABWIN_SYNC_WINDOW_DAYS=10000)
+class SyncBackfillsOrderedByTests(BaseTestCase):
+    """Re-syncs must backfill `ordered_by` on studies that were imported
+    without a doctor (e.g. when the connector previously dropped the MEDICOS
+    row via the buggy PRV_DELETEDRECORD_FLD filter). But never overwrite a
+    doctor that's already linked — manual corrections take precedence."""
+
+    def test_resync_backfills_when_ordered_by_is_null(self):
+        # First sync — creates the study with the doctor linked.
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+        study = Study.objects.filter(protocol_number="LW-100001").first()
+        self.assertIsNotNone(study)
+        self.assertIsNotNone(study.ordered_by_id)
+
+        # Simulate the historical bug: the doctor link was lost (e.g. the
+        # connector silently filtered out the MEDICOS row, so the sync
+        # created the study with ordered_by=NULL).
+        original_doctor_pk = study.ordered_by_id
+        study.ordered_by = None
+        study.save(update_fields=["ordered_by", "updated_at"])
+        study.refresh_from_db()
+        self.assertIsNone(study.ordered_by_id)
+
+        # Re-sync — connector now returns the MEDICOS row, so the doctor_pk
+        # is available again. The existing-study branch should backfill it.
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        study.refresh_from_db()
+        self.assertEqual(study.ordered_by_id, original_doctor_pk)
+
+    def test_resync_does_not_overwrite_existing_ordered_by(self):
+        """If a study already has a doctor linked (possibly manually corrected
+        by an admin), the sync must leave it alone."""
+        # First sync — creates the study with the mock connector's doctor.
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+        study = Study.objects.filter(protocol_number="LW-100001").first()
+        self.assertIsNotNone(study)
+
+        # Manual correction: an admin re-linked the study to a different
+        # doctor (representing a real-world fix).
+        manual_doctor = self.create_doctor(
+            email="manual-correct@example.com",
+            first_name="Manual",
+            last_name="Correction",
+            matricula="ZZZ-999",
+        )
+        study.ordered_by = manual_doctor
+        study.save(update_fields=["ordered_by", "updated_at"])
+
+        # Re-sync — must NOT clobber the manually-set doctor.
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        study.refresh_from_db()
+        self.assertEqual(study.ordered_by_id, manual_doctor.pk)

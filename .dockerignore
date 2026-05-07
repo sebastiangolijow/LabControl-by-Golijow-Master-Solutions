@@ -75,3 +75,17 @@ Dockerfile*
 .cache
 tmp/
 temp/
+
+# Pre-restructure fossils (root-level Python modules from before apps/ + config/
+# layout). These do NOT exist in git, but they have re-appeared on the VPS host
+# (/opt/labcontrol/) at least twice (2026-05-05 cleanup + 2026-05-06 redeploy).
+# Dockerfile uses `COPY . .`, so without these excludes a fossil /app/celery.py
+# would shadow the `celery` Python package and crash gunicorn at boot.
+# Until Dockerfile is migrated to a whitelist `COPY apps/ ./apps/` style, keep
+# these explicit:
+/celery.py
+/urls.py
+/wsgi.py
+/asgi.py
+/admin.py
+/__init__.py

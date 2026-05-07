@@ -148,10 +148,20 @@ def map_doctor(medico_row):
     first_name, last_name = parse_name(medico_row.get("NOMBRE_FLD"))
     email = _clean_str(medico_row.get("EMAIL_FLD")) or None
 
+    # Matricula priority: national → provincial → LabWin internal NUMERO_FLD.
+    # MATNAC_FLD is empty for many real doctors; MATPROV_FLD often has the
+    # real number. NUMERO_FLD is always present and unique within MEDICOS,
+    # so it's a guaranteed-non-empty fallback.
+    matricula = (
+        _clean_str(medico_row.get("MATNAC_FLD"))
+        or _clean_str(medico_row.get("MATPROV_FLD"))
+        or _clean_str(medico_row.get("NUMERO_FLD"))
+    )
+
     return {
         "first_name": first_name,
         "last_name": last_name,
-        "matricula": _clean_str(medico_row.get("MATNAC_FLD")),
+        "matricula": matricula,
         "phone_number": _clean_str(medico_row.get("TELEFONO_FLD")),
         "email": email,
         "role": "doctor",
