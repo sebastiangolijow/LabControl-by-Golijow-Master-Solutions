@@ -268,37 +268,66 @@ class FirebirdLabWinConnector(LabWinConnector):
             cursor.close()
 
     def fetch_results_metadata(self, abrev_fld_list=None):
-        cursor = self.connection.cursor()
-        try:
-            if abrev_fld_list:
-                placeholders = ",".join("?" * len(abrev_fld_list))
-                query = RESULTS_QUERY_FILTERED.format(placeholders=placeholders)
-                cursor.execute(query, abrev_fld_list)
-            else:
-                cursor.execute(RESULTS_QUERY_ALL)
-            rows = cursor.fetchall()
-            dicts = _rows_to_dicts(rows, RESULTS_COLUMNS)
-            grouped: dict[str, list[dict]] = {}
-            for d in dicts:
-                grouped.setdefault(d["ABREV_FLD"], []).append(d)
-            return grouped
-        finally:
-            cursor.close()
+        return self._fetch_grouped_chunked(
+            abrev_fld_list,
+            query_all=RESULTS_QUERY_ALL,
+            query_filtered=RESULTS_QUERY_FILTERED,
+            columns=RESULTS_COLUMNS,
+        )
 
     def fetch_valnor(self, abrev_fld_list=None):
+        return self._fetch_grouped_chunked(
+            abrev_fld_list,
+            query_all=VALNOR_QUERY_ALL,
+            query_filtered=VALNOR_QUERY_FILTERED,
+            columns=VALNOR_COLUMNS,
+        )
+
+    # Firebird's IN-list limit is 1500 — exceeded easily by our 2174 practices.
+    # We have two limitations:
+    #   1. IN-list of 1500 elements max
+    #   2. ISO8859_1 charset can't encode unicode replacement characters
+    #      (�) sometimes present in practice codes
+    # When the filter list is large (more practical to fetch all + filter
+    # client-side) OR contains non-latin1 chars, we just pull everything and
+    # filter in Python. RESULTS is 5,345 rows total and VALNOR is 1,913 rows,
+    # so the over-fetch is cheap.
+    _FB_IN_LIST_LIMIT = 500  # conservative below the 1500 hard limit
+    _FETCH_ALL_THRESHOLD = 500  # filter list size at which we fetch all
+
+    def _fetch_grouped_chunked(
+        self, abrev_fld_list, *, query_all, query_filtered, columns
+    ):
         cursor = self.connection.cursor()
         try:
-            if abrev_fld_list:
-                placeholders = ",".join("?" * len(abrev_fld_list))
-                query = VALNOR_QUERY_FILTERED.format(placeholders=placeholders)
-                cursor.execute(query, abrev_fld_list)
-            else:
-                cursor.execute(VALNOR_QUERY_ALL)
-            rows = cursor.fetchall()
-            dicts = _rows_to_dicts(rows, VALNOR_COLUMNS)
             grouped: dict[str, list[dict]] = {}
-            for d in dicts:
-                grouped.setdefault(d["ABREV_FLD"], []).append(d)
+
+            # Fetch all when no filter, when the filter is too big, OR when
+            # any code has chars that can't be encoded in latin-1.
+            fetch_all = not abrev_fld_list or len(abrev_fld_list) > self._FETCH_ALL_THRESHOLD
+            if not fetch_all:
+                try:
+                    "".join(abrev_fld_list).encode("latin-1")
+                except UnicodeEncodeError:
+                    fetch_all = True
+
+            if fetch_all:
+                cursor.execute(query_all)
+                rows = _rows_to_dicts(cursor.fetchall(), columns)
+                if abrev_fld_list:
+                    wanted = set(abrev_fld_list)
+                    rows = [d for d in rows if d["ABREV_FLD"] in wanted]
+                for d in rows:
+                    grouped.setdefault(d["ABREV_FLD"], []).append(d)
+                return grouped
+
+            # Small filter list, all latin-1 safe — chunk through IN-list
+            for i in range(0, len(abrev_fld_list), self._FB_IN_LIST_LIMIT):
+                chunk = abrev_fld_list[i : i + self._FB_IN_LIST_LIMIT]
+                placeholders = ",".join("?" * len(chunk))
+                cursor.execute(query_filtered.format(placeholders=placeholders), chunk)
+                for d in _rows_to_dicts(cursor.fetchall(), columns):
+                    grouped.setdefault(d["ABREV_FLD"], []).append(d)
             return grouped
         finally:
             cursor.close()
