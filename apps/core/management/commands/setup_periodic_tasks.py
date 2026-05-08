@@ -184,40 +184,22 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.WARNING("○ Already exists: Cleanup FTP PDFs"))
 
-        # REMOVE-ONCE-LAB-FIXES-DUPLICATE-UPLOAD: cleanup misplaced .FDB
-        # uploads daily at 03:50 (10 min before fetch_ftp_pdfs's 04:00 slot
-        # when that gets enabled).
-        nightly_350am, _ = CrontabSchedule.objects.get_or_create(
-            minute="50",
-            hour="3",
-            day_of_week="*",
-            day_of_month="*",
-            month_of_year="*",
+        # Obsolete since 2026-05-08: this task moved orphan PDFs from chroot
+        # root to /results/, which made sense in the old architecture where
+        # the connector read from /results/. After the 2026-05-07 PDF upload
+        # rebuild the connector reads from chroot root directly
+        # (LABWIN_FTP_DIRECTORY=/) — moving files to /results/ would now
+        # *hide* them from fetch_ftp_pdfs. Disable it on the live PeriodicTask
+        # row to stop it firing. The task code stays in the repo for now in
+        # case the lab's separate (broken) .FDB-pushing task needs it again.
+        PeriodicTask.objects.filter(name="Cleanup Misplaced FTP Uploads").update(
+            enabled=False
         )
-
-        task6, created6 = PeriodicTask.objects.get_or_create(
-            name="Cleanup Misplaced FTP Uploads",
-            defaults={
-                "task": "apps.labwin_sync.tasks.cleanup_misplaced_uploads",
-                "crontab": nightly_350am,
-                "enabled": True,
-                "description": (
-                    "REMOVE-ONCE-LAB-FIXES-DUPLICATE-UPLOAD — defends against "
-                    "lab pushing nightly .FDB files via FTP. Disable + delete "
-                    "this task once the lab confirms the duplicate upload is fixed."
-                ),
-            },
+        self.stdout.write(
+            self.style.WARNING(
+                "○ Disabled (obsolete): Cleanup Misplaced FTP Uploads"
+            )
         )
-        if created6:
-            self.stdout.write(
-                self.style.SUCCESS(
-                    "✓ Created: Cleanup Misplaced FTP Uploads (Daily 3:50 AM)"
-                )
-            )
-        else:
-            self.stdout.write(
-                self.style.WARNING("○ Already exists: Cleanup Misplaced FTP Uploads")
-            )
 
         self.stdout.write(self.style.SUCCESS("\n✓ Periodic tasks setup complete!"))
         self.stdout.write(
