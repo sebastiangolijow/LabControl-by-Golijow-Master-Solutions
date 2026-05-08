@@ -365,6 +365,10 @@ def map_study(
     protocol_number = f"LW-{numero}"
 
     service_date = parse_datetime(fecha, hora) if fecha else None
+    # solicited_date is the day the lab opened the order — LabWin's FECHA_FLD.
+    # NOT the day our sync ingested it (that's Study.created_at, which the
+    # frontend renders as "Completado" / delivery date instead).
+    solicited_date = service_date.date() if service_date else None
 
     return {
         "protocol_number": protocol_number,
@@ -372,7 +376,12 @@ def map_study(
         "ordered_by_id": doctor_pk,
         "status": "completed",
         "service_date": service_date,
-        "completed_at": service_date,
+        "solicited_date": solicited_date,
+        # completed_at intentionally NOT set: LabWin doesn't expose a real
+        # validation timestamp on DETERS, and the previous code that wrote
+        # FECHA_FLD here produced impossible "completed before solicited"
+        # rows on the frontend (where created_at was being shown as
+        # "Solicitado"). Leave null; frontend reads created_at for delivery.
         "sample_id": str(numero),
         "is_paid": is_paid,
         "is_validated": is_validated,

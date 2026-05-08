@@ -977,6 +977,22 @@ def _get_or_create_study_with_practices(
         if doctor_pk and study.ordered_by_id is None:
             study.ordered_by_id = doctor_pk
             flag_updates.append("ordered_by")
+        # Backfill solicited_date from the latest mapper output. Previously
+        # this field was never written; the frontend was inferring it from
+        # Study.created_at (= sync ingest time) which produced impossible
+        # "completed before solicited" rows. Always trust the FECHA_FLD-
+        # derived value from the mapper since LabWin is the source of truth.
+        new_solicited = study_fields.get("solicited_date")
+        if new_solicited and study.solicited_date != new_solicited:
+            study.solicited_date = new_solicited
+            flag_updates.append("solicited_date")
+        # Clear completed_at if it was previously written from FECHA_FLD
+        # (pre-2026-05-08 behavior). LabWin doesn't expose a real validation
+        # timestamp on DETERS, so we leave this null and the frontend reads
+        # Study.created_at for "Completado".
+        if study.completed_at is not None:
+            study.completed_at = None
+            flag_updates.append("completed_at")
         if flag_updates:
             flag_updates.append("updated_at")
             study.save(update_fields=flag_updates)
@@ -1026,7 +1042,7 @@ def _get_or_create_study_with_practices(
             ordered_by_id=doctor_pk,
             status="completed",
             service_date=study_fields.get("service_date"),
-            completed_at=study_fields.get("completed_at"),
+            solicited_date=study_fields.get("solicited_date"),
             sample_id=study_fields.get("sample_id", ""),
             is_paid=study_fields.get("is_paid", True),
             is_validated=study_fields.get("is_validated", False),
