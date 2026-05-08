@@ -304,7 +304,9 @@ class FirebirdLabWinConnector(LabWinConnector):
 
             # Fetch all when no filter, when the filter is too big, OR when
             # any code has chars that can't be encoded in latin-1.
-            fetch_all = not abrev_fld_list or len(abrev_fld_list) > self._FETCH_ALL_THRESHOLD
+            fetch_all = (
+                not abrev_fld_list or len(abrev_fld_list) > self._FETCH_ALL_THRESHOLD
+            )
             if not fetch_all:
                 try:
                     "".join(abrev_fld_list).encode("latin-1")
