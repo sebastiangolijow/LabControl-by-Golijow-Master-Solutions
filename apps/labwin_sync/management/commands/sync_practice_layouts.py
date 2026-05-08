@@ -92,9 +92,7 @@ class Command(BaseCommand):
                 try:
                     layout = build_layout(code, results_rows, valnor_rows)
                 except Exception:  # noqa: BLE001 — log + continue per practice
-                    logger.exception(
-                        "build_layout failed for practice code=%r", code
-                    )
+                    logger.exception("build_layout failed for practice code=%r", code)
                     stats["errors"] += 1
                     continue
 

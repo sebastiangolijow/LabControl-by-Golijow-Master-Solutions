@@ -922,9 +922,7 @@ def _get_or_create_study_with_practices(
     Returns:
         Study pk.
     """
-    from apps.labwin_sync.services.practice_layout import (
-        resolve_valnor_for_patient,
-    )
+    from apps.labwin_sync.services.practice_layout import resolve_valnor_for_patient
     from apps.studies.models import Practice, Study, StudyPractice
 
     # Use first row for dates (all rows in a protocol share the same date)
@@ -954,9 +952,7 @@ def _get_or_create_study_with_practices(
         layout = _practice_layout_cache_get(practice_pk)
         if layout is None:
             return None
-        resolved = resolve_valnor_for_patient(
-            layout, patient_sex, patient_age_days
-        )
+        resolved = resolve_valnor_for_patient(layout, patient_sex, patient_age_days)
         return resolved or None  # Drop empty dict so Postgres stores NULL
 
     # Check if study already exists

@@ -3052,9 +3052,9 @@ class BuildLayoutTests(BaseTestCase):
         self.assertEqual(labels, ["Leucocitos", "Hematies", "Hemoglobina"])
 
     def test_build_layout_picks_newest_per_position(self):
-        from apps.labwin_sync.services.practice_layout import build_layout
-
         from datetime import datetime as dt
+
+        from apps.labwin_sync.services.practice_layout import build_layout
 
         rows = self._hemc_results_rows()
         rows.append(
@@ -3108,9 +3108,9 @@ class BuildLayoutTests(BaseTestCase):
         self.assertIsNone(pos2["abnormal_limits"]["min_critical"])
 
     def test_build_layout_returns_none_when_only_template_rows(self):
-        from apps.labwin_sync.services.practice_layout import build_layout
-
         from datetime import datetime as dt
+
+        from apps.labwin_sync.services.practice_layout import build_layout
 
         rows = [
             {
@@ -3179,9 +3179,7 @@ class ResolveValnorForPatientTests(BaseTestCase):
         }
 
     def test_resolves_male_adult(self):
-        from apps.labwin_sync.services.practice_layout import (
-            resolve_valnor_for_patient,
-        )
+        from apps.labwin_sync.services.practice_layout import resolve_valnor_for_patient
 
         resolved = resolve_valnor_for_patient(
             self._layout(), patient_sex=1, patient_age_days=30 * 365
@@ -3190,9 +3188,7 @@ class ResolveValnorForPatientTests(BaseTestCase):
         self.assertEqual(resolved["2"], "4.500.000-5.500.000")  # sex=M match
 
     def test_resolves_female_adult(self):
-        from apps.labwin_sync.services.practice_layout import (
-            resolve_valnor_for_patient,
-        )
+        from apps.labwin_sync.services.practice_layout import resolve_valnor_for_patient
 
         resolved = resolve_valnor_for_patient(
             self._layout(), patient_sex=2, patient_age_days=30 * 365
@@ -3200,9 +3196,7 @@ class ResolveValnorForPatientTests(BaseTestCase):
         self.assertEqual(resolved["2"], "4.000.000-5.000.000")  # sex=F match
 
     def test_skips_position_with_no_match(self):
-        from apps.labwin_sync.services.practice_layout import (
-            resolve_valnor_for_patient,
-        )
+        from apps.labwin_sync.services.practice_layout import resolve_valnor_for_patient
 
         # Child — neither pos=2 row matches (both require 18+).
         resolved = resolve_valnor_for_patient(
@@ -3211,9 +3205,7 @@ class ResolveValnorForPatientTests(BaseTestCase):
         self.assertNotIn("2", resolved)
 
     def test_returns_empty_dict_for_none_layout(self):
-        from apps.labwin_sync.services.practice_layout import (
-            resolve_valnor_for_patient,
-        )
+        from apps.labwin_sync.services.practice_layout import resolve_valnor_for_patient
 
         self.assertEqual(
             resolve_valnor_for_patient(None, patient_sex=1, patient_age_days=10000),
@@ -3221,9 +3213,7 @@ class ResolveValnorForPatientTests(BaseTestCase):
         )
 
     def test_skips_vet_rows_for_human_patients(self):
-        from apps.labwin_sync.services.practice_layout import (
-            resolve_valnor_for_patient,
-        )
+        from apps.labwin_sync.services.practice_layout import resolve_valnor_for_patient
 
         layout = {
             "items": [
