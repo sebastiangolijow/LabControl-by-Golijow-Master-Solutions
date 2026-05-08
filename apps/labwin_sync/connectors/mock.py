@@ -127,13 +127,14 @@ SAMPLE_NOMEN = {
 }
 
 SAMPLE_DETERS = [
-    # Order 100001 - patient Garcia, Maria
+    # Order 100001 - patient Garcia, Maria - FULLY VALIDATED (3/3)
     {
         "NUMERO_FLD": 100001,
         "ABREV_FLD": "GLU-Bi",
         "RESULT_FLD": "92",
         "RESULTREP_FLD": "",
         "VALIDADO_FLD": "1",
+        "CARGADO_FLD": "1",
         "FECHA_FLD": "20251028",
         "HORA_FLD": "08:30",
         "ORDEN_FLD": 1,
@@ -146,6 +147,7 @@ SAMPLE_DETERS = [
         "RESULT_FLD": "79|4790|137|39|242000|81|29|35|61|2|1|31|5|02",
         "RESULTREP_FLD": "",
         "VALIDADO_FLD": "1",
+        "CARGADO_FLD": "1",
         "FECHA_FLD": "20251028",
         "HORA_FLD": "08:30",
         "ORDEN_FLD": 2,
@@ -158,19 +160,21 @@ SAMPLE_DETERS = [
         "RESULT_FLD": "364|-11",
         "RESULTREP_FLD": "",
         "VALIDADO_FLD": "1",
+        "CARGADO_FLD": "1",
         "FECHA_FLD": "20251028",
         "HORA_FLD": "08:30",
         "ORDEN_FLD": 3,
         "OPERADOR_FLD": 174,
         "SUCURSAL_FLD": 0,
     },
-    # Order 100002 - patient Rodriguez Pedro
+    # Order 100002 - patient Rodriguez Pedro - FULLY VALIDATED (3/3)
     {
         "NUMERO_FLD": 100002,
         "ABREV_FLD": "GLU-Bi",
         "RESULT_FLD": "105",
         "RESULTREP_FLD": "",
         "VALIDADO_FLD": "1",
+        "CARGADO_FLD": "1",
         "FECHA_FLD": "20251029",
         "HORA_FLD": "09:15",
         "ORDEN_FLD": 1,
@@ -183,6 +187,7 @@ SAMPLE_DETERS = [
         "RESULT_FLD": "35",
         "RESULTREP_FLD": "",
         "VALIDADO_FLD": "1",
+        "CARGADO_FLD": "1",
         "FECHA_FLD": "20251029",
         "HORA_FLD": "09:15",
         "ORDEN_FLD": 2,
@@ -195,32 +200,36 @@ SAMPLE_DETERS = [
         "RESULT_FLD": "0.9",
         "RESULTREP_FLD": "",
         "VALIDADO_FLD": "1",
+        "CARGADO_FLD": "1",
         "FECHA_FLD": "20251029",
         "HORA_FLD": "09:15",
         "ORDEN_FLD": 3,
         "OPERADOR_FLD": 61,
         "SUCURSAL_FLD": 0,
     },
-    # Order 100003 - patient Fernandez Ana
+    # Order 100003 - patient Fernandez Ana - PARTIALLY VALIDATED (1/2).
+    # The whole protocol must be skipped by sync — both rows in this
+    # NUMERO go untouched in the DB until the lab validates GLU-Bi.
     {
         "NUMERO_FLD": 100003,
         "ABREV_FLD": "TSH",
         "RESULT_FLD": "250|-11",
         "RESULTREP_FLD": "",
         "VALIDADO_FLD": "1",
+        "CARGADO_FLD": "1",
         "FECHA_FLD": "20251030",
         "HORA_FLD": "10:00",
         "ORDEN_FLD": 1,
         "OPERADOR_FLD": 180,
         "SUCURSAL_FLD": 0,
     },
-    # Not yet validated - should be excluded from sync
     {
         "NUMERO_FLD": 100003,
         "ABREV_FLD": "GLU-Bi",
         "RESULT_FLD": "88",
         "RESULTREP_FLD": "",
         "VALIDADO_FLD": "0",
+        "CARGADO_FLD": "0",
         "FECHA_FLD": "20251030",
         "HORA_FLD": "10:00",
         "ORDEN_FLD": 2,
@@ -247,8 +256,11 @@ class MockLabWinConnector(LabWinConnector):
     def fetch_validated_deters(
         self, since_fecha=None, since_numero=None, batch_size=500
     ):
-        # Only return validated rows, matching real Firebird connector behavior
-        data = [row for row in SAMPLE_DETERS if row.get("VALIDADO_FLD") == "1"]
+        # Returns ALL DETERS rows — both validated and not. The sync layer
+        # decides whether to ingest each protocol based on whether ALL of
+        # its rows are validated. (Method name is historical; matches the
+        # Firebird connector's contract.)
+        data = list(SAMPLE_DETERS)
 
         if since_fecha and since_numero is not None:
             data = [

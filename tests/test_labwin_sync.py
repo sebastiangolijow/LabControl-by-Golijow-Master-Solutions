@@ -336,14 +336,14 @@ class MockConnectorTests(BaseTestCase):
             all_rows = []
             for batch in conn.fetch_validated_deters():
                 all_rows.extend(batch)
-            # Should only return validated rows (VALIDADO_FLD == "1")
-            validated_count = sum(
-                1 for row in SAMPLE_DETERS if row.get("VALIDADO_FLD") == "1"
-            )
-            self.assertEqual(len(all_rows), validated_count)
-            # Verify all returned rows are validated
-            for row in all_rows:
-                self.assertEqual(row["VALIDADO_FLD"], "1")
+            # As of 2026-05-08 the connector returns ALL DETERS rows
+            # (validated + not). The sync layer decides per-protocol whether
+            # to ingest based on is_protocol_fully_validated().
+            self.assertEqual(len(all_rows), len(SAMPLE_DETERS))
+            # And both flag values must be present in the dataset
+            validado_values = {row["VALIDADO_FLD"] for row in all_rows}
+            self.assertIn("1", validado_values)
+            self.assertIn("0", validado_values)
 
     def test_fetch_validated_deters_incremental(self):
         with MockLabWinConnector() as conn:
@@ -406,20 +406,35 @@ class SyncTaskTests(BaseTestCase):
 
     def test_sync_creates_records(self):
         """Full sync creates patients, doctors, practices, and studies."""
+        from collections import defaultdict
+
+        from apps.labwin_sync.mappers import is_protocol_fully_validated
+
         result = sync_labwin_results(lab_client_id=1, full_sync=True)
 
         self.assertGreater(result["studies_created"], 0)
         self.assertGreater(result["patients_created"], 0)
         self.assertGreater(result["practices_created"], 0)
 
-        # Verify studies exist with LW- prefix (one study per unique NUMERO_FLD)
-        lw_studies = Study.objects.filter(protocol_number__startswith="LW-")
-        validated_rows = [r for r in SAMPLE_DETERS if r.get("VALIDADO_FLD") == "1"]
-        unique_numeros = set(r["NUMERO_FLD"] for r in validated_rows)
-        self.assertEqual(lw_studies.count(), len(unique_numeros))
+        # Only protocols (NUMERO_FLD groups) where ALL rows are fully
+        # validated AND loaded are ingested. Compute the expected set the
+        # same way the sync does.
+        rows_by_numero = defaultdict(list)
+        for row in SAMPLE_DETERS:
+            rows_by_numero[row["NUMERO_FLD"]].append(row)
+        valid_numeros = {
+            num for num, rows in rows_by_numero.items()
+            if is_protocol_fully_validated(rows)
+        }
+        valid_rows = [
+            r for r in SAMPLE_DETERS if r["NUMERO_FLD"] in valid_numeros
+        ]
 
-        # Verify StudyPractice records created (one per validated DETERS row)
-        self.assertEqual(StudyPractice.objects.count(), len(validated_rows))
+        lw_studies = Study.objects.filter(protocol_number__startswith="LW-")
+        self.assertEqual(lw_studies.count(), len(valid_numeros))
+
+        # Verify StudyPractice records created (one per row in valid protocols)
+        self.assertEqual(StudyPractice.objects.count(), len(valid_rows))
 
         # Verify patients created
         synced_patients = SyncedRecord.objects.filter(source_table="PACIENTES")
@@ -853,6 +868,7 @@ class SyncNotificationTests(BaseTestCase):
                 "RESULT_FLD": "100",
                 "RESULTREP_FLD": "",
                 "VALIDADO_FLD": "1",
+                "CARGADO_FLD": "1",
                 "FECHA_FLD": "20251028",
                 "HORA_FLD": "10:00",
                 "ORDEN_FLD": 1,
@@ -1946,21 +1962,46 @@ class SyncIsPaidIsValidatedTests(BaseTestCase):
 
     @override_settings(LABWIN_USE_MOCK=True)
     def test_sync_sets_is_paid_from_debebono(self):
-        sync_labwin_results(lab_client_id=1, full_sync=True)
+        # Temporarily mark order 100003 as fully validated so it gets
+        # ingested and we can verify is_paid=False (DEBEBONO='1' patient).
+        # The default mock state has 100003 partially validated to exercise
+        # SyncSkipsPartiallyValidatedProtocolsTests; this test cares about
+        # is_paid, not partial validation.
+        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS
 
-        # Mock fixtures: 100001 (DEBEBONO=''), 100002 (DEBEBONO='0'), 100003 (DEBEBONO='1')
-        # Expect: 100001 paid, 100002 paid, 100003 unpaid.
-        s1 = Study.objects.get(protocol_number="LW-100001")
-        s2 = Study.objects.get(protocol_number="LW-100002")
-        s3 = Study.objects.get(protocol_number="LW-100003")
+        snapshot = []
+        for row in SAMPLE_DETERS:
+            if row["NUMERO_FLD"] == 100003:
+                snapshot.append(
+                    (row["ABREV_FLD"], row["VALIDADO_FLD"], row["CARGADO_FLD"])
+                )
+                row["VALIDADO_FLD"] = "1"
+                row["CARGADO_FLD"] = "1"
+        try:
+            sync_labwin_results(lab_client_id=1, full_sync=True)
 
-        self.assertTrue(s1.is_paid, "Insurance patient (DEBEBONO='') should be paid")
-        self.assertTrue(
-            s2.is_paid, "Already-paid patient (DEBEBONO='0') should be paid"
-        )
-        self.assertFalse(
-            s3.is_paid, "Owes-bono patient (DEBEBONO='1') should be UNPAID"
-        )
+            # Mock fixtures: 100001 (DEBEBONO=''), 100002 (DEBEBONO='0'),
+            # 100003 (DEBEBONO='1'). Expected: 100001 paid, 100002 paid,
+            # 100003 unpaid.
+            s1 = Study.objects.get(protocol_number="LW-100001")
+            s2 = Study.objects.get(protocol_number="LW-100002")
+            s3 = Study.objects.get(protocol_number="LW-100003")
+
+            self.assertTrue(
+                s1.is_paid, "Insurance patient (DEBEBONO='') should be paid"
+            )
+            self.assertTrue(
+                s2.is_paid, "Already-paid patient (DEBEBONO='0') should be paid"
+            )
+            self.assertFalse(
+                s3.is_paid, "Owes-bono patient (DEBEBONO='1') should be UNPAID"
+            )
+        finally:
+            for abrev, validado, cargado in snapshot:
+                for row in SAMPLE_DETERS:
+                    if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == abrev:
+                        row["VALIDADO_FLD"] = validado
+                        row["CARGADO_FLD"] = cargado
 
     @override_settings(LABWIN_USE_MOCK=True)
     def test_sync_sets_is_validated_true_for_all_imported(self):
@@ -1976,29 +2017,45 @@ class SyncIsPaidIsValidatedTests(BaseTestCase):
     @override_settings(LABWIN_USE_MOCK=True)
     def test_resync_updates_is_paid_when_source_changes(self):
         """If a patient pays their bono between backups, the next sync flips is_paid."""
-        # First sync — 100003 starts unpaid (DEBEBONO='1' in mock)
-        sync_labwin_results(lab_client_id=1, full_sync=True)
-        s3 = Study.objects.get(protocol_number="LW-100003")
-        self.assertFalse(s3.is_paid)
-
-        # Simulate the lab marking 100003 as paid in the source DB.
-        # Mutate the in-memory mock fixture so the next sync sees DEBEBONO_FLD='0'.
-        from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES
-
-        original = SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"]
-        SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = "0"
-        try:
-            sync_labwin_results(lab_client_id=1, full_sync=True)
-        finally:
-            SAMPLE_PACIENTES[100003][
-                "DEBEBONO_FLD"
-            ] = original  # don't leak across tests
-
-        s3.refresh_from_db()
-        self.assertTrue(
-            s3.is_paid,
-            "Re-sync should flip is_paid=True when source DEBEBONO_FLD changes from '1' to '0'",
+        # As in test_sync_sets_is_paid_from_debebono above, temporarily mark
+        # 100003 as fully validated so it gets ingested at all.
+        from apps.labwin_sync.connectors.mock import (
+            SAMPLE_DETERS,
+            SAMPLE_PACIENTES,
         )
+
+        deters_snapshot = []
+        for row in SAMPLE_DETERS:
+            if row["NUMERO_FLD"] == 100003:
+                deters_snapshot.append(
+                    (row["ABREV_FLD"], row["VALIDADO_FLD"], row["CARGADO_FLD"])
+                )
+                row["VALIDADO_FLD"] = "1"
+                row["CARGADO_FLD"] = "1"
+        original_debebono = SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"]
+        try:
+            # First sync — 100003 starts unpaid (DEBEBONO='1' in mock)
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+            s3 = Study.objects.get(protocol_number="LW-100003")
+            self.assertFalse(s3.is_paid)
+
+            # Simulate the lab marking 100003 as paid in the source DB.
+            SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = "0"
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+
+            s3.refresh_from_db()
+            self.assertTrue(
+                s3.is_paid,
+                "Re-sync should flip is_paid=True when source "
+                "DEBEBONO_FLD changes from '1' to '0'",
+            )
+        finally:
+            SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = original_debebono
+            for abrev, validado, cargado in deters_snapshot:
+                for row in SAMPLE_DETERS:
+                    if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == abrev:
+                        row["VALIDADO_FLD"] = validado
+                        row["CARGADO_FLD"] = cargado
 
 
 # ======================
@@ -2244,6 +2301,7 @@ class SyncSkipsDerivacionTests(BaseTestCase):
                 "RESULT_FLD": "100",
                 "RESULTREP_FLD": "100",
                 "VALIDADO_FLD": "1",
+                "CARGADO_FLD": "1",
                 "FECHA_FLD": "20260415",
                 "HORA_FLD": "10:00",
                 "ORDEN_FLD": 1,
@@ -2381,6 +2439,7 @@ class SyncSkipsPetsTests(BaseTestCase):
                 "RESULT_FLD": "100",
                 "RESULTREP_FLD": "100",
                 "VALIDADO_FLD": "1",
+                "CARGADO_FLD": "1",
                 "FECHA_FLD": "20260415",
                 "HORA_FLD": "10:00",
                 "ORDEN_FLD": 1,
@@ -2605,6 +2664,7 @@ class SyncLoggerTests(BaseTestCase):
                 "RESULT_FLD": "100",
                 "RESULTREP_FLD": "",
                 "VALIDADO_FLD": "1",
+                "CARGADO_FLD": "1",
                 "FECHA_FLD": "20251028",
                 "HORA_FLD": "10:00",
                 "ORDEN_FLD": 1,
@@ -3266,3 +3326,126 @@ class PatientAgeDaysForSyncTests(BaseTestCase):
         from apps.labwin_sync.tasks import _patient_age_days_for_sync
 
         self.assertIsNone(_patient_age_days_for_sync("20300101", "20260507"))
+
+
+# ----------------------------------------------------------------------------
+# Protocol-level validation gate (added 2026-05-08)
+# ----------------------------------------------------------------------------
+
+
+class IsProtocolFullyValidatedTests(BaseTestCase):
+    """is_protocol_fully_validated(): protocol-level validation gate."""
+
+    def test_all_validated_and_loaded_returns_true(self):
+        from apps.labwin_sync.mappers import is_protocol_fully_validated
+
+        rows = [
+            {"VALIDADO_FLD": "1", "CARGADO_FLD": "1"},
+            {"VALIDADO_FLD": "1", "CARGADO_FLD": "1"},
+        ]
+        self.assertTrue(is_protocol_fully_validated(rows))
+
+    def test_one_not_validated_returns_false(self):
+        from apps.labwin_sync.mappers import is_protocol_fully_validated
+
+        rows = [
+            {"VALIDADO_FLD": "1", "CARGADO_FLD": "1"},
+            {"VALIDADO_FLD": "0", "CARGADO_FLD": "0"},
+        ]
+        self.assertFalse(is_protocol_fully_validated(rows))
+
+    def test_validated_but_not_loaded_returns_false(self):
+        from apps.labwin_sync.mappers import is_protocol_fully_validated
+
+        rows = [
+            {"VALIDADO_FLD": "1", "CARGADO_FLD": "1"},
+            {"VALIDADO_FLD": "1", "CARGADO_FLD": "0"},
+        ]
+        self.assertFalse(is_protocol_fully_validated(rows))
+
+    def test_empty_returns_false(self):
+        from apps.labwin_sync.mappers import is_protocol_fully_validated
+
+        self.assertFalse(is_protocol_fully_validated([]))
+
+
+class SyncSkipsPartiallyValidatedProtocolsTests(BaseTestCase):
+    """Sync must NOT ingest a protocol where any DETERS is unvalidated.
+
+    Uses the mock connector. SAMPLE_DETERS includes order 100003 with one
+    row VALIDADO_FLD='1' (TSH) and one row VALIDADO_FLD='0' (GLU-Bi).
+    The whole order must be skipped — no Study, no StudyPractice rows.
+    """
+
+    def test_skips_order_with_one_unvalidated_row(self):
+        from apps.labwin_sync.tasks import sync_labwin_results
+        from apps.studies.models import Study
+
+        result = sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        self.assertEqual(result["error_count"], 0)
+        # Orders 100001 and 100002 (fully validated) are ingested
+        self.assertTrue(Study.objects.filter(protocol_number="LW-100001").exists())
+        self.assertTrue(Study.objects.filter(protocol_number="LW-100002").exists())
+        # Order 100003 (partially validated) is NOT ingested
+        self.assertFalse(Study.objects.filter(protocol_number="LW-100003").exists())
+
+    def test_deletes_existing_study_when_protocol_becomes_partially_validated(
+        self,
+    ):
+        """If a Study was previously fully validated and the lab unvalidates one
+        of its rows, the next sync must delete the Study from our DB."""
+        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS
+        from apps.labwin_sync.tasks import sync_labwin_results
+        from apps.studies.models import Study, StudyPractice
+
+        # Snapshot original mock state so we can restore it.
+        snapshot = []
+        for row in SAMPLE_DETERS:
+            if row["NUMERO_FLD"] == 100003:
+                snapshot.append(
+                    (row["ABREV_FLD"], row["VALIDADO_FLD"], row["CARGADO_FLD"])
+                )
+
+        try:
+            # Step 1: simulate the lab validating the missing row →
+            # 100003 becomes fully validated
+            for row in SAMPLE_DETERS:
+                if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == "GLU-Bi":
+                    row["VALIDADO_FLD"] = "1"
+                    row["CARGADO_FLD"] = "1"
+
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+            self.assertTrue(
+                Study.objects.filter(protocol_number="LW-100003").exists()
+            )
+            study = Study.objects.get(protocol_number="LW-100003")
+            self.assertEqual(
+                StudyPractice.objects.filter(study_id=study.id).count(), 2
+            )
+            study_id = study.id  # capture for the cascade-out check below
+
+            # Step 2: simulate the lab unvalidating GLU-Bi again
+            for row in SAMPLE_DETERS:
+                if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == "GLU-Bi":
+                    row["VALIDADO_FLD"] = "0"
+                    row["CARGADO_FLD"] = "0"
+
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+            # The previously-ingested Study must be deleted
+            self.assertFalse(
+                Study.objects.filter(protocol_number="LW-100003").exists()
+            )
+            self.assertEqual(
+                StudyPractice.objects.filter(study_id=study_id).count(), 0
+            )
+        finally:
+            # Restore mock state regardless of test outcome
+            for abrev, validado, cargado in snapshot:
+                for row in SAMPLE_DETERS:
+                    if (
+                        row["NUMERO_FLD"] == 100003
+                        and row["ABREV_FLD"] == abrev
+                    ):
+                        row["VALIDADO_FLD"] = validado
+                        row["CARGADO_FLD"] = cargado

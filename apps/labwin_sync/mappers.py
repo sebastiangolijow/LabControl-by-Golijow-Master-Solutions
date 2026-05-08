@@ -336,6 +336,37 @@ def map_is_paid(paciente_row):
     return debebono != "1"
 
 
+def is_protocol_fully_validated(deters_rows):
+    """Return True iff every DETERS row for this protocol is validated AND loaded.
+
+    LabWin tracks two flags per result:
+      - VALIDADO_FLD = '1'  → the lab has formally validated this practice
+      - CARGADO_FLD  = '1'  → the result value has been recorded
+
+    A protocol is shown to patients only when ALL of its practices satisfy
+    both. Partially-validated protocols (e.g. 2 of 4 practices done) are
+    skipped at sync time, and any prior version of them in our DB is
+    deleted (see the use site in tasks.py).
+
+    Args:
+        deters_rows: List of DETERS row dicts for a single NUMERO_FLD.
+                     MUST contain every row for that NUMERO — partial
+                     lists will produce wrong answers.
+
+    Returns:
+        True if every row has VALIDADO_FLD='1' AND CARGADO_FLD='1'.
+        False if any row is missing either flag, or if the list is empty.
+    """
+    if not deters_rows:
+        return False
+    for row in deters_rows:
+        if row.get("VALIDADO_FLD") != "1":
+            return False
+        if row.get("CARGADO_FLD") != "1":
+            return False
+    return True
+
+
 def map_study(
     numero,
     patient_pk,

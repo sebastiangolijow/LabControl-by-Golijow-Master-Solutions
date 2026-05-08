@@ -22,7 +22,13 @@ class LabWinConnector(ABC):
     def fetch_validated_deters(
         self, since_fecha=None, since_numero=None, batch_size=500
     ):
-        """Fetch validated DETERS rows since the given cursor.
+        """Fetch DETERS rows since the given cursor.
+
+        Note: despite the historical name "fetch_validated_deters", this
+        method now returns ALL DETERS rows in the date window — both
+        validated and not. The sync layer decides whether each protocol
+        (NUMERO_FLD) is fully validated based on the union of its rows.
+        See is_protocol_fully_validated() in mappers.py.
 
         Args:
             since_fecha: YYYYMMDD string, fetch records with FECHA_FLD >= this.
@@ -32,7 +38,8 @@ class LabWinConnector(ABC):
         Yields:
             Lists of dicts, each dict representing a DETERS row with keys:
             NUMERO_FLD, ABREV_FLD, RESULT_FLD, RESULTREP_FLD,
-            VALIDADO_FLD, FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
+            VALIDADO_FLD, CARGADO_FLD,
+            FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
         """
 
     @abstractmethod

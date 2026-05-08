@@ -124,6 +124,12 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         "notifications_queued": 0,
         "emails_skipped": 0,
         "derivacion_skipped": 0,
+        # Protocols where some DETERS rows are not yet VALIDADO_FLD='1' and
+        # CARGADO_FLD='1'. We refuse to ingest until ALL rows are validated.
+        # *_deleted counts protocols where we ALSO had to remove a stale
+        # previously-fully-validated Study from our DB.
+        "partial_validation_skipped": 0,
+        "partial_validation_deleted": 0,
     }
 
     # Notification batching state. We accumulate per-user lists during the sync
@@ -233,6 +239,33 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                 for numero, rows in grouped.items():
                     total_processed += len(rows)
 
+                    # Skip partially-validated protocols. We only ingest a
+                    # protocol once ALL of its practices are validated AND
+                    # loaded in LabWin. If a protocol that previously WAS
+                    # fully validated now has unvalidated rows (e.g. the
+                    # lab unvalidated one of its practices), delete the
+                    # existing Study from our DB so the patient stops
+                    # seeing stale partial data.
+                    if not mappers.is_protocol_fully_validated(rows):
+                        counters["partial_validation_skipped"] = (
+                            counters.get("partial_validation_skipped", 0) + 1
+                        )
+                        protocol_number = f"LW-{numero}"
+                        deleted_count, _ = Study.objects.filter(
+                            protocol_number=protocol_number
+                        ).delete()
+                        if deleted_count:
+                            counters["partial_validation_deleted"] = (
+                                counters.get("partial_validation_deleted", 0) + 1
+                            )
+                            logger.info(
+                                "sync_labwin: deleted %s — became partially "
+                                "validated in LabWin (%d rows in this batch)",
+                                protocol_number,
+                                len(rows),
+                            )
+                        continue
+
                     try:
                         # Ensure patient exists
                         if numero not in patient_cache:
@@ -329,8 +362,10 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                 practice_cache[abrev] = practice_pk
 
                         # Per-study flags derived from PACIENTES row.
-                        # is_validated=True because the connector only fetches
-                        # validated DETERS (VALIDADO_FLD='1').
+                        # is_validated=True because we only reach this code path
+                        # for protocols where ALL DETERS rows have
+                        # VALIDADO_FLD='1' AND CARGADO_FLD='1' (gate above —
+                        # see is_protocol_fully_validated).
                         is_paid = mappers.map_is_paid(pac_row)
 
                         # Patient sex + DOB feed per-study VALNOR resolution
@@ -458,6 +493,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             "doctors_created=%d practices_created=%d "
             "notifications_queued=%d emails_skipped=%d "
             "derivacion_skipped=%d "
+            "partial_validation_skipped=%d partial_validation_deleted=%d "
             "errors=%d batches=%d | %s",
             counters.get("patients_created", 0),
             counters.get("patients_updated", 0),
@@ -469,6 +505,8 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             counters.get("notifications_queued", 0),
             counters.get("emails_skipped", 0),
             counters.get("derivacion_skipped", 0),
+            counters.get("partial_validation_skipped", 0),
+            counters.get("partial_validation_deleted", 0),
             len(errors),
             batch_index,
             memory_summary(),
@@ -912,8 +950,10 @@ def _get_or_create_study_with_practices(
         counters: Dict of counters to update.
         is_paid: Computed by caller via mappers.map_is_paid(pac_row). Updated
                  on existing studies if it changed.
-        is_validated: True for sync-imported studies (connector pre-filters
-                      to VALIDADO_FLD='1' DETERS rows).
+        is_validated: True for sync-imported studies (caller has already
+                      verified via is_protocol_fully_validated() that ALL
+                      DETERS rows for this NUMERO have VALIDADO_FLD='1'
+                      AND CARGADO_FLD='1').
         patient_sex: LabWin SEXO_FLD (1=M, 2=F, 0=any). Used for VALNOR
                      resolution on each StudyPractice.
         patient_dob_raw: LabWin FNACIM_FLD (YYYYMMDD string or int). Used to

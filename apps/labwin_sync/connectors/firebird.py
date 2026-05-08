@@ -24,23 +24,28 @@ logger = logging.getLogger(__name__)
 # to `(PRV_DELETEDRECORD_FLD IS NULL OR PRV_DELETEDRECORD_FLD <> '1')` and
 # verify which value(s) actually denote deletion.
 
-# SQL for fetching validated DETERS rows incrementally
+# SQL for fetching DETERS rows. We INTENTIONALLY do NOT filter on
+# VALIDADO_FLD or CARGADO_FLD here — the sync layer needs to see ALL rows
+# for a given NUMERO so it can decide whether the WHOLE protocol is fully
+# validated. We only ingest fully-validated protocols (every DETERS row
+# for that NUMERO has VALIDADO_FLD='1' AND CARGADO_FLD='1'). Partial
+# protocols (e.g. 2 of 4 practices done) are skipped, and any prior
+# version of them in our DB is deleted on sync — see
+# is_protocol_fully_validated() in mappers.py and the use site in tasks.py.
 DETERS_QUERY = """
     SELECT NUMERO_FLD, ABREV_FLD, RESULT_FLD, RESULTREP_FLD,
-           VALIDADO_FLD, FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
+           VALIDADO_FLD, CARGADO_FLD,
+           FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
     FROM DETERS
-    WHERE VALIDADO_FLD = '1'
-      AND CARGADO_FLD = '1'
-      AND (FECHA_FLD > ? OR (FECHA_FLD = ? AND NUMERO_FLD > ?))
+    WHERE (FECHA_FLD > ? OR (FECHA_FLD = ? AND NUMERO_FLD > ?))
     ORDER BY FECHA_FLD, NUMERO_FLD
 """
 
 DETERS_QUERY_FULL = """
     SELECT NUMERO_FLD, ABREV_FLD, RESULT_FLD, RESULTREP_FLD,
-           VALIDADO_FLD, FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
+           VALIDADO_FLD, CARGADO_FLD,
+           FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
     FROM DETERS
-    WHERE VALIDADO_FLD = '1'
-      AND CARGADO_FLD = '1'
     ORDER BY FECHA_FLD, NUMERO_FLD
 """
 
@@ -72,6 +77,7 @@ DETERS_COLUMNS = [
     "RESULT_FLD",
     "RESULTREP_FLD",
     "VALIDADO_FLD",
+    "CARGADO_FLD",
     "FECHA_FLD",
     "HORA_FLD",
     "ORDEN_FLD",
