@@ -2901,3 +2901,378 @@ class SyncBackfillsOrderedByTests(BaseTestCase):
 
         study.refresh_from_db()
         self.assertEqual(study.ordered_by_id, manual_doctor.pk)
+
+
+# ----------------------------------------------------------------------------
+# Practice layout (RESULTS + VALNOR → result_layout JSON) — added 2026-05-08
+# ----------------------------------------------------------------------------
+
+
+class BuildLayoutTests(BaseTestCase):
+    """build_layout(): turn raw RESULTS+VALNOR rows into result_layout JSON."""
+
+    def _hemc_results_rows(self):
+        """Realistic subset of HEMC RESULTS rows from the live DB."""
+        from datetime import datetime as dt
+
+        return [
+            # pos=1 has a "Valor calculado Nº 1" template row that must be skipped
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 1,
+                "INRESUL_FLD": "Valor calculado Nº 1",
+                "UNIDADES_FLD": "por mm3",
+                "FORMATO_FLD": 1,
+                "DECIMALES_FLD": 0,
+                "FACTOR_FLD": 1.0,
+                "LIMINFIM_FLD": "",
+                "LIMINFMB_FLD": "",
+                "LIMINFBA_FLD": "",
+                "LIMSUPAL_FLD": "",
+                "LIMSUPMA_FLD": "",
+                "LIMSUPIM_FLD": "",
+                "PRV_TIMESTAMP_FLD": dt(2010, 1, 1),
+            },
+            # pos=1 real row — Leucocitos
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 1,
+                "INRESUL_FLD": "Leucocitos",
+                "UNIDADES_FLD": "/mm3",
+                "FORMATO_FLD": 1,
+                "DECIMALES_FLD": 0,
+                "FACTOR_FLD": 100.0,
+                "LIMINFIM_FLD": "",
+                "LIMINFMB_FLD": "",
+                "LIMINFBA_FLD": "",
+                "LIMSUPAL_FLD": "",
+                "LIMSUPMA_FLD": "",
+                "LIMSUPIM_FLD": "",
+                "PRV_TIMESTAMP_FLD": dt(2026, 4, 23),
+            },
+            # pos=2 real row — Hematíes (with abnormal limits)
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 2,
+                "INRESUL_FLD": "Hematies",
+                "UNIDADES_FLD": "/mm3",
+                "FORMATO_FLD": 1,
+                "DECIMALES_FLD": 0,
+                "FACTOR_FLD": 1000.0,
+                "LIMINFIM_FLD": "600",
+                "LIMINFMB_FLD": "*",
+                "LIMINFBA_FLD": "*",
+                "LIMSUPAL_FLD": "*",
+                "LIMSUPMA_FLD": "*",
+                "LIMSUPIM_FLD": "20000",
+                "PRV_TIMESTAMP_FLD": dt(2024, 10, 10),
+            },
+            # pos=3 real row — Hemoglobina (decimals=1, factor=0)
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 3,
+                "INRESUL_FLD": "Hemoglobina",
+                "UNIDADES_FLD": "gr%",
+                "FORMATO_FLD": 1,
+                "DECIMALES_FLD": 1,
+                "FACTOR_FLD": 0.0,
+                "LIMINFIM_FLD": "20",
+                "LIMINFMB_FLD": "*",
+                "LIMINFBA_FLD": "6",
+                "LIMSUPAL_FLD": "*",
+                "LIMSUPMA_FLD": "200",
+                "LIMSUPIM_FLD": "*",
+                "PRV_TIMESTAMP_FLD": dt(2024, 10, 10),
+            },
+        ]
+
+    def _hemc_valnor_rows(self):
+        return [
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 1,
+                "SEXO_FLD": 0,
+                "EDADINFV_FLD": 10,
+                "EDADINFL_FLD": "A",
+                "EDADSUPV_FLD": 99,
+                "EDADSUPL_FLD": "A",
+                "TEXTO_FLD": "4.000-10.000",
+            },
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 2,
+                "SEXO_FLD": 2,
+                "EDADINFV_FLD": 18,
+                "EDADINFL_FLD": "A",
+                "EDADSUPV_FLD": 99,
+                "EDADSUPL_FLD": "A",
+                "TEXTO_FLD": "4.000.000-5.000.000",
+            },
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 2,
+                "SEXO_FLD": 1,
+                "EDADINFV_FLD": 18,
+                "EDADINFL_FLD": "A",
+                "EDADSUPV_FLD": 99,
+                "EDADSUPL_FLD": "A",
+                "TEXTO_FLD": "4.500.000-5.500.000",
+            },
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 3,
+                "SEXO_FLD": 2,
+                "EDADINFV_FLD": 18,
+                "EDADINFL_FLD": "A",
+                "EDADSUPV_FLD": 99,
+                "EDADSUPL_FLD": "A",
+                "TEXTO_FLD": "12,0-15,0",
+            },
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 3,
+                "SEXO_FLD": 1,
+                "EDADINFV_FLD": 18,
+                "EDADINFL_FLD": "A",
+                "EDADSUPV_FLD": 99,
+                "EDADSUPL_FLD": "A",
+                "TEXTO_FLD": "13,5-18,0",
+            },
+        ]
+
+    def test_build_layout_skips_template_rows(self):
+        from apps.labwin_sync.services.practice_layout import build_layout
+
+        layout = build_layout(
+            "HEMC", self._hemc_results_rows(), self._hemc_valnor_rows()
+        )
+        # 3 positions, not 4 — the "Valor calculado Nº 1" row is dropped.
+        self.assertEqual(len(layout["items"]), 3)
+        labels = [i["label"] for i in layout["items"]]
+        self.assertEqual(labels, ["Leucocitos", "Hematies", "Hemoglobina"])
+
+    def test_build_layout_picks_newest_per_position(self):
+        from apps.labwin_sync.services.practice_layout import build_layout
+
+        from datetime import datetime as dt
+
+        rows = self._hemc_results_rows()
+        rows.append(
+            {
+                "ABREV_FLD": "HEMC",
+                "POSICION_FLD": 1,
+                "INRESUL_FLD": "Old Leucocitos label",
+                "UNIDADES_FLD": "/L",
+                "FORMATO_FLD": 1,
+                "DECIMALES_FLD": 0,
+                "FACTOR_FLD": 999.0,
+                "LIMINFIM_FLD": "",
+                "LIMINFMB_FLD": "",
+                "LIMINFBA_FLD": "",
+                "LIMSUPAL_FLD": "",
+                "LIMSUPMA_FLD": "",
+                "LIMSUPIM_FLD": "",
+                "PRV_TIMESTAMP_FLD": dt(2015, 1, 1),
+            }
+        )
+        layout = build_layout("HEMC", rows, self._hemc_valnor_rows())
+        item1 = next(i for i in layout["items"] if i["position"] == 1)
+        # The 2026 row wins over the 2015 row.
+        self.assertEqual(item1["label"], "Leucocitos")
+        self.assertEqual(item1["unit"], "/mm3")
+        self.assertEqual(item1["factor"], 100.0)
+
+    def test_build_layout_attaches_valnor_per_position(self):
+        from apps.labwin_sync.services.practice_layout import build_layout
+
+        layout = build_layout(
+            "HEMC", self._hemc_results_rows(), self._hemc_valnor_rows()
+        )
+        pos2 = next(i for i in layout["items"] if i["position"] == 2)
+        self.assertEqual(len(pos2["valnor"]), 2)  # M + F adult rows
+        sexes = sorted(v["sex"] for v in pos2["valnor"])
+        self.assertEqual(sexes, [1, 2])
+
+    def test_build_layout_normalizes_abnormal_limits(self):
+        from apps.labwin_sync.services.practice_layout import build_layout
+
+        layout = build_layout(
+            "HEMC", self._hemc_results_rows(), self._hemc_valnor_rows()
+        )
+        pos1 = next(i for i in layout["items"] if i["position"] == 1)
+        self.assertIsNone(pos1["abnormal_limits"])  # all '*'/'' cleaned to None
+        pos2 = next(i for i in layout["items"] if i["position"] == 2)
+        self.assertEqual(pos2["abnormal_limits"]["min_imposible"], "600")
+        self.assertEqual(pos2["abnormal_limits"]["max_imposible"], "20000")
+        # '*' values must round-trip as None
+        self.assertIsNone(pos2["abnormal_limits"]["min_critical"])
+
+    def test_build_layout_returns_none_when_only_template_rows(self):
+        from apps.labwin_sync.services.practice_layout import build_layout
+
+        from datetime import datetime as dt
+
+        rows = [
+            {
+                "ABREV_FLD": "FOO",
+                "POSICION_FLD": 1,
+                "INRESUL_FLD": "Valor calculado Nº 1",
+                "UNIDADES_FLD": "",
+                "FORMATO_FLD": 1,
+                "DECIMALES_FLD": 0,
+                "FACTOR_FLD": 1.0,
+                "LIMINFIM_FLD": "",
+                "LIMINFMB_FLD": "",
+                "LIMINFBA_FLD": "",
+                "LIMSUPAL_FLD": "",
+                "LIMSUPMA_FLD": "",
+                "LIMSUPIM_FLD": "",
+                "PRV_TIMESTAMP_FLD": dt(2020, 1, 1),
+            }
+        ]
+        self.assertIsNone(build_layout("FOO", rows, []))
+
+
+class ResolveValnorForPatientTests(BaseTestCase):
+    """resolve_valnor_for_patient(): pick the right V.R. for a patient."""
+
+    def _layout(self):
+        return {
+            "items": [
+                {
+                    "position": 1,
+                    "label": "Leucocitos",
+                    "valnor": [
+                        {
+                            "sex": 0,
+                            "age_min_value": 10,
+                            "age_min_unit": "A",
+                            "age_max_value": 99,
+                            "age_max_unit": "A",
+                            "text": "4.000-10.000",
+                        }
+                    ],
+                },
+                {
+                    "position": 2,
+                    "label": "Hematies",
+                    "valnor": [
+                        {
+                            "sex": 1,
+                            "age_min_value": 18,
+                            "age_min_unit": "A",
+                            "age_max_value": 99,
+                            "age_max_unit": "A",
+                            "text": "4.500.000-5.500.000",
+                        },
+                        {
+                            "sex": 2,
+                            "age_min_value": 18,
+                            "age_min_unit": "A",
+                            "age_max_value": 99,
+                            "age_max_unit": "A",
+                            "text": "4.000.000-5.000.000",
+                        },
+                    ],
+                },
+            ]
+        }
+
+    def test_resolves_male_adult(self):
+        from apps.labwin_sync.services.practice_layout import (
+            resolve_valnor_for_patient,
+        )
+
+        resolved = resolve_valnor_for_patient(
+            self._layout(), patient_sex=1, patient_age_days=30 * 365
+        )
+        self.assertEqual(resolved["1"], "4.000-10.000")  # sex=0 (any) match
+        self.assertEqual(resolved["2"], "4.500.000-5.500.000")  # sex=M match
+
+    def test_resolves_female_adult(self):
+        from apps.labwin_sync.services.practice_layout import (
+            resolve_valnor_for_patient,
+        )
+
+        resolved = resolve_valnor_for_patient(
+            self._layout(), patient_sex=2, patient_age_days=30 * 365
+        )
+        self.assertEqual(resolved["2"], "4.000.000-5.000.000")  # sex=F match
+
+    def test_skips_position_with_no_match(self):
+        from apps.labwin_sync.services.practice_layout import (
+            resolve_valnor_for_patient,
+        )
+
+        # Child — neither pos=2 row matches (both require 18+).
+        resolved = resolve_valnor_for_patient(
+            self._layout(), patient_sex=1, patient_age_days=5 * 365
+        )
+        self.assertNotIn("2", resolved)
+
+    def test_returns_empty_dict_for_none_layout(self):
+        from apps.labwin_sync.services.practice_layout import (
+            resolve_valnor_for_patient,
+        )
+
+        self.assertEqual(
+            resolve_valnor_for_patient(None, patient_sex=1, patient_age_days=10000),
+            {},
+        )
+
+    def test_skips_vet_rows_for_human_patients(self):
+        from apps.labwin_sync.services.practice_layout import (
+            resolve_valnor_for_patient,
+        )
+
+        layout = {
+            "items": [
+                {
+                    "position": 1,
+                    "label": "X",
+                    "valnor": [
+                        {
+                            "sex": 8,
+                            "age_min_value": 1,
+                            "age_min_unit": "M",
+                            "age_max_value": 99,
+                            "age_max_unit": "A",
+                            "text": "VET-RANGE",
+                        }
+                    ],
+                }
+            ]
+        }
+        resolved = resolve_valnor_for_patient(
+            layout, patient_sex=1, patient_age_days=30 * 365
+        )
+        self.assertNotIn("1", resolved)
+
+
+class PatientAgeDaysForSyncTests(BaseTestCase):
+    """_patient_age_days_for_sync(): YYYYMMDD strings → days at sample."""
+
+    def test_basic(self):
+        from apps.labwin_sync.tasks import _patient_age_days_for_sync
+
+        # 2020-01-01 → 2026-05-07 ≈ 2317 days
+        days = _patient_age_days_for_sync("20200101", "20260507")
+        self.assertGreater(days, 2300)
+        self.assertLess(days, 2330)
+
+    def test_returns_none_for_missing_dob(self):
+        from apps.labwin_sync.tasks import _patient_age_days_for_sync
+
+        self.assertIsNone(_patient_age_days_for_sync(None, "20260507"))
+        self.assertIsNone(_patient_age_days_for_sync("", "20260507"))
+
+    def test_returns_none_for_unparseable(self):
+        from apps.labwin_sync.tasks import _patient_age_days_for_sync
+
+        self.assertIsNone(_patient_age_days_for_sync("not-a-date", "20260507"))
+        self.assertIsNone(_patient_age_days_for_sync("20200230", "20260507"))
+
+    def test_returns_none_for_negative_age(self):
+        from apps.labwin_sync.tasks import _patient_age_days_for_sync
+
+        self.assertIsNone(_patient_age_days_for_sync("20300101", "20260507"))

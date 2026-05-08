@@ -74,6 +74,33 @@ class LabWinConnector(ABC):
             ABREV_FLD, NOMBRE_FLD, SECCION_FLD, DIASTARDA_FLD, MATERIAL_FLD
         """
 
+    # The following two methods are not @abstractmethod because they are only
+    # used by the standalone `sync_practice_layouts` management command, not
+    # by the regular nightly sync. The mock connector raises NotImplementedError.
+
+    def fetch_results_metadata(self, abrev_fld_list=None):
+        """Fetch RESULTS rows (per-position practice metadata).
+
+        Args:
+            abrev_fld_list: Optional list of ABREV_FLD to filter. None = all.
+
+        Returns:
+            Dict mapping ABREV_FLD -> list of row dicts. See
+            apps/labwin_sync/services/practice_layout.build_layout for schema.
+        """
+        raise NotImplementedError
+
+    def fetch_valnor(self, abrev_fld_list=None):
+        """Fetch VALNOR rows (reference ranges, sex/age stratified).
+
+        Args:
+            abrev_fld_list: Optional list of ABREV_FLD to filter. None = all.
+
+        Returns:
+            Dict mapping ABREV_FLD -> list of row dicts.
+        """
+        raise NotImplementedError
+
     def __enter__(self):
         self.connect()
         return self

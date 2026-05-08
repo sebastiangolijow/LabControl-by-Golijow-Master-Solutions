@@ -132,6 +132,21 @@ class Practice(BaseModel):
         help_text=_("Reference range text extracted from LabWin template"),
     )
 
+    # Per-position breakdown synced from LabWin RESULTS + VALNOR tables.
+    # Lets the frontend render structured rows (label, value, unit, V.R.)
+    # instead of the raw pipe-joined RESULT_FLD blob.
+    # Schema: see apps/labwin_sync/services/practice_layout.py
+    result_layout = models.JSONField(
+        _("result layout"),
+        blank=True,
+        null=True,
+        help_text=_(
+            "Per-position metadata (label, unit, factor, decimals, valnor) "
+            "synced from LabWin RESULTS + VALNOR tables. None means no layout "
+            "available — frontend falls back to raw result string."
+        ),
+    )
+
     # Status
     is_active = models.BooleanField(_("active"), default=True)
 
@@ -358,6 +373,20 @@ class StudyPractice(BaseModel):
         _("display order"),
         default=0,
         help_text=_("Order for display (e.g. LabWin ORDEN_FLD)"),
+    )
+    # Per-position reference range texts resolved at sync time using the
+    # patient's sex + age. Format: {"<position>": "<valnor text>"}.
+    # Built by zipping Practice.result_layout against the patient at sync
+    # time. None means "no resolved valnor available — frontend may fall
+    # back to Practice.result_layout[*].valnor[0].text or hide V.R.".
+    resolved_valnor = models.JSONField(
+        _("resolved reference ranges"),
+        blank=True,
+        null=True,
+        help_text=_(
+            "Per-position reference range strings resolved against the "
+            "patient's sex and age. Schema: {position_str: valnor_text}."
+        ),
     )
 
     class Meta:

@@ -116,6 +116,63 @@ NOMEN_COLUMNS = [
 ]
 
 
+# RESULTS — per-position practice metadata. See
+# apps/labwin_sync/services/practice_layout.py for how this is consumed.
+RESULTS_QUERY_ALL = """
+    SELECT ABREV_FLD, POSICION_FLD, INRESUL_FLD, UNIDADES_FLD, FORMATO_FLD,
+           DECIMALES_FLD, FACTOR_FLD,
+           LIMINFIM_FLD, LIMINFMB_FLD, LIMINFBA_FLD,
+           LIMSUPAL_FLD, LIMSUPMA_FLD, LIMSUPIM_FLD,
+           PRV_TIMESTAMP_FLD
+    FROM RESULTS
+"""
+
+RESULTS_QUERY_FILTERED = (
+    RESULTS_QUERY_ALL + " WHERE ABREV_FLD IN ({placeholders})"
+)
+
+RESULTS_COLUMNS = [
+    "ABREV_FLD",
+    "POSICION_FLD",
+    "INRESUL_FLD",
+    "UNIDADES_FLD",
+    "FORMATO_FLD",
+    "DECIMALES_FLD",
+    "FACTOR_FLD",
+    "LIMINFIM_FLD",
+    "LIMINFMB_FLD",
+    "LIMINFBA_FLD",
+    "LIMSUPAL_FLD",
+    "LIMSUPMA_FLD",
+    "LIMSUPIM_FLD",
+    "PRV_TIMESTAMP_FLD",
+]
+
+
+# VALNOR — reference ranges, sex/age stratified.
+VALNOR_QUERY_ALL = """
+    SELECT ABREV_FLD, POSICION_FLD, SEXO_FLD,
+           EDADINFV_FLD, EDADINFL_FLD, EDADSUPV_FLD, EDADSUPL_FLD,
+           TEXTO_FLD
+    FROM VALNOR
+"""
+
+VALNOR_QUERY_FILTERED = (
+    VALNOR_QUERY_ALL + " WHERE ABREV_FLD IN ({placeholders})"
+)
+
+VALNOR_COLUMNS = [
+    "ABREV_FLD",
+    "POSICION_FLD",
+    "SEXO_FLD",
+    "EDADINFV_FLD",
+    "EDADINFL_FLD",
+    "EDADSUPV_FLD",
+    "EDADSUPL_FLD",
+    "TEXTO_FLD",
+]
+
+
 def _rows_to_dicts(rows, columns):
     """Convert list of tuples to list of dicts using column names."""
     return [
@@ -211,5 +268,41 @@ class FirebirdLabWinConnector(LabWinConnector):
             rows = cursor.fetchall()
             dicts = _rows_to_dicts(rows, NOMEN_COLUMNS)
             return {d["ABREV_FLD"]: d for d in dicts}
+        finally:
+            cursor.close()
+
+    def fetch_results_metadata(self, abrev_fld_list=None):
+        cursor = self.connection.cursor()
+        try:
+            if abrev_fld_list:
+                placeholders = ",".join("?" * len(abrev_fld_list))
+                query = RESULTS_QUERY_FILTERED.format(placeholders=placeholders)
+                cursor.execute(query, abrev_fld_list)
+            else:
+                cursor.execute(RESULTS_QUERY_ALL)
+            rows = cursor.fetchall()
+            dicts = _rows_to_dicts(rows, RESULTS_COLUMNS)
+            grouped: dict[str, list[dict]] = {}
+            for d in dicts:
+                grouped.setdefault(d["ABREV_FLD"], []).append(d)
+            return grouped
+        finally:
+            cursor.close()
+
+    def fetch_valnor(self, abrev_fld_list=None):
+        cursor = self.connection.cursor()
+        try:
+            if abrev_fld_list:
+                placeholders = ",".join("?" * len(abrev_fld_list))
+                query = VALNOR_QUERY_FILTERED.format(placeholders=placeholders)
+                cursor.execute(query, abrev_fld_list)
+            else:
+                cursor.execute(VALNOR_QUERY_ALL)
+            rows = cursor.fetchall()
+            dicts = _rows_to_dicts(rows, VALNOR_COLUMNS)
+            grouped: dict[str, list[dict]] = {}
+            for d in dicts:
+                grouped.setdefault(d["ABREV_FLD"], []).append(d)
+            return grouped
         finally:
             cursor.close()

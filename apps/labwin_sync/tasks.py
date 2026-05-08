@@ -51,6 +51,10 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
 
     batch_size = getattr(settings, "LABWIN_SYNC_BATCH_SIZE", 500)
 
+    # Drop any practice-layout cache from a previous run so we pick up
+    # changes from sync_practice_layouts within the same worker process.
+    _reset_practice_layout_cache()
+
     # Create sync log
     task_id = ""
     try:
@@ -329,6 +333,12 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                         # validated DETERS (VALIDADO_FLD='1').
                         is_paid = mappers.map_is_paid(pac_row)
 
+                        # Patient sex + DOB feed per-study VALNOR resolution
+                        # (each StudyPractice gets its own resolved reference
+                        # ranges based on patient demographics).
+                        patient_sex = pac_row.get("SEXO_FLD")
+                        patient_dob_raw = pac_row.get("FNACIM_FLD")
+
                         # Create/update study and its practices
                         study_pk = _get_or_create_study_with_practices(
                             numero,
@@ -341,6 +351,8 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                             counters,
                             is_paid=is_paid,
                             is_validated=True,
+                            patient_sex=patient_sex,
+                            patient_dob_raw=patient_dob_raw,
                         )
 
                         # Queue this study for patient notification if we
@@ -814,6 +826,65 @@ def _create_minimal_practice(abrev, lab_client_id, sync_log, counters):
         return practice.pk
 
 
+# ---------------------------------------------------------------------------
+# Per-study VALNOR resolution helpers
+# ---------------------------------------------------------------------------
+
+# Lazy cache from Practice pk -> result_layout dict, populated on demand
+# during a single sync run. Cleared at the start of each task invocation
+# (see _reset_practice_layout_cache, called by sync_labwin_results).
+_PRACTICE_LAYOUT_CACHE: dict[str, object] = {}
+
+
+def _reset_practice_layout_cache():
+    """Drop cached layouts. Call at the start of each sync run so a long-lived
+    Celery worker doesn't keep stale data after Practice.result_layout changes."""
+    _PRACTICE_LAYOUT_CACHE.clear()
+
+
+def _practice_layout_cache_get(practice_pk):
+    """Return Practice.result_layout for a given pk, caching the lookup."""
+    if practice_pk in _PRACTICE_LAYOUT_CACHE:
+        return _PRACTICE_LAYOUT_CACHE[practice_pk]
+    from apps.studies.models import Practice
+
+    layout = (
+        Practice.objects.filter(pk=practice_pk)
+        .values_list("result_layout", flat=True)
+        .first()
+    )
+    _PRACTICE_LAYOUT_CACHE[practice_pk] = layout
+    return layout
+
+
+def _patient_age_days_for_sync(dob_raw, fecha_raw):
+    """Convert LabWin FNACIM_FLD + FECHA_FLD into age-at-sample in days.
+
+    Both fields are YYYYMMDD strings (or ints) in the LabWin DB. Returns None
+    if either is missing or unparseable — the valnor resolver then falls back
+    to age-agnostic matching.
+    """
+    from datetime import date
+
+    def _parse(raw):
+        if raw is None:
+            return None
+        s = str(raw).strip()
+        if not s or len(s) != 8 or not s.isdigit():
+            return None
+        try:
+            return date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+        except ValueError:
+            return None
+
+    dob = _parse(dob_raw)
+    fecha = _parse(fecha_raw)
+    if not dob or not fecha:
+        return None
+    delta = (fecha - dob).days
+    return delta if delta >= 0 else None
+
+
 def _get_or_create_study_with_practices(
     numero,
     deters_rows,
@@ -825,6 +896,8 @@ def _get_or_create_study_with_practices(
     counters,
     is_paid=True,
     is_validated=True,
+    patient_sex=None,
+    patient_dob_raw=None,
 ):
     """Get or create a Study and its StudyPractice records for a protocol.
 
@@ -841,11 +914,18 @@ def _get_or_create_study_with_practices(
                  on existing studies if it changed.
         is_validated: True for sync-imported studies (connector pre-filters
                       to VALIDADO_FLD='1' DETERS rows).
+        patient_sex: LabWin SEXO_FLD (1=M, 2=F, 0=any). Used for VALNOR
+                     resolution on each StudyPractice.
+        patient_dob_raw: LabWin FNACIM_FLD (YYYYMMDD string or int). Used to
+                         compute age-at-sample for VALNOR resolution.
 
     Returns:
         Study pk.
     """
-    from apps.studies.models import Study, StudyPractice
+    from apps.labwin_sync.services.practice_layout import (
+        resolve_valnor_for_patient,
+    )
+    from apps.studies.models import Practice, Study, StudyPractice
 
     # Use first row for dates (all rows in a protocol share the same date)
     first_row = deters_rows[0]
@@ -859,6 +939,25 @@ def _get_or_create_study_with_practices(
         is_validated=is_validated,
     )
     protocol_number = study_fields["protocol_number"]
+
+    # Resolve patient age once, used by every StudyPractice's VALNOR pick.
+    # We use the sample date (study service_date) as the reference, not "today",
+    # so historical re-syncs reproduce the same V.R. as on the original day.
+    patient_age_days = _patient_age_days_for_sync(
+        patient_dob_raw, first_row.get("FECHA_FLD")
+    )
+
+    def _resolve_valnor(practice_pk):
+        """Compute resolved_valnor JSON for a (practice, this patient) pair."""
+        if practice_pk is None:
+            return None
+        layout = _practice_layout_cache_get(practice_pk)
+        if layout is None:
+            return None
+        resolved = resolve_valnor_for_patient(
+            layout, patient_sex, patient_age_days
+        )
+        return resolved or None  # Drop empty dict so Postgres stores NULL
 
     # Check if study already exists
     study = Study.objects.filter(protocol_number=protocol_number).first()
@@ -891,19 +990,28 @@ def _get_or_create_study_with_practices(
         for row in deters_rows:
             abrev = row["ABREV_FLD"].strip()
             if abrev in existing_codes:
-                # Update result if changed
+                # Update result + resolved_valnor if either changed
                 sp = study.study_practices.filter(code=abrev).first()
                 if sp:
+                    update_fields = []
                     new_result = (row.get("RESULT_FLD") or "").strip()
                     if new_result and new_result != sp.result:
                         sp.result = new_result
-                        sp.save(update_fields=["result", "updated_at"])
+                        update_fields.append("result")
+                    new_valnor = _resolve_valnor(sp.practice_id)
+                    if new_valnor != sp.resolved_valnor:
+                        sp.resolved_valnor = new_valnor
+                        update_fields.append("resolved_valnor")
+                    if update_fields:
+                        update_fields.append("updated_at")
+                        sp.save(update_fields=update_fields)
                         counters["studies_updated"] += 1
                 continue
 
             practice_pk = practice_cache.get(abrev)
             if practice_pk:
                 sp_fields = mappers.map_study_practice(row, practice_pk)
+                sp_fields["resolved_valnor"] = _resolve_valnor(practice_pk)
                 StudyPractice.objects.create(
                     study=study,
                     **sp_fields,
@@ -936,6 +1044,7 @@ def _get_or_create_study_with_practices(
             practice_pk = practice_cache.get(abrev)
             if practice_pk:
                 sp_fields = mappers.map_study_practice(row, practice_pk)
+                sp_fields["resolved_valnor"] = _resolve_valnor(practice_pk)
                 StudyPractice.objects.create(
                     study=study,
                     **sp_fields,
