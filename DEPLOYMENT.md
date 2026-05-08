@@ -1,6 +1,6 @@
 # LabControl Production Deployment Guide
 
-**Last Updated**: April 25, 2026
+**Last Updated**: May 8, 2026
 **Environment**: Staging/Production
 **Server**: Hostinger VPS
 
@@ -24,6 +24,19 @@
 ---
 
 ## 🔧 Recent Updates & Fixes
+
+### May 7, 2026: PDF upload pipeline rebuilt (LabWin FTP plugin → script-on-lab-PC)
+
+After weeks of intermittent PDF delivery, root-caused on 2026-05-07: LabWin's built-in FTP plugin is hardcoded to active mode (UI passive toggle is decorative even after reinstall), and active FTP through the lab's NAT silently drops the server-initiated data SYN — every server-side fix tried (CT helper rules, `port_enable=NO`, `allow_writeable_chroot`, chroot path tweaks) was treating a symptom of an unfixable NAT issue.
+
+**Solution shipped 2026-05-07:** `deployment/lab_workstation/upload_pdfs.py` runs on the lab PC. LabWin exports PDFs to `C:\sistema\PDFlabwin\` at 02:00; the script (Task Scheduler at 02:15) pushes via **passive** FTP using `ftplib.set_pasv(True)`, with atomic `.uploading` → rename. End-to-end validated: 59 PDFs in ~2s, 13 attached to in-window Studies, 46 staying on FTP for future Study-window matches, 0 errors.
+
+**Operational changes:**
+- `LABWIN_FTP_DIRECTORY=/` (chroot root, no `/results` subdir) in `.env.production`. `.env.production.template` updated to match.
+- vsftpd config rolled back to clean defaults — no more `port_enable=NO`, no more CT helper iptables hacks, no `local_root` redirect.
+- Old hardcoded password `LabWinFTP2026!` in `upload_pdfs.py` replaced with a `<REPLACE_WITH_LABWIN_FTP_PASSWORD>` placeholder; the lab PC's local copy has the real password filled in. Source of truth: 1Password → "LabControl LabWin FTP user". **Rotation tracked as TODO** since the literal was committed pre-cleanup.
+
+**Full rebuild story, debug timeline, and runbook:** [`PDF_UPLOAD_PIPELINE.md`](./PDF_UPLOAD_PIPELINE.md).
 
 ### May 1, 2026: Real-data sync activated + 3 follow-ups + scheduled at 04:00
 
@@ -499,31 +512,25 @@ sudo certbot certificates
 
 ### Overview
 
-The VPS runs a vsftpd FTP server that receives PDF result files from the lab.
+The VPS runs a **vsftpd** FTP server that receives PDF result files pushed from the lab PC.
 
-**⚠️ Updated 2026-05-07** — LabWin's built-in FTP plugin is **no longer used** for the upload. It only supports active mode and active FTP through the lab's NAT was unreliable. The lab PC now runs a Python script (`deployment/lab_workstation/upload_pdfs.py`) every 5 minutes that uploads via passive FTP. See `deployment/lab_workstation/upload_pdfs.py` for the script and `PDF_UPLOAD_PIPELINE.md` for the full rebuild story.
+> **The full architecture, the why-active-FTP-failed story, the script that runs on the lab PC, and the failure-mode runbook live in [`PDF_UPLOAD_PIPELINE.md`](./PDF_UPLOAD_PIPELINE.md).** This section only covers the vsftpd server-side config — what the lab's script connects to and what the backend `fetch_ftp_pdfs` task reads from.
 
-The vsftpd server config below is what the script connects to. Docker containers reach the same vsftpd via `host.docker.internal` for the fetch step.
+**Quick recap:** LabWin exports PDFs locally on the lab PC at 02:00; `deployment/lab_workstation/upload_pdfs.py` (Task Scheduler at 02:15) pushes them via **passive** FTP to vsftpd; the backend's `fetch_ftp_pdfs` job (Celery Beat) attaches each one to its matching `Study`. Active mode is **not** an option — the lab's NAT can't do FTP-ALG.
 
-### FTP Credentials (used by `upload_pdfs.py` on the lab PC)
+### FTP Credentials
 
 | Setting | Value |
 |---------|-------|
 | **Host** | `72.60.137.226` |
-| **Port** | `21` |
+| **Port** | `21` (control), `30000-30100` (passive data) |
 | **User** | `labwin_ftp` |
-| **Password** | *See 1Password → "LabControl LabWin FTP user". Mirrored on the server in `.env.production` as `LABWIN_FTP_PASSWORD` and in `/etc/vsftpd.userlist`.* |
-| **Directory** | `/` (chroot root → `/home/labwin_ftp/`) |
-| **Protocol** | FTP (plain, no TLS) |
-| **Passive Mode** | **REQUIRED** (ports 30000-30100). Active mode rejected by client policy in the upload script. |
+| **Password** | 1Password → "LabControl LabWin FTP user". Mirrored on the VPS in `.env.production` as `LABWIN_FTP_PASSWORD` and in `/etc/vsftpd.userlist`. |
+| **Directory** | `/` (chroot root → `/home/labwin_ftp/`) — `upload_pdfs.py` writes directly here, no `/results` subdir. |
+| **Protocol** | FTP (plain, no TLS — see `PDF_UPLOAD_PIPELINE.md` §Security for the rationale and migration path) |
+| **Mode** | **Passive only.** |
 
-> When sharing the password with the lab team, send it via 1Password share-link or another out-of-band channel — never paste it into Slack/email.
-
-### File Naming Convention
-
-PDFs must be named `{NUMERO}.pdf` where `{NUMERO}` is the LabWin protocol number (NUMERO_FLD from DETERS table).
-
-Examples: `100001.pdf`, `100002.pdf`, `100003.pdf`
+> Share the password via 1Password share-link or another out-of-band channel — never paste it into Slack/email.
 
 ### Server Setup (already configured)
 
@@ -533,14 +540,13 @@ sudo systemctl status vsftpd
 
 # FTP user
 user: labwin_ftp
-home: /home/labwin_ftp
-upload dir: /home/labwin_ftp/results/
-shell: /usr/sbin/nologin (FTP only, no SSH)
+home: /home/labwin_ftp           # chroot root, also the upload directory
+shell: /usr/sbin/nologin          # FTP only, no SSH
 
-# Config file: /etc/vsftpd.conf
-# Key settings:
-#   chroot_local_user=YES (user locked to home dir)
-#   pasv_enable=YES (passive mode for NAT/firewall)
+# /etc/vsftpd.conf — key settings:
+#   chroot_local_user=YES
+#   allow_writeable_chroot=YES
+#   pasv_enable=YES
 #   pasv_min_port=30000, pasv_max_port=30100
 #   pasv_address=72.60.137.226
 #   userlist_enable=YES (whitelist in /etc/vsftpd.userlist)
@@ -561,7 +567,7 @@ LABWIN_FTP_HOST=host.docker.internal
 LABWIN_FTP_PORT=21
 LABWIN_FTP_USER=labwin_ftp
 LABWIN_FTP_PASSWORD=<from 1Password: "LabControl LabWin FTP user">
-LABWIN_FTP_DIRECTORY=/results
+LABWIN_FTP_DIRECTORY=/
 LABWIN_FTP_USE_TLS=False
 ```
 
@@ -571,10 +577,9 @@ LABWIN_FTP_USE_TLS=False
 # Pre-requisite: export the FTP password from 1Password
 export LABWIN_FTP_PASSWORD='...'   # from 1Password → "LabControl LabWin FTP user"
 
-# From local machine
-ftp 72.60.137.226
+# From local machine (passive mode — the only mode that works)
+ftp -p 72.60.137.226
 # Login: labwin_ftp / $LABWIN_FTP_PASSWORD
-# cd results
 # put 100001.pdf
 
 # From inside Docker container (uses the same env var Django reads)
@@ -584,18 +589,18 @@ from ftplib import FTP
 ftp = FTP()
 ftp.connect('host.docker.internal', 21)
 ftp.login('labwin_ftp', os.environ['LABWIN_FTP_PASSWORD'])
-ftp.cwd('/results')
+ftp.set_pasv(True)
 print(ftp.nlst())
 ftp.quit()
 "
 ```
 
-### Triggering PDF Fetch
+### Triggering PDF Fetch (backend side)
 
 - **UI**: Click the green PDF sync button on the Results page (admin only)
 - **API**: `POST /api/v1/labwin-sync/fetch-pdfs/`
 - **CLI**: `python manage.py fetch_ftp_pdfs [--delete] [--cleanup]`
-- **Scheduled**: Can be added to Celery Beat for automatic fetching
+- **Scheduled**: Celery Beat — `Fetch FTP PDFs` every 30 min
 
 ---
 
@@ -672,21 +677,17 @@ FIREBIRD_SYSDBA_PASSWORD=<same as above>
 
 ### Triggering Backup Ingestion
 
-- **Scheduled**: Celery Beat will run `import_uploaded_backup` at 04:00 AM daily — schedule is **not yet enabled** (gated on the lab's signup workflow decision; see CLAUDE.md "Workflow open question")
-- **CLI manual** (working in production today): `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only] [--use-celery]`
+- **Scheduled (active since 2026-05-01)**: Celery Beat runs `Sync LabWin Results` daily at 04:00 ART. The Beat task pulls the latest `.fbk.gz` from `/srv/labwin_backups/incoming/`, restores into the `firebird` container, then runs `sync_labwin_results`.
+- **CLI manual**: `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only] [--use-celery]`
 - **Admin UI**: (future) button in Django Admin → SyncLog view
 
 ### Status
 
-**Current state (2026-04-25):** Phase A + Phase B both complete. Restore + sync validated end-to-end against the real lab DB (3,062 studies + 2,877 patients ingested). The `firebird` container is live; `BackupImporter` service, `import_uploaded_backup` task, and `import_backup` management command are all in production.
-
-`.env.production` still has `LABWIN_USE_MOCK=True` as the default — the flip is gated on the lab's decision about the no-email patient signup workflow. Today's flow runs **manually** via the management command; Celery Beat schedule activation is pending the same decision.
+**Current state (2026-05-08):** Phase A + Phase B shipped, `LABWIN_USE_MOCK=False` flipped in `.env.production` on **2026-05-01**, real Firebird sync running nightly against the restored lab DB. Current ingested state: **3,040 patients / 3,749 studies / 25,439 StudyPractices / 1,720 doctors** (90-day rolling window). Patient emails are paused via `DISABLE_PATIENT_EMAILS=True` kill switch — admin/system emails still work; the flag's flip-to-False is gated on the lab's decision about the no-email patient signup workflow. The `firebird` container is live; `BackupImporter`, `import_uploaded_backup` task, and `import_backup` management command are all in production.
 
 **Remaining work** (phases C–F in `LABWIN_BACKUP_PIPELINE.md`):
-- Lab decision on patient onboarding flow (~52% of PACIENTES rows have empty `EMAIL_FLD`)
-- Flip `LABWIN_USE_MOCK=False` in `.env.production`
-- Celery Beat schedule (cron 04:00) + sync window switch to rolling "yesterday + today"
-- Task Scheduler on the lab PC for automated 02:00 upload (currently manual)
+- Lab decision on patient onboarding flow (~52% of PACIENTES rows have empty `EMAIL_FLD`) → unblocks `DISABLE_PATIENT_EMAILS=False`
+- Task Scheduler on the lab PC for automated 02:00 upload of `upload_backup.py` (configured but firing unreliably; last `backup_user` SFTP session 2026-04-29)
 - Phase F: monitoring + alerting (no-backup-in-36h, sync health endpoint)
 
 ---
@@ -1205,11 +1206,17 @@ docker exec -i labcontrol_db psql -U labcontrol_user -d labcontrol_db < backup.s
 
 ---
 
-**Document Version**: 4.0
+**Document Version**: 4.1
 **Maintained By**: Development Team
-**Last Reviewed**: April 25, 2026
+**Last Reviewed**: May 8, 2026
 
 ## 📜 Change Log
+
+### Version 4.1 - May 8, 2026
+- §FTP Server Configuration shrunk to a pointer to the new [`PDF_UPLOAD_PIPELINE.md`](./PDF_UPLOAD_PIPELINE.md); kept only server-side vsftpd config that was duplicated.
+- §LabWin Backup Ingestion §Status updated: `LABWIN_USE_MOCK=False` flipped 2026-05-01, Beat schedule active at 04:00, `DISABLE_PATIENT_EMAILS=True` kill switch noted, ingested counts refreshed to 3,040 patients / 3,749 studies.
+- New "May 7, 2026" entry in Recent Updates documenting the LabWin FTP plugin → script-on-lab-PC rebuild.
+- `LABWIN_FTP_DIRECTORY=/results` → `=/` (chroot root), `LABWIN_FTP_USE_MOCK=False` everywhere.
 
 ### Version 4.0 - April 25, 2026
 - Updated LabWin Backup Ingestion Pipeline §Status — Phase A + B shipped, sync validated against real DB (3,062 studies / 2,877 patients)

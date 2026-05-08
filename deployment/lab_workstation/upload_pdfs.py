@@ -4,7 +4,9 @@ LabControl - PDF results uploader
 Watches LabWin's PDF export folder and uploads new PDFs to the LabControl
 VPS via passive FTP. Deletes each file locally only after a successful upload.
 
-Designed to be run by Windows Task Scheduler every 5 minutes.
+Designed to be run by Windows Task Scheduler once daily at 02:15 — LabWin
+exports PDFs to C:\sistema\PDFlabwin at 02:00, this script picks them up
+15 minutes later. See PDF_UPLOAD_PIPELINE.md for the full architecture.
 
 Why this exists: LabWin's built-in FTP plugin only supports active mode,
 and active FTP through the lab's NAT is unreliable. This script uses
@@ -33,10 +35,15 @@ from pathlib import Path
 PDF_DIR = Path(r"C:\sistema\PDFlabwin")
 
 # VPS FTP
+# NOTE: This is the script that lives on the lab PC; this copy in the repo is
+# kept for history/documentation. The lab PC runs its own copy with the real
+# password filled in. Source of truth for the password: 1Password →
+# "LabControl LabWin FTP user". Mirrored on the VPS in .env.production as
+# LABWIN_FTP_PASSWORD.
 VPS_HOST = "72.60.137.226"
 VPS_PORT = 21
 VPS_USER = "labwin_ftp"
-VPS_PASSWORD = "LabWinFTP2026!"
+VPS_PASSWORD = "<REPLACE_WITH_LABWIN_FTP_PASSWORD>"  # see 1Password
 VPS_REMOTE_DIR = "/"  # Lab user is chrooted; "/" is /home/labwin_ftp/
 
 # Connection timeouts (seconds)

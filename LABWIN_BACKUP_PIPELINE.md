@@ -1,8 +1,8 @@
 # LabWin Backup Ingestion Pipeline
 
-**Status:** Fase A + Fase B completas. Sync end-to-end validado contra DB real (3,062 estudios + 2,877 pacientes importados). `LABWIN_USE_MOCK=True` sigue como default en `.env.production` por ahora — se enciende cuando el lab confirme el flujo de signup de pacientes (ver [CLAUDE.md "Workflow open question"](CLAUDE.md#workflow-open-question-waiting-on-lab)).
+**Status:** Fase A + Fase B completas. `LABWIN_USE_MOCK=False` activo en producción desde **2026-05-01** — sync nightly contra la DB real corriendo a las 04:00 ART. Estado actual ingerido: **3,040 pacientes / 3,749 estudios / 25,439 StudyPractices / 1,720 doctores** (ventana rolling de 90 días). `DISABLE_PATIENT_EMAILS=True` paralelo silencia los emails a pacientes mientras se valida el workflow de signup con el lab (ver [CLAUDE.md "Workflow open question"](CLAUDE.md#workflow-open-question-waiting-on-lab)).
 **Owner:** Development Team
-**Última actualización:** 2026-04-25
+**Última actualización:** 2026-05-08
 
 ---
 

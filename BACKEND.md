@@ -1,6 +1,6 @@
 # LabControl Backend - Agent Context
 
-**Last Updated**: April 25, 2026
+**Last Updated**: May 8, 2026
 **Python**: 3.11
 **Django**: 4.2
 **Database**: PostgreSQL 15 with UUID primary keys
@@ -169,7 +169,7 @@ labcontrol/
 │   ├── asgi.py                  # ASGI config (future WebSocket support)
 │   └── celery.py                # Celery configuration
 │
-├── tests/                       # Test suite (459 tests passing as of 2026-04-25)
+├── tests/                       # Test suite (475 tests passing as of 2026-05-08)
 │   ├── base.py                  # BaseTestCase with factories
 │   ├── test_users.py
 │   ├── test_studies.py
@@ -1266,7 +1266,7 @@ both signals with that single source of truth.
 
 ## 🧪 Testing
 
-**Test Suite**: 459 tests passing, 0 regressions (as of 2026-04-25)
+**Test Suite**: 475 tests passing, 0 regressions (as of 2026-05-08)
 
 ### BaseTestCase (tests/base.py)
 
@@ -1635,7 +1635,7 @@ with get_connector() as connector:
 ### Configuration
 
 ```env
-LABWIN_USE_MOCK=True              # Set False for production (requires backup pipeline — see below)
+LABWIN_USE_MOCK=False             # Flipped in prod 2026-05-01 (real Firebird sync). Mock stays True locally / in tests.
 LABWIN_FDB_HOST=localhost         # In prod: "firebird" (docker service name)
 LABWIN_FDB_PORT=3050
 LABWIN_FDB_DATABASE=              # Path to .fdb file on Firebird server
@@ -1660,14 +1660,14 @@ Patients imported by `sync_labwin_results` start as `is_active=False, is_verifie
 
 ### Production Data Ingestion — Backup Pipeline
 
-**Status (2026-04-25)**: Phase A + B shipped. End-to-end sync validated against the real DB — 3,062 studies + 2,877 patients ingested. `LABWIN_USE_MOCK=True` is still the default in `.env.production`; flip to `False` is gated on the lab's decision about the no-email patient signup workflow (see CLAUDE.md "Workflow open question").
+**Status (2026-05-08)**: Phase A + B shipped, `LABWIN_USE_MOCK=False` flipped in prod 2026-05-01. Nightly Beat job at 04:00 ART is consuming the lab's nightly backup. Current ingested state: **3,040 patients / 3,749 studies / 25,439 StudyPractices / 1,720 doctors** (90-day window: 2026-01-31 → 2026-04-29). Patient emails are paused via the `DISABLE_PATIENT_EMAILS=True` kill switch — admin/system emails still send. The flip of that switch is gated on the lab's decision about the no-email patient signup workflow (see CLAUDE.md "Workflow open question").
 
 **⚠️ IMPORTANTE:** El VPS **no puede conectarse directo** al Firebird de la PC del laboratorio (la PC no tiene IP pública ni puertos abiertos). Los datos llegan vía un pipeline de backups nocturnos:
 
 ```
 PC Lab ─[gbak + gzip + SFTP, 02:00]─► VPS /srv/labwin_backups/incoming/
                                             │
-                                            │ (Celery Beat 04:00 — pendiente)
+                                            │ (Celery Beat 04:00 — activo desde 2026-05-01)
                                             ▼
                                     import_uploaded_backup task
                                             │
@@ -1676,36 +1676,40 @@ PC Lab ─[gbak + gzip + SFTP, 02:00]─► VPS /srv/labwin_backups/incoming/
                                             └─► sync_labwin_results()
 ```
 
-Cuando se active el schedule, este flow reemplaza el schedule standalone de `sync_labwin_results` en producción.
+Este flow reemplaza al schedule standalone de `sync_labwin_results` en producción.
 
 **Ver guía completa:** [`LABWIN_BACKUP_PIPELINE.md`](./LABWIN_BACKUP_PIPELINE.md) — arquitectura, status real por fase, seguridad, modos de fallo, y métricas baseline.
 
-**Componentes que ya están en producción (2026-04-25):**
+**Componentes en producción (2026-05-08):**
 - Usuario SFTP `backup_user` con chroot a `/srv/labwin_backups/` (key auth ed25519)
 - Servicio `firebird` (jacobalberty/firebird:2.5-ss) en `docker-compose.prod.yml`, accesible como `firebird:3050` desde la docker network
 - Service class `apps/labwin_sync/services/backup_import.BackupImporter`
 - Task `apps.labwin_sync.tasks.import_uploaded_backup`
 - Management command `python manage.py import_backup [--file PATH] [--restore-only] [--sync-only] [--use-celery]`
-- Script `upload_backup.py` corriendo manualmente en la PC del lab (Task Scheduler 02:00 todavía pendiente)
+- Celery Beat schedule activo: `Sync LabWin Results` cron `0 4 * * *` (movido de 02:00 → 04:00 el 2026-05-01)
+- Sync window: rolling 90 días sobre `FECHA_FLD` (`LABWIN_SYNC_WINDOW_DAYS=90`)
+- `DISABLE_PATIENT_EMAILS=True` kill switch activo — patient emails pausados, admin/system emails OK
+- `cleanup_misplaced_uploads` Beat task (03:50 daily) defendiendo contra `.FDB` duplicados que el lab pushea por FTP
 
-**Pendientes para activar el flujo automático completo:**
-- Decisión del lab sobre signup de pacientes sin email
-- Flip `LABWIN_USE_MOCK=False` en `.env.production`
-- Celery Beat schedule (cron 04:00) y cambio del sync window de "todo desde 2026-02-01" a rolling "ayer + hoy"
-- Task Scheduler en la PC del lab para corrida automática 02:00
+**Pendientes:**
+- Decisión del lab sobre signup de pacientes sin email (~52% de PACIENTES sin `EMAIL_FLD`) — gating del flip de `DISABLE_PATIENT_EMAILS=False`
+- Task Scheduler en la PC del lab para `upload_backup.py` corriendo automático 02:00 (configurado pero no dispara fiable; última conexión `backup_user` exitosa 2026-04-29)
+- Phase F: monitoring + alerting (no-backup-in-36h, sync health endpoint)
 
 ### Management Command
 
 ```bash
-python manage.py sync_labwin              # Incremental sync (from last cursor)
-python manage.py sync_labwin --full       # Full sync (ignore cursor)
+python manage.py sync_labwin              # Rolling 90-day window (default)
+python manage.py sync_labwin --full       # Full sync — bypasses the 90-day window, re-imports all history
 python manage.py sync_labwin --use-celery # Run via Celery worker
 
-# Production only (after backup pipeline is live — see LABWIN_BACKUP_PIPELINE.md):
+# Production (backup pipeline is live — see LABWIN_BACKUP_PIPELINE.md):
 python manage.py import_backup            # Restore latest .fbk.gz + sync
 python manage.py import_backup --restore-only
 python manage.py import_backup --sync-only
 ```
+
+> ⚠️ `--full` deliberately bypasses the 90-day window (per the inline comment at `apps/labwin_sync/tasks.py:87`). Use it only for one-off re-imports of all history. Normal operation uses the windowed form.
 
 ### Idempotency
 
@@ -1769,12 +1773,12 @@ cleanup_ftp_pdfs.delay(lab_client_id=1)
 #### Configuration
 
 ```env
-LABWIN_FTP_USE_MOCK=True          # Set False for production
-LABWIN_FTP_HOST=localhost
+LABWIN_FTP_USE_MOCK=False         # Mock=True for local/tests; False in prod since 2026-05-07 rebuild
+LABWIN_FTP_HOST=host.docker.internal  # In prod (containers reach vsftpd on the VPS host)
 LABWIN_FTP_PORT=21
-LABWIN_FTP_USER=
-LABWIN_FTP_PASSWORD=
-LABWIN_FTP_DIRECTORY=/results     # FTP directory containing PDFs
+LABWIN_FTP_USER=labwin_ftp
+LABWIN_FTP_PASSWORD=<from 1Password: "LabControl LabWin FTP user">
+LABWIN_FTP_DIRECTORY=/            # Chroot root — upload_pdfs.py writes directly to /home/labwin_ftp/
 LABWIN_FTP_USE_TLS=False          # Set True for FTPS
 ```
 
@@ -1809,11 +1813,17 @@ python manage.py fetch_ftp_pdfs --lab-client-id 1 # Specify lab client
 4. **Cleanup task**: Separate task to clean up FTP files after verification
 5. **Mock connector**: In-memory PDFs matching DETERS NUMERO_FLDs for testing
 
-#### Real Filename Format (validated 2026-04-25)
+#### Real Filename Format
 
-Files arrive named `{NUMERO}-{DNI}-{NAME}.pdf` (e.g. `220197-39592918-SIRI,FRANCO.pdf`), not the originally-assumed `{NUMERO}.pdf`. The connector parser was updated 2026-04-25 to extract the protocol number as the first dash-separated segment. **24 real PDFs attached end-to-end** in the first run; 32 of 56 PDFs were skipped because their NUMERO falls outside the imported-study range (those studies aren't yet in Postgres — see CLAUDE.md TODO "PDF import workflow for files outside the imported-study NUMERO range").
+Files arrive named `{NUMERO}-{DNI}-{NAME}.pdf` (e.g. `220197-39592918-SIRI,FRANCO.pdf`), not the originally-assumed `{NUMERO}.pdf`. The connector parser was updated 2026-04-25 to extract the protocol number as the first dash-separated segment.
 
-The original 2026-04-22 push also landed files in the chroot root (`/`) instead of `/results`; lab now uploads via `cd results` before transferring.
+#### Upload Pipeline Rebuild (2026-05-07)
+
+LabWin's built-in FTP plugin is no longer used for the upload — it only supports active mode and the lab's NAT cannot do active FTP reliably. Since 2026-05-07, the lab PC runs `deployment/lab_workstation/upload_pdfs.py` once nightly (LabWin exports PDFs to `C:\sistema\PDFlabwin\` at 02:00, the script pushes them via passive FTP at 02:15) and the connector reads from the chroot root (`LABWIN_FTP_DIRECTORY=/`).
+
+**First production run (2026-05-07):** 59 PDFs uploaded in ~2s, 13 attached to in-window Studies, 46 skipped because their NUMERO is outside the 90-day window (those PDFs stay on FTP and re-attach automatically when the parent Study lands). 0 errors.
+
+See [`PDF_UPLOAD_PIPELINE.md`](./PDF_UPLOAD_PIPELINE.md) for the full architecture, the why-active-FTP-failed root cause, and debugging runbook.
 
 ### Future Phases
 
@@ -2288,6 +2298,6 @@ See **DEPLOYMENT.md** for complete production deployment guide.
 
 ---
 
-**Document Version**: 1.2
-**Last Updated**: April 25, 2026
+**Document Version**: 1.3
+**Last Updated**: May 8, 2026
 **Maintained By**: Development Team
