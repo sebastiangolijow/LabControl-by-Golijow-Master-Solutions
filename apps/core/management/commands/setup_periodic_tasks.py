@@ -196,9 +196,7 @@ class Command(BaseCommand):
             enabled=False
         )
         self.stdout.write(
-            self.style.WARNING(
-                "○ Disabled (obsolete): Cleanup Misplaced FTP Uploads"
-            )
+            self.style.WARNING("○ Disabled (obsolete): Cleanup Misplaced FTP Uploads")
         )
 
         self.stdout.write(self.style.SUCCESS("\n✓ Periodic tasks setup complete!"))
