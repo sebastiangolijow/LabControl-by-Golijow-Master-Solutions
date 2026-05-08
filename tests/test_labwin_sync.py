@@ -423,12 +423,11 @@ class SyncTaskTests(BaseTestCase):
         for row in SAMPLE_DETERS:
             rows_by_numero[row["NUMERO_FLD"]].append(row)
         valid_numeros = {
-            num for num, rows in rows_by_numero.items()
+            num
+            for num, rows in rows_by_numero.items()
             if is_protocol_fully_validated(rows)
         }
-        valid_rows = [
-            r for r in SAMPLE_DETERS if r["NUMERO_FLD"] in valid_numeros
-        ]
+        valid_rows = [r for r in SAMPLE_DETERS if r["NUMERO_FLD"] in valid_numeros]
 
         lw_studies = Study.objects.filter(protocol_number__startswith="LW-")
         self.assertEqual(lw_studies.count(), len(valid_numeros))
@@ -2019,10 +2018,7 @@ class SyncIsPaidIsValidatedTests(BaseTestCase):
         """If a patient pays their bono between backups, the next sync flips is_paid."""
         # As in test_sync_sets_is_paid_from_debebono above, temporarily mark
         # 100003 as fully validated so it gets ingested at all.
-        from apps.labwin_sync.connectors.mock import (
-            SAMPLE_DETERS,
-            SAMPLE_PACIENTES,
-        )
+        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS, SAMPLE_PACIENTES
 
         deters_snapshot = []
         for row in SAMPLE_DETERS:
@@ -3416,13 +3412,9 @@ class SyncSkipsPartiallyValidatedProtocolsTests(BaseTestCase):
                     row["CARGADO_FLD"] = "1"
 
             sync_labwin_results(lab_client_id=1, full_sync=True)
-            self.assertTrue(
-                Study.objects.filter(protocol_number="LW-100003").exists()
-            )
+            self.assertTrue(Study.objects.filter(protocol_number="LW-100003").exists())
             study = Study.objects.get(protocol_number="LW-100003")
-            self.assertEqual(
-                StudyPractice.objects.filter(study_id=study.id).count(), 2
-            )
+            self.assertEqual(StudyPractice.objects.filter(study_id=study.id).count(), 2)
             study_id = study.id  # capture for the cascade-out check below
 
             # Step 2: simulate the lab unvalidating GLU-Bi again
@@ -3433,19 +3425,12 @@ class SyncSkipsPartiallyValidatedProtocolsTests(BaseTestCase):
 
             sync_labwin_results(lab_client_id=1, full_sync=True)
             # The previously-ingested Study must be deleted
-            self.assertFalse(
-                Study.objects.filter(protocol_number="LW-100003").exists()
-            )
-            self.assertEqual(
-                StudyPractice.objects.filter(study_id=study_id).count(), 0
-            )
+            self.assertFalse(Study.objects.filter(protocol_number="LW-100003").exists())
+            self.assertEqual(StudyPractice.objects.filter(study_id=study_id).count(), 0)
         finally:
             # Restore mock state regardless of test outcome
             for abrev, validado, cargado in snapshot:
                 for row in SAMPLE_DETERS:
-                    if (
-                        row["NUMERO_FLD"] == 100003
-                        and row["ABREV_FLD"] == abrev
-                    ):
+                    if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == abrev:
                         row["VALIDADO_FLD"] = validado
                         row["CARGADO_FLD"] = cargado
