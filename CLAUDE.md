@@ -75,7 +75,7 @@ LabWin's built-in FTP plugin is **hardcoded to active mode** (UI passive toggle 
 
 **Gated on the LAB (out of our control until they fix):**
 
-1. **Lab Task Scheduler not firing the nightly SFTP upload.** Last `backup_user` SFTP session on the VPS was 2026-04-29 15:14 (manual test). No 02:00 sessions on Apr 30 or May 1. Symptom: `/srv/labwin_backups/incoming/` is empty after 02:00. Lab to check Task Scheduler History "Last Run Result" + Event Viewer for the upload script.
+1. **LabWin's own scheduled PDF export is incomplete vs. its manual export.** Discovered 2026-05-09 while debugging "validated+paid studies with no PDF" (LW-257189, 257201, 257223, 257225, 257226). Sebastián confirmed in the LabWin UI that the lab's filter ("solo protocolos completos" + "no exportar protocolos que deben bono") matches our import gates exactly — so the filter isn't the problem. When he ran the export *manually* from the LabWin UI for 6/5 → 9/5, PDFs went all the way up to NUMERO 257226 (matching our portal's max). When LabWin's own *scheduled* export ran nightly, it only produced PDFs up to ~256xxx, silently dropping the latest several hundred. Net effect: the failure point is **LabWin's internal scheduled task on the lab PC** (separate from our `upload_pdfs.py` and from the SFTP backup task — both of those are working fine since 2026-05-07/08). Lab/Sebastián to investigate the LabWin scheduled-export configuration on the lab PC. Until fixed, manual export from the UI is the workaround.
 
 2. ~~**Lab PDF export landing in wrong folder.**~~ **OBSOLETE 2026-05-07** — LabWin's FTP plugin is no longer used. PDFs go via `upload_pdfs.py` script on the lab PC, which uploads to the chroot root (`/` = `/home/labwin_ftp/`) directly. No more "wrong folder" possibility.
 
