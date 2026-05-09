@@ -130,6 +130,14 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
         # previously-fully-validated Study from our DB.
         "partial_validation_skipped": 0,
         "partial_validation_deleted": 0,
+        # Protocols where the patient owes a bono (PACIENTES.DEBEBONO_FLD='1').
+        # We refuse to ingest until the lab marks them paid, since the lab
+        # also doesn't generate a PDF for unpaid protocols — they'd just
+        # clutter the patient's results list with no usable artifact.
+        # *_deleted counts protocols where we ALSO had to remove a stale
+        # previously-paid Study from our DB.
+        "unpaid_skipped": 0,
+        "unpaid_deleted": 0,
     }
 
     # Notification batching state. We accumulate per-user lists during the sync
@@ -263,6 +271,27 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                                 "validated in LabWin (%d rows in this batch)",
                                 protocol_number,
                                 len(rows),
+                            )
+                        continue
+
+                    # Skip protocols where the patient owes the bono. The lab
+                    # never produces a PDF for unpaid protocols, so importing
+                    # them would just create an unfulfillable row in the
+                    # patient's results list. If a previously-paid Study
+                    # flipped to unpaid, delete it from our DB.
+                    pac_row = pacientes.get(numero)
+                    if not mappers.map_is_paid(pac_row):
+                        counters["unpaid_skipped"] += 1
+                        protocol_number = f"LW-{numero}"
+                        deleted_count, _ = Study.objects.filter(
+                            protocol_number=protocol_number
+                        ).delete()
+                        if deleted_count:
+                            counters["unpaid_deleted"] += 1
+                            logger.info(
+                                "sync_labwin: deleted %s — patient owes bono "
+                                "(DEBEBONO_FLD='1')",
+                                protocol_number,
                             )
                         continue
 
@@ -494,6 +523,7 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             "notifications_queued=%d emails_skipped=%d "
             "derivacion_skipped=%d "
             "partial_validation_skipped=%d partial_validation_deleted=%d "
+            "unpaid_skipped=%d unpaid_deleted=%d "
             "errors=%d batches=%d | %s",
             counters.get("patients_created", 0),
             counters.get("patients_updated", 0),
@@ -507,6 +537,8 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
             counters.get("derivacion_skipped", 0),
             counters.get("partial_validation_skipped", 0),
             counters.get("partial_validation_deleted", 0),
+            counters.get("unpaid_skipped", 0),
+            counters.get("unpaid_deleted", 0),
             len(errors),
             batch_index,
             memory_summary(),

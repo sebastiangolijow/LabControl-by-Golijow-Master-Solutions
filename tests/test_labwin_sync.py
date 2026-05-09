@@ -408,7 +408,11 @@ class SyncTaskTests(BaseTestCase):
         """Full sync creates patients, doctors, practices, and studies."""
         from collections import defaultdict
 
-        from apps.labwin_sync.mappers import is_protocol_fully_validated
+        from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES
+        from apps.labwin_sync.mappers import (
+            is_protocol_fully_validated,
+            map_is_paid,
+        )
 
         result = sync_labwin_results(lab_client_id=1, full_sync=True)
 
@@ -417,8 +421,8 @@ class SyncTaskTests(BaseTestCase):
         self.assertGreater(result["practices_created"], 0)
 
         # Only protocols (NUMERO_FLD groups) where ALL rows are fully
-        # validated AND loaded are ingested. Compute the expected set the
-        # same way the sync does.
+        # validated AND loaded AND the patient does not owe a bono are
+        # ingested. Compute the expected set the same way the sync does.
         rows_by_numero = defaultdict(list)
         for row in SAMPLE_DETERS:
             rows_by_numero[row["NUMERO_FLD"]].append(row)
@@ -426,6 +430,7 @@ class SyncTaskTests(BaseTestCase):
             num
             for num, rows in rows_by_numero.items()
             if is_protocol_fully_validated(rows)
+            and map_is_paid(SAMPLE_PACIENTES.get(num))
         }
         valid_rows = [r for r in SAMPLE_DETERS if r["NUMERO_FLD"] in valid_numeros]
 
@@ -934,38 +939,61 @@ class SyncNotificationTests(BaseTestCase):
         not N. The batched send_studies_available_email task is called
         once per user with all study_ids."""
         # Pre-existing patient who will match by DNI to multiple PACIENTES
-        # rows. SAMPLE_DETERS has 3 NUMEROs (300001, 300002, 300003); the
+        # rows. SAMPLE_DETERS has 3 NUMEROs (100001, 100002, 100003); the
         # PACIENTES rows for them have different DNIs by default. We need
         # to make all three resolve to one existing User.
         existing = self.create_patient(
             email="multi@example.com",
-            dni="30123456",  # Matches SAMPLE_PACIENTES NUMERO=300001
+            dni="30123456",
             lab_client_id=1,
         )
 
-        # Patch fetch_pacientes so that all three NUMEROs map to the SAME
-        # DNI (and thus the same existing User by DNI lookup).
-        with patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
+        # Patch fetch_pacientes so that all NUMEROs map to the SAME DNI,
+        # and force DEBEBONO_FLD='0' so the unpaid gate doesn't skip them
+        # (100002 is unpaid in the fixture). Also flip 100003's DETERS rows
+        # to fully-validated so the partial-validation gate doesn't skip it
+        # — this test cares only about email batching.
+        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS
 
-            def _all_same_dni(numeros):
-                # SAMPLE_PACIENTES is a dict keyed by NUMERO_FLD
-                from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES as _SP
+        deters_snapshot = []
+        for row in SAMPLE_DETERS:
+            if row["NUMERO_FLD"] == 100003:
+                deters_snapshot.append(
+                    (row["ABREV_FLD"], row["VALIDADO_FLD"], row["CARGADO_FLD"])
+                )
+                row["VALIDADO_FLD"] = "1"
+                row["CARGADO_FLD"] = "1"
 
-                result = {}
-                for n in numeros:
-                    base = _SP.get(n)
-                    if base:
-                        row = dict(base)
-                        row["HCLIN_FLD"] = "30123456"  # All map to existing user
-                        row["EMAIL_FLD"] = "multi@example.com"
-                        result[n] = row
-                return result
+        try:
+            with patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
 
-            mock_pac.side_effect = _all_same_dni
+                def _all_same_dni(numeros):
+                    from apps.labwin_sync.connectors.mock import (
+                        SAMPLE_PACIENTES as _SP,
+                    )
 
-            password_patcher, available_patcher = self._patch_email_tasks()
-            with password_patcher as mock_password, available_patcher as mock_available:
-                sync_labwin_results(lab_client_id=1, full_sync=True)
+                    result = {}
+                    for n in numeros:
+                        base = _SP.get(n)
+                        if base:
+                            row = dict(base)
+                            row["HCLIN_FLD"] = "30123456"
+                            row["EMAIL_FLD"] = "multi@example.com"
+                            row["DEBEBONO_FLD"] = "0"  # bypass unpaid gate
+                            result[n] = row
+                    return result
+
+                mock_pac.side_effect = _all_same_dni
+
+                password_patcher, available_patcher = self._patch_email_tasks()
+                with password_patcher as mock_password, available_patcher as mock_available:
+                    sync_labwin_results(lab_client_id=1, full_sync=True)
+        finally:
+            for abrev, validado, cargado in deters_snapshot:
+                for row in SAMPLE_DETERS:
+                    if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == abrev:
+                        row["VALIDADO_FLD"] = validado
+                        row["CARGADO_FLD"] = cargado
 
         # Existing user was already created; should get studies-available
         # called exactly once with N study_ids in the list.
@@ -1956,51 +1984,15 @@ class MapStudyIsPaidIsValidatedTests(BaseTestCase):
         self.assertFalse(result["is_validated"])
 
 
-class SyncIsPaidIsValidatedTests(BaseTestCase):
-    """End-to-end: sync populates is_paid and is_validated correctly."""
+class SyncIsValidatedTests(BaseTestCase):
+    """End-to-end: every sync-ingested Study is is_validated=True.
 
-    @override_settings(LABWIN_USE_MOCK=True)
-    def test_sync_sets_is_paid_from_debebono(self):
-        # Temporarily mark order 100003 as fully validated so it gets
-        # ingested and we can verify is_paid=False (DEBEBONO='1' patient).
-        # The default mock state has 100003 partially validated to exercise
-        # SyncSkipsPartiallyValidatedProtocolsTests; this test cares about
-        # is_paid, not partial validation.
-        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS
-
-        snapshot = []
-        for row in SAMPLE_DETERS:
-            if row["NUMERO_FLD"] == 100003:
-                snapshot.append(
-                    (row["ABREV_FLD"], row["VALIDADO_FLD"], row["CARGADO_FLD"])
-                )
-                row["VALIDADO_FLD"] = "1"
-                row["CARGADO_FLD"] = "1"
-        try:
-            sync_labwin_results(lab_client_id=1, full_sync=True)
-
-            # Mock fixtures: 100001 (DEBEBONO=''), 100002 (DEBEBONO='0'),
-            # 100003 (DEBEBONO='1'). Expected: 100001 paid, 100002 paid,
-            # 100003 unpaid.
-            s1 = Study.objects.get(protocol_number="LW-100001")
-            s2 = Study.objects.get(protocol_number="LW-100002")
-            s3 = Study.objects.get(protocol_number="LW-100003")
-
-            self.assertTrue(
-                s1.is_paid, "Insurance patient (DEBEBONO='') should be paid"
-            )
-            self.assertTrue(
-                s2.is_paid, "Already-paid patient (DEBEBONO='0') should be paid"
-            )
-            self.assertFalse(
-                s3.is_paid, "Owes-bono patient (DEBEBONO='1') should be UNPAID"
-            )
-        finally:
-            for abrev, validado, cargado in snapshot:
-                for row in SAMPLE_DETERS:
-                    if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == abrev:
-                        row["VALIDADO_FLD"] = validado
-                        row["CARGADO_FLD"] = cargado
+    Note: there is no equivalent test for is_paid because the sync gate
+    skips DEBEBONO_FLD='1' protocols at import time (see
+    SyncSkipsUnpaidProtocolsTests). Every sync-ingested Study is therefore
+    is_paid=True by construction, so a fixture-based assertion would be
+    tautological. The model-level mapping is covered by MapIsPaidTests.
+    """
 
     @override_settings(LABWIN_USE_MOCK=True)
     def test_sync_sets_is_validated_true_for_all_imported(self):
@@ -2012,46 +2004,6 @@ class SyncIsPaidIsValidatedTests(BaseTestCase):
                 study.is_validated,
                 f"{study.protocol_number} should be is_validated=True",
             )
-
-    @override_settings(LABWIN_USE_MOCK=True)
-    def test_resync_updates_is_paid_when_source_changes(self):
-        """If a patient pays their bono between backups, the next sync flips is_paid."""
-        # As in test_sync_sets_is_paid_from_debebono above, temporarily mark
-        # 100003 as fully validated so it gets ingested at all.
-        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS, SAMPLE_PACIENTES
-
-        deters_snapshot = []
-        for row in SAMPLE_DETERS:
-            if row["NUMERO_FLD"] == 100003:
-                deters_snapshot.append(
-                    (row["ABREV_FLD"], row["VALIDADO_FLD"], row["CARGADO_FLD"])
-                )
-                row["VALIDADO_FLD"] = "1"
-                row["CARGADO_FLD"] = "1"
-        original_debebono = SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"]
-        try:
-            # First sync — 100003 starts unpaid (DEBEBONO='1' in mock)
-            sync_labwin_results(lab_client_id=1, full_sync=True)
-            s3 = Study.objects.get(protocol_number="LW-100003")
-            self.assertFalse(s3.is_paid)
-
-            # Simulate the lab marking 100003 as paid in the source DB.
-            SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = "0"
-            sync_labwin_results(lab_client_id=1, full_sync=True)
-
-            s3.refresh_from_db()
-            self.assertTrue(
-                s3.is_paid,
-                "Re-sync should flip is_paid=True when source "
-                "DEBEBONO_FLD changes from '1' to '0'",
-            )
-        finally:
-            SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = original_debebono
-            for abrev, validado, cargado in deters_snapshot:
-                for row in SAMPLE_DETERS:
-                    if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == abrev:
-                        row["VALIDADO_FLD"] = validado
-                        row["CARGADO_FLD"] = cargado
 
 
 # ======================
@@ -3380,9 +3332,12 @@ class SyncSkipsPartiallyValidatedProtocolsTests(BaseTestCase):
         result = sync_labwin_results(lab_client_id=1, full_sync=True)
 
         self.assertEqual(result["error_count"], 0)
-        # Orders 100001 and 100002 (fully validated) are ingested
+        # Order 100001 (fully validated, paid) is ingested
         self.assertTrue(Study.objects.filter(protocol_number="LW-100001").exists())
-        self.assertTrue(Study.objects.filter(protocol_number="LW-100002").exists())
+        # Order 100002 (fully validated but DEBEBONO='1') is skipped by the
+        # unpaid gate, not the partial-validation gate. Covered separately
+        # in SyncSkipsUnpaidProtocolsTests.
+        self.assertFalse(Study.objects.filter(protocol_number="LW-100002").exists())
         # Order 100003 (partially validated) is NOT ingested
         self.assertFalse(Study.objects.filter(protocol_number="LW-100003").exists())
 
@@ -3391,7 +3346,10 @@ class SyncSkipsPartiallyValidatedProtocolsTests(BaseTestCase):
     ):
         """If a Study was previously fully validated and the lab unvalidates one
         of its rows, the next sync must delete the Study from our DB."""
-        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS
+        from apps.labwin_sync.connectors.mock import (
+            SAMPLE_DETERS,
+            SAMPLE_PACIENTES,
+        )
         from apps.labwin_sync.tasks import sync_labwin_results
         from apps.studies.models import Study, StudyPractice
 
@@ -3402,6 +3360,12 @@ class SyncSkipsPartiallyValidatedProtocolsTests(BaseTestCase):
                 snapshot.append(
                     (row["ABREV_FLD"], row["VALIDADO_FLD"], row["CARGADO_FLD"])
                 )
+        # 100003 has DEBEBONO_FLD='1' in the fixture, which would trip the
+        # unpaid gate before the partial-validation gate has anything to
+        # delete. This test cares only about the partial-validation flow,
+        # so flip 100003 to paid for the duration of the test.
+        original_debebono = SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"]
+        SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = "0"
 
         try:
             # Step 1: simulate the lab validating the missing row →
@@ -3429,8 +3393,74 @@ class SyncSkipsPartiallyValidatedProtocolsTests(BaseTestCase):
             self.assertEqual(StudyPractice.objects.filter(study_id=study_id).count(), 0)
         finally:
             # Restore mock state regardless of test outcome
+            SAMPLE_PACIENTES[100003]["DEBEBONO_FLD"] = original_debebono
             for abrev, validado, cargado in snapshot:
                 for row in SAMPLE_DETERS:
                     if row["NUMERO_FLD"] == 100003 and row["ABREV_FLD"] == abrev:
                         row["VALIDADO_FLD"] = validado
                         row["CARGADO_FLD"] = cargado
+
+
+class SyncSkipsUnpaidProtocolsTests(BaseTestCase):
+    """Sync must NOT ingest a protocol whose patient owes the bono.
+
+    Mock fixture has order 100002 with DEBEBONO_FLD='1'. The whole order
+    must be skipped — no Study, no StudyPractice rows — because the lab
+    never produces a PDF for these and the row would just clutter the
+    patient's results list.
+    """
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_skips_protocol_when_patient_owes_bono(self):
+        from apps.labwin_sync.tasks import sync_labwin_results
+        from apps.studies.models import Study
+
+        result = sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        self.assertEqual(result["error_count"], 0)
+        # 100002 (DEBEBONO='1') must not exist after sync
+        self.assertFalse(
+            Study.objects.filter(protocol_number="LW-100002").exists()
+        )
+        # And the counter records exactly one skip
+        self.assertEqual(result.get("unpaid_skipped", 0), 1)
+        # Nothing was deleted (no prior study existed)
+        self.assertEqual(result.get("unpaid_deleted", 0), 0)
+
+    @override_settings(LABWIN_USE_MOCK=True)
+    def test_deletes_existing_study_when_protocol_becomes_unpaid(self):
+        """If a Study was previously paid+ingested and the lab flips
+        DEBEBONO_FLD to '1', the next sync must delete the Study from
+        our DB (mirrors the partial-validation deletion behaviour)."""
+        from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES
+        from apps.labwin_sync.tasks import sync_labwin_results
+        from apps.studies.models import Study, StudyPractice
+
+        original_debebono = SAMPLE_PACIENTES[100002]["DEBEBONO_FLD"]
+        try:
+            # Step 1: simulate the lab marking 100002 as paid → it ingests
+            SAMPLE_PACIENTES[100002]["DEBEBONO_FLD"] = "0"
+            sync_labwin_results(lab_client_id=1, full_sync=True)
+            self.assertTrue(
+                Study.objects.filter(protocol_number="LW-100002").exists()
+            )
+            study = Study.objects.get(protocol_number="LW-100002")
+            study_id = study.id
+            self.assertGreater(
+                StudyPractice.objects.filter(study_id=study_id).count(), 0
+            )
+
+            # Step 2: lab flips DEBEBONO back to '1' (e.g. payment reversed)
+            SAMPLE_PACIENTES[100002]["DEBEBONO_FLD"] = "1"
+            result = sync_labwin_results(lab_client_id=1, full_sync=True)
+
+            self.assertFalse(
+                Study.objects.filter(protocol_number="LW-100002").exists()
+            )
+            self.assertEqual(
+                StudyPractice.objects.filter(study_id=study_id).count(), 0
+            )
+            self.assertEqual(result.get("unpaid_skipped", 0), 1)
+            self.assertEqual(result.get("unpaid_deleted", 0), 1)
+        finally:
+            SAMPLE_PACIENTES[100002]["DEBEBONO_FLD"] = original_debebono

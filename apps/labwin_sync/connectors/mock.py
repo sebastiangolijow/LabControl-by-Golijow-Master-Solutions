@@ -46,7 +46,7 @@ SAMPLE_PACIENTES = {
         "DIRECCION_FLD": "San Martin 567",
         "LOCALIDAD_FLD": "La Plata",
         "EMAIL_FLD": "",
-        "DEBEBONO_FLD": "0",  # self-pay, already paid
+        "DEBEBONO_FLD": "1",  # self-pay, owes the bono → sync skips this protocol
     },
     100003: {
         "NUMERO_FLD": 100003,
