@@ -409,10 +409,7 @@ class SyncTaskTests(BaseTestCase):
         from collections import defaultdict
 
         from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES
-        from apps.labwin_sync.mappers import (
-            is_protocol_fully_validated,
-            map_is_paid,
-        )
+        from apps.labwin_sync.mappers import is_protocol_fully_validated, map_is_paid
 
         result = sync_labwin_results(lab_client_id=1, full_sync=True)
 
@@ -968,9 +965,7 @@ class SyncNotificationTests(BaseTestCase):
             with patch.object(MockLabWinConnector, "fetch_pacientes") as mock_pac:
 
                 def _all_same_dni(numeros):
-                    from apps.labwin_sync.connectors.mock import (
-                        SAMPLE_PACIENTES as _SP,
-                    )
+                    from apps.labwin_sync.connectors.mock import SAMPLE_PACIENTES as _SP
 
                     result = {}
                     for n in numeros:
@@ -3346,10 +3341,7 @@ class SyncSkipsPartiallyValidatedProtocolsTests(BaseTestCase):
     ):
         """If a Study was previously fully validated and the lab unvalidates one
         of its rows, the next sync must delete the Study from our DB."""
-        from apps.labwin_sync.connectors.mock import (
-            SAMPLE_DETERS,
-            SAMPLE_PACIENTES,
-        )
+        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS, SAMPLE_PACIENTES
         from apps.labwin_sync.tasks import sync_labwin_results
         from apps.studies.models import Study, StudyPractice
 
@@ -3419,9 +3411,7 @@ class SyncSkipsUnpaidProtocolsTests(BaseTestCase):
 
         self.assertEqual(result["error_count"], 0)
         # 100002 (DEBEBONO='1') must not exist after sync
-        self.assertFalse(
-            Study.objects.filter(protocol_number="LW-100002").exists()
-        )
+        self.assertFalse(Study.objects.filter(protocol_number="LW-100002").exists())
         # And the counter records exactly one skip
         self.assertEqual(result.get("unpaid_skipped", 0), 1)
         # Nothing was deleted (no prior study existed)
@@ -3441,9 +3431,7 @@ class SyncSkipsUnpaidProtocolsTests(BaseTestCase):
             # Step 1: simulate the lab marking 100002 as paid → it ingests
             SAMPLE_PACIENTES[100002]["DEBEBONO_FLD"] = "0"
             sync_labwin_results(lab_client_id=1, full_sync=True)
-            self.assertTrue(
-                Study.objects.filter(protocol_number="LW-100002").exists()
-            )
+            self.assertTrue(Study.objects.filter(protocol_number="LW-100002").exists())
             study = Study.objects.get(protocol_number="LW-100002")
             study_id = study.id
             self.assertGreater(
@@ -3454,12 +3442,8 @@ class SyncSkipsUnpaidProtocolsTests(BaseTestCase):
             SAMPLE_PACIENTES[100002]["DEBEBONO_FLD"] = "1"
             result = sync_labwin_results(lab_client_id=1, full_sync=True)
 
-            self.assertFalse(
-                Study.objects.filter(protocol_number="LW-100002").exists()
-            )
-            self.assertEqual(
-                StudyPractice.objects.filter(study_id=study_id).count(), 0
-            )
+            self.assertFalse(Study.objects.filter(protocol_number="LW-100002").exists())
+            self.assertEqual(StudyPractice.objects.filter(study_id=study_id).count(), 0)
             self.assertEqual(result.get("unpaid_skipped", 0), 1)
             self.assertEqual(result.get("unpaid_deleted", 0), 1)
         finally:
