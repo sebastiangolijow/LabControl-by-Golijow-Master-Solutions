@@ -1,4 +1,4 @@
-"""
+r"""
 LabControl - PDF results uploader
 =================================
 Watches LabWin's PDF export folder and uploads new PDFs to the LabControl

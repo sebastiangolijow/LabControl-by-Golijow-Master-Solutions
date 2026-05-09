@@ -261,7 +261,6 @@ class TestStudyFilterUnit(BaseTestCase):
 
     def _filter(self, params):
         from apps.studies.filters import StudyFilter
-        from apps.studies.models import Study
 
         return StudyFilter(params, queryset=Study.objects.all()).qs
 

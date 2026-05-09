@@ -89,3 +89,20 @@ temp/
 /asgi.py
 /admin.py
 /__init__.py
+
+# Root-level app DIRECTORIES — same fossil class as the .py files above. They
+# get re-created on the VPS whenever someone runs rsync with a trailing slash
+# on `apps/` (which puts contents at /opt/labcontrol/{labwin_sync,studies,...}
+# instead of /opt/labcontrol/apps/...). We saw this on 2026-05-09 — the new
+# tasks.py landed at /opt/labcontrol/labwin_sync/tasks.py while the build kept
+# using the stale /opt/labcontrol/apps/labwin_sync/tasks.py from a previous
+# deploy. These excludes ensure the build context only ever uses the canonical
+# apps/ layout, even if root fossils exist.
+/analytics
+/appointments
+/core
+/labwin_sync
+/notifications
+/payments
+/studies
+/users
