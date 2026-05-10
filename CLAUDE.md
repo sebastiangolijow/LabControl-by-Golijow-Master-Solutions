@@ -94,7 +94,6 @@ LabWin's built-in FTP plugin is **hardcoded to active mode** (UI passive toggle 
 - **Find the LabWin source for `RESULTS_FLD`** (reference range templates). `SHOW TABLE NOMEN` on the restored DB confirmed `RESULTS_FLD` / `VALORMIN` / `VALORMAX` are NOT on NOMEN — only `CONDICIONES_FLD VARCHAR(32765)`. Probably lives on a different table (`RESULTSTEMPLATES`?). Currently the CSV path via `import_labwin_practices` populates `Practice.reference_range` via `extract_reference_range()`, but it's manual. Worth a Firebird-side discovery follow-up so ranges sync automatically.
 - **PDF import for files outside the imported-study NUMERO range** — currently 46 of 59 real FTP PDFs get skipped because their parent Study isn't in the 90-day window (numbers updated after 2026-05-07 rebuild). They sit on the FTP server and re-attach correctly once their Study comes into window. Either keep them indefinitely (current behavior, fine) or move to `_pending/` with explicit retry/expiry, or extend the sync window for the specific NUMEROs that have PDFs waiting.
 - **Address the 2 stale 2.3 GB `.FDB` files in `/home/labwin_ftp/results/`** (probably corrupt). The `cleanup_misplaced_uploads` task already deletes these — verify they're gone after the next 03:50 run.
-- **Compress background images to WebP** (FRONTEND.md TODO).
 - **Eventually flip `DISABLE_PATIENT_EMAILS=False`** once lab signup workflow is finalized.
 
 **Operational hygiene:**
@@ -105,6 +104,13 @@ LabWin's built-in FTP plugin is **hardcoded to active mode** (UI passive toggle 
 - **No alerting yet**: if the 04:00 sync silently fails for 5 nights, nobody finds out unless someone tails logs. Phase F of LABWIN_BACKUP_PIPELINE.md mentions a "no-backup-in-36h" alert as future work.
 
 ### Done recently
+
+- ✅ **2026-05-10 (frontend session)** — **PDF backlog drained + UI polish.**
+  - **PDF gap resolved (for now).** Diagnosed two new studies missing PDFs (LW-257278 and LW-256891). Confirmed via Firebird query that LabWin's export uses `EXPORTADOPDF_FLD` as a cursor *and* filters by `solicitado date` (FECHA_FLD). Manual exports against the lab's UI for the full window finished today; portal currently has 0 studies missing PDFs. Tomorrow's nightly run is the experiment: now that the backlog is drained, does the LabWin scheduled task succeed on a near-empty workload? If yes, backlog was the cause; if drops still happen, it's a logic/timeout bug and the next move is the date-window plan (export by FECHA_FLD, ignore EXPORTADOPDF_FLD).
+  - **Pagination component** (`labcontrol-frontend/src/components/Pagination.vue`). Numbered pages + first/last/prev/next icon buttons + clickable ellipsis (jumps ±5 pages). Replaces the prev/next-only pagination in `ResultsView.vue` and `admin/PatientsView.vue` (the latter wasn't usable beyond page 1 for 572-page lists). Frontend commit `207d115`, deployed.
+  - **Background images: PNG → WebP, 5.6 MB → 140 KB (~40×)** — fixes the white-flash on first paint that was visible on every page load. Per-file: `background_desktop` 2.32 MB → 31 KB (also downscaled 4000×2250 → 1920×1080), `ipad` 1.59 MB → 62 KB, `phone` 1.69 MB → 46 KB. Touched 12 views. cwebp q=82. Frontend commit `bb7a8b5`, deployed. Removes the "Compress background images to WebP" item from FRONTEND.md TODO.
+  - **`Cleanup FTP PDFs` Beat task** confirmed already running (`apps.labwin_sync.tasks.cleanup_ftp_pdfs`, cron `0 3 * * 0` UTC = midnight Sunday lab time). Docs that say it's not scheduled are stale. Ran today (2026-05-10 is Sunday) at 03:00 UTC.
+  - **Timezone reality check**: confirmed all containers + Django settings + Celery are UTC. Lab is UTC-3 (no DST). So Beat schedules in `setup_periodic_tasks.py` need to be read with `lab_time = utc - 3h`.
 
 - ✅ **2026-05-01 (full session)** — **Test-mode reset, real-data sync, + 3 follow-ups.** Now in production: live Firebird sync (mock flag flipped to `False`) ingesting against real lab data, with patient emails disabled via kill switch. Final state: 3,040 patients / 3,749 studies / 25,439 StudyPractices / 15 PDFs attached, all within a 90-day window (2026-01-31 → 2026-04-29).
 
