@@ -1632,9 +1632,7 @@ class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
 
     def test_dashed_filename_with_no_matching_study_is_kept(self):
         """Unknown NUMERO in a dashed filename is counted as kept, not error."""
-        mock_ftp = MockFTPConnector(
-            files={"999999-12345-NOBODY.pdf": b"%PDF-1.4 mock"}
-        )
+        mock_ftp = MockFTPConnector(files={"999999-12345-NOBODY.pdf": b"%PDF-1.4 mock"})
         with patch(
             "apps.labwin_sync.tasks.get_ftp_connector",
             return_value=mock_ftp,
