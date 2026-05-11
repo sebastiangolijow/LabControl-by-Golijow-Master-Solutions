@@ -24,28 +24,43 @@ logger = logging.getLogger(__name__)
 # to `(PRV_DELETEDRECORD_FLD IS NULL OR PRV_DELETEDRECORD_FLD <> '1')` and
 # verify which value(s) actually denote deletion.
 
-# SQL for fetching DETERS rows. We INTENTIONALLY do NOT filter on
-# VALIDADO_FLD or CARGADO_FLD here — the sync layer needs to see ALL rows
-# for a given NUMERO so it can decide whether the WHOLE protocol is fully
-# validated. We only ingest fully-validated protocols (every DETERS row
-# for that NUMERO has VALIDADO_FLD='1' AND CARGADO_FLD='1'). Partial
-# protocols (e.g. 2 of 4 practices done) are skipped, and any prior
-# version of them in our DB is deleted on sync — see
-# is_protocol_fully_validated() in mappers.py and the use site in tasks.py.
-DETERS_QUERY = """
+# SQL for fetching DETERS rows. We exclude any NUMERO that has at least one
+# practice not fully validated+loaded (VALIDADO_FLD='1' AND CARGADO_FLD='1').
+# Done at the SQL level — not in Python — because rows for a single NUMERO
+# can split across fetchmany() boundaries, and the per-batch grouping in
+# tasks.py would then evaluate the partial-validation gate on a partial
+# slice of the protocol. Real failure: LW-257008 had 15 DETERS rows on
+# 2026-05-05 (12 validated, 3 not). The 500-row batch boundary fell inside
+# the protocol, so 3 of the validated rows were grouped alone, the
+# is_protocol_fully_validated() gate saw only validated rows, and the
+# protocol was imported with 3 StudyPractices despite the lab not having
+# finished it (and not exporting a PDF for it). The NOT IN guard below
+# ensures the connector never yields any row of a partial NUMERO, no
+# matter where fetchmany() splits.
+_PARTIAL_NUMERO_FILTER = (
+    "NUMERO_FLD NOT IN ("
+    "SELECT DISTINCT NUMERO_FLD FROM DETERS "
+    "WHERE VALIDADO_FLD IS NULL OR VALIDADO_FLD <> '1' "
+    "OR CARGADO_FLD IS NULL OR CARGADO_FLD <> '1'"
+    ")"
+)
+
+DETERS_QUERY = f"""
     SELECT NUMERO_FLD, ABREV_FLD, RESULT_FLD, RESULTREP_FLD,
            VALIDADO_FLD, CARGADO_FLD,
            FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
     FROM DETERS
     WHERE (FECHA_FLD > ? OR (FECHA_FLD = ? AND NUMERO_FLD > ?))
+      AND {_PARTIAL_NUMERO_FILTER}
     ORDER BY FECHA_FLD, NUMERO_FLD
 """
 
-DETERS_QUERY_FULL = """
+DETERS_QUERY_FULL = f"""
     SELECT NUMERO_FLD, ABREV_FLD, RESULT_FLD, RESULTREP_FLD,
            VALIDADO_FLD, CARGADO_FLD,
            FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
     FROM DETERS
+    WHERE {_PARTIAL_NUMERO_FILTER}
     ORDER BY FECHA_FLD, NUMERO_FLD
 """
 

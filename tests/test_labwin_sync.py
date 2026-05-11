@@ -1535,6 +1535,108 @@ class CleanupFTPPDFsTests(BaseTestCase):
         self.assertIn("message", result)
 
 
+class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
+    """Regression tests for cleanup_ftp_pdfs filename parsing.
+
+    Pre-2026-05-11 the task passed `os.path.splitext(filename)[0]` directly
+    to `Study.objects.filter(sample_id=...)`. For dashed filenames like
+    `220197-39592918-SIRI,FRANCO.pdf` that meant looking up
+    `sample_id="220197-39592918-SIRI,FRANCO"` — never matched, so
+    files_deleted was 0 every Sunday and PDFs accumulated forever on FTP
+    (4,057 files seen in prod on 2026-05-11). The fix mirrors the parser
+    used in fetch_ftp_pdfs: take the first dash-separated segment.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.patient = self.create_patient()
+
+    def test_dashed_filename_is_deleted_when_study_has_results_file(self):
+        """Cleanup parses NUMERO from `{NUMERO}-{DNI}-{NAME}.pdf` and deletes it."""
+        practice = self.create_practice()
+        study = self.create_study(self.patient, practice=practice)
+        study.sample_id = "220197"
+        study.lab_client_id = 1
+        study.results_file = "study_results/220197.pdf"
+        study.save()
+
+        class DashedNamedFTP(MockFTPConnector):
+            def list_pdf_files(self):
+                return ["220197-39592918-SIRI,FRANCO.pdf"]
+
+        mock_ftp = DashedNamedFTP()
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=mock_ftp,
+        ):
+            result = cleanup_ftp_pdfs(lab_client_id=1)
+
+        self.assertEqual(result["files_deleted"], 1)
+        self.assertEqual(result["files_kept"], 0)
+        self.assertIn("220197-39592918-SIRI,FRANCO.pdf", mock_ftp._deleted)
+
+    def test_dashed_filename_is_kept_when_study_has_no_results_file(self):
+        """A dashed filename whose Study exists but lacks results_file is kept."""
+        practice = self.create_practice()
+        study = self.create_study(self.patient, practice=practice)
+        study.sample_id = "220197"
+        study.lab_client_id = 1
+        study.save()  # results_file deliberately empty
+
+        class DashedNamedFTP(MockFTPConnector):
+            def list_pdf_files(self):
+                return ["220197-39592918-SIRI,FRANCO.pdf"]
+
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=DashedNamedFTP(),
+        ):
+            result = cleanup_ftp_pdfs(lab_client_id=1)
+
+        self.assertEqual(result["files_deleted"], 0)
+        self.assertEqual(result["files_kept"], 1)
+
+    def test_legacy_filename_format_still_works(self):
+        """`100001.pdf` (no dashes) still parses as NUMERO=100001."""
+        practice = self.create_practice()
+        study = self.create_study(self.patient, practice=practice)
+        study.sample_id = "100001"
+        study.lab_client_id = 1
+        study.results_file = "study_results/100001.pdf"
+        study.save()
+
+        class LegacyFTP(MockFTPConnector):
+            def list_pdf_files(self):
+                return ["100001.pdf"]
+
+        mock_ftp = LegacyFTP()
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=mock_ftp,
+        ):
+            result = cleanup_ftp_pdfs(lab_client_id=1)
+
+        self.assertEqual(result["files_deleted"], 1)
+        self.assertIn("100001.pdf", mock_ftp._deleted)
+
+    def test_dashed_filename_with_no_matching_study_is_kept(self):
+        """Unknown NUMERO in a dashed filename is counted as kept, not error."""
+
+        class UnknownFTP(MockFTPConnector):
+            def list_pdf_files(self):
+                return ["999999-12345-NOBODY.pdf"]
+
+        with patch(
+            "apps.labwin_sync.tasks.get_ftp_connector",
+            return_value=UnknownFTP(),
+        ):
+            result = cleanup_ftp_pdfs(lab_client_id=1)
+
+        self.assertEqual(result["files_deleted"], 0)
+        self.assertEqual(result["files_kept"], 1)
+        self.assertEqual(result["error_count"], 0)
+
+
 # ======================
 # BackupImporter (Phase B)
 # ======================
@@ -3448,3 +3550,88 @@ class SyncSkipsUnpaidProtocolsTests(BaseTestCase):
             self.assertEqual(result.get("unpaid_deleted", 0), 1)
         finally:
             SAMPLE_PACIENTES[100002]["DEBEBONO_FLD"] = original_debebono
+
+
+# ======================
+# DETERS SQL — partial-validation guard (patch 1)
+# ======================
+
+
+class DETERSQueryPartialValidationFilterTests(BaseTestCase):
+    """Regression tests for the SQL-level partial-validation guard.
+
+    Pre-2026-05-11 the Firebird connector returned ALL DETERS rows and
+    relied on Python (`is_protocol_fully_validated`) to skip partial
+    protocols. But `cursor.fetchmany(500)` splits a single NUMERO across
+    batches, and the per-batch grouping in `tasks.py` evaluated the gate
+    on a partial slice — so a NUMERO with 12 validated + 3 unvalidated
+    rows could end up imported with only the validated subset (real
+    failure: LW-257008 on 2026-05-11). The fix is at the SQL level: the
+    connector excludes any NUMERO that has at least one row with
+    VALIDADO_FLD<>'1' OR CARGADO_FLD<>'1' OR NULL on either flag.
+    """
+
+    def test_deters_query_contains_partial_numero_filter(self):
+        """Incremental DETERS_QUERY excludes NUMEROs with any non-validated row."""
+        from apps.labwin_sync.connectors import firebird as fb
+
+        sql = fb.DETERS_QUERY
+        self.assertIn("NUMERO_FLD NOT IN", sql)
+        self.assertIn("VALIDADO_FLD", sql)
+        self.assertIn("CARGADO_FLD", sql)
+        # Both NULL and non-'1' must be excluded (Firebird treats NULL
+        # differently from <> in a way that silently drops rows otherwise).
+        self.assertIn("VALIDADO_FLD IS NULL", sql)
+        self.assertIn("CARGADO_FLD IS NULL", sql)
+
+    def test_deters_query_full_contains_partial_numero_filter(self):
+        """Full-scan DETERS_QUERY_FULL has the same guard as the incremental form."""
+        from apps.labwin_sync.connectors import firebird as fb
+
+        sql = fb.DETERS_QUERY_FULL
+        self.assertIn("NUMERO_FLD NOT IN", sql)
+        self.assertIn("VALIDADO_FLD", sql)
+        self.assertIn("CARGADO_FLD", sql)
+        self.assertIn("VALIDADO_FLD IS NULL", sql)
+        self.assertIn("CARGADO_FLD IS NULL", sql)
+
+    def test_fetch_validated_deters_executes_guarded_sql(self):
+        """fetch_validated_deters fires the SQL string with the partial-NUMERO guard."""
+        from apps.labwin_sync.connectors.firebird import (
+            DETERS_QUERY,
+            DETERS_QUERY_FULL,
+            FirebirdLabWinConnector,
+        )
+
+        captured = {}
+
+        class FakeCursor:
+            def execute(self, sql, params=None):
+                captured["sql"] = sql
+                captured["params"] = params
+
+            def fetchmany(self, n):
+                return []
+
+            def close(self):
+                pass
+
+        class FakeConn:
+            def cursor(self):
+                return FakeCursor()
+
+        connector = FirebirdLabWinConnector()
+        connector.connection = FakeConn()
+
+        # Full-scan path
+        captured.clear()
+        list(connector.fetch_validated_deters())
+        self.assertEqual(captured["sql"], DETERS_QUERY_FULL)
+        self.assertIn("NUMERO_FLD NOT IN", captured["sql"])
+
+        # Incremental path
+        captured.clear()
+        list(connector.fetch_validated_deters(since_fecha="20260101", since_numero=0))
+        self.assertEqual(captured["sql"], DETERS_QUERY)
+        self.assertIn("NUMERO_FLD NOT IN", captured["sql"])
+        self.assertEqual(captured["params"], ("20260101", "20260101", 0))

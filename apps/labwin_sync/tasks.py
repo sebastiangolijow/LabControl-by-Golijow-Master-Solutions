@@ -1479,11 +1479,19 @@ def cleanup_ftp_pdfs(self, lab_client_id=None):
 
             for filename in pdf_files:
                 try:
+                    # Filenames are {NUMERO}-{DNI}-{NAME}.pdf — the protocol
+                    # number is the first dash-separated segment. Must match
+                    # the parser used in fetch_ftp_pdfs above; otherwise
+                    # this task matches nothing and PDFs accumulate on FTP
+                    # forever (was the bug pre-2026-05-11 — files_deleted
+                    # was 0 every Sunday because we passed the full
+                    # basename to sample_id=).
                     name_without_ext = os.path.splitext(filename)[0]
+                    protocol_numero = name_without_ext.split("-", 1)[0]
 
                     # Check if study exists and has results_file
                     study = Study.objects.filter(
-                        sample_id=name_without_ext,
+                        sample_id=protocol_numero,
                         lab_client_id=lab_client_id,
                     ).first()
 
