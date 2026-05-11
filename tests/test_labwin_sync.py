@@ -1583,11 +1583,13 @@ class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
         """Cleanup parses NUMERO from `{NUMERO}-{DNI}-{NAME}.pdf` and deletes it."""
         self._make_study_with_pdf("220197")
 
-        class DashedNamedFTP(MockFTPConnector):
-            def list_pdf_files(self):
-                return ["220197-39592918-SIRI,FRANCO.pdf"]
-
-        mock_ftp = DashedNamedFTP()
+        # Inject the dashed file into the mock's `files` dict so that
+        # MockFTPConnector.delete_file (which checks membership) actually
+        # finds it. Overriding list_pdf_files alone isn't enough — the
+        # base class's delete_file raises FileNotFoundError otherwise.
+        mock_ftp = MockFTPConnector(
+            files={"220197-39592918-SIRI,FRANCO.pdf": b"%PDF-1.4 mock"}
+        )
         with patch(
             "apps.labwin_sync.tasks.get_ftp_connector",
             return_value=mock_ftp,
@@ -1602,13 +1604,12 @@ class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
         """A dashed filename whose Study exists but lacks results_file is kept."""
         self._make_study_without_pdf("220197")
 
-        class DashedNamedFTP(MockFTPConnector):
-            def list_pdf_files(self):
-                return ["220197-39592918-SIRI,FRANCO.pdf"]
-
+        mock_ftp = MockFTPConnector(
+            files={"220197-39592918-SIRI,FRANCO.pdf": b"%PDF-1.4 mock"}
+        )
         with patch(
             "apps.labwin_sync.tasks.get_ftp_connector",
-            return_value=DashedNamedFTP(),
+            return_value=mock_ftp,
         ):
             result = cleanup_ftp_pdfs(lab_client_id=1)
 
@@ -1619,11 +1620,7 @@ class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
         """`100001.pdf` (no dashes) still parses as NUMERO=100001."""
         self._make_study_with_pdf("100001")
 
-        class LegacyFTP(MockFTPConnector):
-            def list_pdf_files(self):
-                return ["100001.pdf"]
-
-        mock_ftp = LegacyFTP()
+        mock_ftp = MockFTPConnector(files={"100001.pdf": b"%PDF-1.4 mock"})
         with patch(
             "apps.labwin_sync.tasks.get_ftp_connector",
             return_value=mock_ftp,
@@ -1635,14 +1632,12 @@ class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
 
     def test_dashed_filename_with_no_matching_study_is_kept(self):
         """Unknown NUMERO in a dashed filename is counted as kept, not error."""
-
-        class UnknownFTP(MockFTPConnector):
-            def list_pdf_files(self):
-                return ["999999-12345-NOBODY.pdf"]
-
+        mock_ftp = MockFTPConnector(
+            files={"999999-12345-NOBODY.pdf": b"%PDF-1.4 mock"}
+        )
         with patch(
             "apps.labwin_sync.tasks.get_ftp_connector",
-            return_value=UnknownFTP(),
+            return_value=mock_ftp,
         ):
             result = cleanup_ftp_pdfs(lab_client_id=1)
 
