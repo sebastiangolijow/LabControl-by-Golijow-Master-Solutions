@@ -2678,6 +2678,120 @@ class DisablePatientEmailsTests(BaseTestCase):
         )
 
 
+class PatientEmailAllowlistTests(BaseTestCase):
+    """PATIENT_EMAIL_ALLOWLIST_DOMAINS bypasses DISABLE_PATIENT_EMAILS.
+
+    Used to let lab staff test the patient-facing flow with their own
+    @labmolecular.com.ar accounts while real patients stay paused.
+    """
+
+    def _build_inputs(self, email):
+        """Create a patient + a study and return the dict shape that
+        _dispatch_patient_notifications consumes. Avoids running a full
+        sync_labwin_results so the test is focused on the dispatcher."""
+        patient = self.create_patient(
+            email=email,
+            dni="30123456",
+            lab_client_id=1,
+        )
+        practice = self.create_practice()
+        study = self.create_study(patient, practice=practice)
+        return {patient.pk: [study.pk]}, set()
+
+    @override_settings(
+        DISABLE_PATIENT_EMAILS=True,
+        PATIENT_EMAIL_ALLOWLIST_DOMAINS=["labmolecular.com.ar"],
+    )
+    def test_allowlisted_domain_bypasses_kill_switch(self):
+        """Lab @labmolecular.com.ar account: email is queued despite the kill switch."""
+        from apps.labwin_sync.tasks import _dispatch_patient_notifications
+
+        studies, password_users = self._build_inputs("staff@labmolecular.com.ar")
+
+        with patch(
+            "apps.notifications.tasks.send_studies_available_email.delay"
+        ) as mock_available:
+            queued, skipped = _dispatch_patient_notifications(studies, password_users)
+
+        mock_available.assert_called_once()
+        self.assertEqual(queued, 1)
+        self.assertEqual(skipped, 0)
+
+    @override_settings(
+        DISABLE_PATIENT_EMAILS=True,
+        PATIENT_EMAIL_ALLOWLIST_DOMAINS=["labmolecular.com.ar"],
+    )
+    def test_non_allowlisted_domain_still_skipped(self):
+        """Real patient on gmail: still respects the kill switch."""
+        from apps.labwin_sync.tasks import _dispatch_patient_notifications
+
+        studies, password_users = self._build_inputs("juan@gmail.com")
+
+        with patch(
+            "apps.notifications.tasks.send_studies_available_email.delay"
+        ) as mock_available:
+            queued, skipped = _dispatch_patient_notifications(studies, password_users)
+
+        mock_available.assert_not_called()
+        self.assertEqual(queued, 0)
+        self.assertEqual(skipped, 1)
+
+    @override_settings(
+        DISABLE_PATIENT_EMAILS=True,
+        PATIENT_EMAIL_ALLOWLIST_DOMAINS=["labmolecular.com.ar"],
+    )
+    def test_allowlist_match_is_case_insensitive(self):
+        """Mixed-case email in the user record still hits the allowlist."""
+        from apps.labwin_sync.tasks import _dispatch_patient_notifications
+
+        studies, password_users = self._build_inputs("Staff@LabMolecular.COM.AR")
+
+        with patch(
+            "apps.notifications.tasks.send_studies_available_email.delay"
+        ) as mock_available:
+            queued, skipped = _dispatch_patient_notifications(studies, password_users)
+
+        mock_available.assert_called_once()
+        self.assertEqual(queued, 1)
+
+    @override_settings(
+        DISABLE_PATIENT_EMAILS=True,
+        PATIENT_EMAIL_ALLOWLIST_DOMAINS=[],
+    )
+    def test_empty_allowlist_preserves_existing_kill_switch_behaviour(self):
+        """Empty list = the original behaviour. Even @labmolecular.com.ar gets skipped."""
+        from apps.labwin_sync.tasks import _dispatch_patient_notifications
+
+        studies, password_users = self._build_inputs("staff@labmolecular.com.ar")
+
+        with patch(
+            "apps.notifications.tasks.send_studies_available_email.delay"
+        ) as mock_available:
+            queued, skipped = _dispatch_patient_notifications(studies, password_users)
+
+        mock_available.assert_not_called()
+        self.assertEqual(queued, 0)
+        self.assertEqual(skipped, 1)
+
+    @override_settings(
+        DISABLE_PATIENT_EMAILS=False,
+        PATIENT_EMAIL_ALLOWLIST_DOMAINS=["labmolecular.com.ar"],
+    )
+    def test_non_allowlisted_emails_unaffected_when_kill_switch_off(self):
+        """When the kill switch is OFF, the allowlist is a no-op — everyone gets emails."""
+        from apps.labwin_sync.tasks import _dispatch_patient_notifications
+
+        studies, password_users = self._build_inputs("juan@gmail.com")
+
+        with patch(
+            "apps.notifications.tasks.send_studies_available_email.delay"
+        ) as mock_available:
+            queued, skipped = _dispatch_patient_notifications(studies, password_users)
+
+        mock_available.assert_called_once()
+        self.assertEqual(queued, 1)
+
+
 # ======================
 # Patient-creation logger
 # ======================

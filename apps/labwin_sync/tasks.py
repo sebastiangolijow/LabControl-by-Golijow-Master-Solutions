@@ -1217,6 +1217,7 @@ def _dispatch_patient_notifications(studies_to_notify, users_needing_password_se
     now = timezone.now()
     user_ids = list(studies_to_notify.keys())
     disable_emails = getattr(settings, "DISABLE_PATIENT_EMAILS", False)
+    allowlist_domains = getattr(settings, "PATIENT_EMAIL_ALLOWLIST_DOMAINS", [])
 
     # Single query to get email for all candidate users
     users = {u.pk: u for u in User.objects.filter(pk__in=user_ids).only("pk", "email")}
@@ -1241,7 +1242,14 @@ def _dispatch_patient_notifications(studies_to_notify, users_needing_password_se
             else "studies_available"
         )
 
-        if disable_emails:
+        # Allowlist bypass: when DISABLE_PATIENT_EMAILS is on but the
+        # user's email domain is whitelisted (e.g. lab staff testing the
+        # patient UX with @labmolecular.com.ar accounts), still queue the
+        # email. Falls through to the normal queue path below.
+        domain = user.email.rsplit("@", 1)[-1].lower() if "@" in user.email else ""
+        is_allowlisted = bool(allowlist_domains) and domain in allowlist_domains
+
+        if disable_emails and not is_allowlisted:
             # Mark studies as notified anyway so the rolling window doesn't
             # re-queue them every run during test mode.
             Study.objects.filter(pk__in=study_pks).update(

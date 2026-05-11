@@ -261,6 +261,19 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@labcontrol.com")
 # spamming patients during test runs.
 DISABLE_PATIENT_EMAILS = env.bool("DISABLE_PATIENT_EMAILS", default=False)
 
+# Per-domain allowlist that bypasses DISABLE_PATIENT_EMAILS. When the kill
+# switch is on, patients whose email domain is in this list still receive
+# password-setup / studies-available emails — used to let the lab team
+# (whose accounts live under their own corporate domain) test the patient
+# UX while real patients stay paused. Comma-separated list, case-insensitive,
+# domains only (no leading "@"). Default empty = the kill switch applies
+# to everyone, preserving the previous behaviour.
+PATIENT_EMAIL_ALLOWLIST_DOMAINS = [
+    d.strip().lower().lstrip("@")
+    for d in env.list("PATIENT_EMAIL_ALLOWLIST_DOMAINS", default=[])
+    if d.strip()
+]
+
 # Frontend URL (for email verification links, password reset, etc.)
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 
