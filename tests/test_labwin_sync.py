@@ -1551,14 +1551,37 @@ class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
         super().setUp()
         self.patient = self.create_patient()
 
+    def _make_study_with_pdf(self, sample_id):
+        """Create a study whose results_file is a real (tiny) file on disk.
+
+        The cleanup task checks `if study and study.results_file:`, which
+        on a FileField evaluates to True only when the descriptor has a
+        non-empty `.name`. Assigning a bare string path via
+        `study.results_file = "..."` does NOT set this reliably across
+        Django versions, hence the explicit ContentFile.save() below.
+        """
+        from django.core.files.base import ContentFile
+
+        study = self.create_study(self.patient, practice=self.create_practice())
+        study.sample_id = sample_id
+        study.lab_client_id = 1
+        study.results_file.save(
+            f"{sample_id}.pdf",
+            ContentFile(b"%PDF-1.4 test"),
+            save=True,
+        )
+        return study
+
+    def _make_study_without_pdf(self, sample_id):
+        study = self.create_study(self.patient, practice=self.create_practice())
+        study.sample_id = sample_id
+        study.lab_client_id = 1
+        study.save()
+        return study
+
     def test_dashed_filename_is_deleted_when_study_has_results_file(self):
         """Cleanup parses NUMERO from `{NUMERO}-{DNI}-{NAME}.pdf` and deletes it."""
-        practice = self.create_practice()
-        study = self.create_study(self.patient, practice=practice)
-        study.sample_id = "220197"
-        study.lab_client_id = 1
-        study.results_file = "study_results/220197.pdf"
-        study.save()
+        self._make_study_with_pdf("220197")
 
         class DashedNamedFTP(MockFTPConnector):
             def list_pdf_files(self):
@@ -1577,11 +1600,7 @@ class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
 
     def test_dashed_filename_is_kept_when_study_has_no_results_file(self):
         """A dashed filename whose Study exists but lacks results_file is kept."""
-        practice = self.create_practice()
-        study = self.create_study(self.patient, practice=practice)
-        study.sample_id = "220197"
-        study.lab_client_id = 1
-        study.save()  # results_file deliberately empty
+        self._make_study_without_pdf("220197")
 
         class DashedNamedFTP(MockFTPConnector):
             def list_pdf_files(self):
@@ -1598,12 +1617,7 @@ class CleanupFTPPDFsFilenameParsingTests(BaseTestCase):
 
     def test_legacy_filename_format_still_works(self):
         """`100001.pdf` (no dashes) still parses as NUMERO=100001."""
-        practice = self.create_practice()
-        study = self.create_study(self.patient, practice=practice)
-        study.sample_id = "100001"
-        study.lab_client_id = 1
-        study.results_file = "study_results/100001.pdf"
-        study.save()
+        self._make_study_with_pdf("100001")
 
         class LegacyFTP(MockFTPConnector):
             def list_pdf_files(self):
