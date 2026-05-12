@@ -169,7 +169,10 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 5,
+    # 6 instead of 5 so the studies list 3-column card grid fills two
+    # rows evenly (UAT 2026-05-12). Applies to every paginated list —
+    # patients/doctors/practices are fine with 6 too.
+    "PAGE_SIZE": 6,
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
