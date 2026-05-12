@@ -266,6 +266,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(max_length=20, blank=True)
     dni = models.CharField(max_length=20, blank=True)  # National ID
     birthday = models.DateField(null=True, blank=True)
+    # Biological sex (M/F, blank). Sourced from LabWin SEXO_FLD; clinical
+    # field used for reference ranges. Read-only on the patient API; only
+    # admin/lab_staff can edit. Added 2026-05-12 (migration 0003) — see
+    # CLAUDE.md "biological_sex vs gender" for the split rationale and
+    # the SEXO_FLD inversion incident that prompted it.
+    biological_sex = models.CharField(max_length=1, blank=True)
+    # Self-declared gender (M/F/O/P, blank). Patient-editable; sync NEVER
+    # writes this. Optional. NOT used clinically — see biological_sex.
     gender = models.CharField(max_length=10, blank=True)
     location = models.CharField(max_length=100, blank=True)
     direction = models.TextField(blank=True)  # Address
@@ -1217,11 +1225,16 @@ def pending(self, request):
     return Response(serializer.data)
 ```
 
-### 8. Accent-insensitive Search (added 2026-04-25)
+### 8. Accent-insensitive Search (added 2026-04-25, multi-token added 2026-05-12)
 
 All search across user/study fields is **case AND accent insensitive** so that
 `'si'` matches `'Sí'`, `'munoz'` matches `'Muñoz'`, `'gonzalez'` matches
-`'González'`. Required for Spanish-language patient data.
+`'González'`. Required for Spanish-language patient data. Additionally,
+**whitespace splits the query into tokens that must ALL match** (each token
+ORed across fields, all tokens ANDed). So `'estefania s'` matches "Estefania
+Schmidt" because `estefania` matches first_name AND `s` matches last_name —
+pre-2026-05-12 it returned 0 results because the helper substring-matched
+the whole string.
 
 Implementation: `apps/core/search.unaccent_icontains_q(value, *fields)` builds
 a `Q()` object using Postgres' `unaccent()` extension via the bilateral
@@ -1585,6 +1598,11 @@ apps/labwin_sync/
 | NOMEN | Practice | `code` = `ABREV_FLD` |
 | DETERS (grouped by NUMERO) | Study | `protocol_number` = `"LW-{NUMERO}"` |
 | DETERS (each row) | StudyPractice | `code` = `ABREV_FLD`, `result` = `RESULT_FLD` |
+| PACIENTES.SEXO_FLD | User.biological_sex | **`1`=F, `2`=M** (verified 2026-05-12; original mapper had it inverted, see CLAUDE.md "LabWin SEXO_FLD encoding") |
+
+**Important**: sync writes `User.biological_sex` only — never `User.gender`.
+Gender is patient-self-declared and the responsibility of the registration /
+profile flows. See CLAUDE.md "biological_sex vs gender".
 
 ### Sync Models
 
@@ -1645,6 +1663,17 @@ LABWIN_SYNC_BATCH_SIZE=500
 LABWIN_DEFAULT_LAB_CLIENT_ID=1
 # Date window — see "Sync Flow" above. Every sync re-imports the last N days.
 LABWIN_SYNC_WINDOW_DAYS=90
+
+# Patient-email kill switch + per-domain bypass.
+# DISABLE_PATIENT_EMAILS=True silences password_setup + studies_available
+# emails (admin/system emails still send). Used during UAT to keep real
+# patients out of the inbox while the lab signup workflow is finalized.
+DISABLE_PATIENT_EMAILS=True
+# Comma-separated allowlist (case-insensitive). When the kill switch is
+# on, patients on these domains STILL get emails. Set to lab staff's
+# corporate domain so they can test the patient flow end-to-end while
+# real patients stay paused. Empty = no bypass.
+PATIENT_EMAIL_ALLOWLIST_DOMAINS=labmolecular.com.ar
 ```
 
 ### Patient Activation Contract (added 2026-04-28)
@@ -1717,6 +1746,112 @@ Three layers prevent duplicate records:
 1. **SyncedRecord**: Maps `(source_table, source_key, lab_client_id)` → target UUID
 2. **Natural key matching**: DNI for patients, matricula for doctors, code for practices
 3. **Unique constraints**: `protocol_number` on Study
+
+### On-Demand Protocol Import (added 2026-05-12)
+
+For studies older than the 90-day rolling sync window. Admin types a
+LabWin protocol number (NUMERO_FLD) into the UI → Celery task pulls
+that one protocol from the local Firebird container we already restore
+nightly → runs it through the same mappers + skip-filters as nightly
+sync. PDF is uploaded later via the existing FTP flow.
+
+The Firebird backup container holds the lab's full DB since 2011, so
+**any historical NUMERO is reachable**. `not_found` therefore always
+means "typo / wrong number" — never "older than backup."
+
+#### Components
+
+- **Connector**: `connectors/base.py` + `firebird.py` + `mock.py` —
+  `fetch_one_protocol(numero) -> dict | None` returns `{deters, paciente,
+  medico, nomens}` for the protocol, or `None` if NUMERO doesn't exist.
+  No date-window filter, no partial-validation NOT IN guard (the task
+  layer needs to *see* partial state to report it back to the admin).
+- **Task**: `apps.labwin_sync.tasks.import_protocol_by_numero(numero,
+  lab_client_id=None, force=False)`. `bind=True`, `max_retries=0`
+  (outcome failures are non-transient; retries would duplicate emails /
+  work). Cache-based concurrency lock (`labwin:on-demand:{numero}`,
+  180s TTL) prevents two admins importing the same NUMERO simultaneously.
+  Reuses every existing helper (`_get_or_create_patient`,
+  `_get_or_create_doctor`, `_get_or_create_practice`,
+  `_get_or_create_study_with_practices`, `_dispatch_patient_notifications`).
+  No refactor.
+- **API**: `POST /api/v1/labwin-sync/import-protocol/` with body
+  `{numero: int, force?: bool}`. Permission: `IsAdminOrLabManager` (=
+  admin + lab_staff). Status polling reuses the existing
+  `GET /api/v1/labwin-sync/status/<task_id>/`.
+- **CLI**: `python manage.py import_protocol <numero> [--lab-client-id N]
+  [--use-celery]`. Pretty-prints the result dict.
+- **Frontend**: `ImportProtocolModal.vue` (search-plus icon button in
+  ResultsView header → modal with single NUMERO input → result card per
+  outcome). "Ver estudio" deep-links to `/results?search=LW-{numero}`
+  (ResultsView reads `?search=` on mount AND watches it for in-page
+  pushes).
+
+#### Outcomes (decision tree)
+
+| Outcome | When |
+|---|---|
+| `imported` | Happy path. Returns `study_uuid`, `study_protocol_number`, `patient_first_name/last_name/dni`, `is_new_patient`, `notifications_queued`. |
+| `already_imported` | `Study.objects.filter(protocol_number="LW-{numero}").exists()`. Returns the existing UUID; does NOT update (nightly sync owns updates). |
+| `not_found` | `fetch_one_protocol` returned `None`. UI message: "Verificá el número con el laboratorio." |
+| `partial_validation` | Some DETERS row has `VALIDADO_FLD≠'1'` or `CARGADO_FLD≠'1'`. Returns `pending_practices: [ABREV, …]` so the admin can tell the lab which practices are still pending. |
+| `unpaid_skipped` | `PACIENTES.DEBEBONO_FLD == '1'` (patient owes the bono). |
+| `derivacion_skipped` | `NUMMEDICO_FLD ∈ {0, 175, None}` or doctor's NOMBRE matches `/(no\|sin)\s+consigna/i`. **`force=True` bypasses ONLY this filter** — see below. |
+| `pet_skipped` | Pet/vet patient (DNI empty + last_name starts with '167' or has a vet practice). |
+| `already_importing` | Concurrency lock held by another task. |
+
+#### `force=True` (added 2026-05-12)
+
+Single-purpose escape hatch: when the admin gets `derivacion_skipped`
+for a real walk-in patient (NUMMEDICO_FLD=175, "Sin Consigna" sentinel),
+they can click "Importar de todas formas" in the UI to retry with
+`force=true`. The Celery task bypasses ONLY the derivacion filter,
+clears `medico=None` internally so no "No Consigna" doctor User is
+created, and the Study lands with `ordered_by=None`. **Other filters
+(`unpaid_skipped`, `partial_validation`, `pet_skipped`,
+`already_imported`) are NOT bypassed** — those have data-quality
+reasons that bypassing would mask. Force-imports are logged at INFO
+with the NUMERO + NUMMEDICO_FLD + MEDICO name for audit.
+
+#### `completed_at` quirk (on-demand only)
+
+`mappers.map_study` deliberately leaves `Study.completed_at = NULL`
+(see comment at `apps/labwin_sync/mappers.py:423-427` — historical
+visual bug where setting it from `FECHA_FLD` produced "completed
+before solicited" rows). Frontend reads `created_at` as the
+"Completado" date. For nightly sync the gap between sample-taken and
+our-row-created is small enough not to matter — but for an on-demand
+import of a year-old study, "Completado: <today>" was a visible lie.
+
+**Fix is on-demand-only**: after `_get_or_create_study_with_practices`
+returns, `import_protocol_by_numero` backfills
+`Study.completed_at = Study.service_date` if `completed_at` is null.
+Nightly sync stays untouched, so the historical visual bug can't
+reappear there.
+
+#### SyncLog tagging
+
+Each on-demand run creates a SyncLog row tagged
+`backup_filename = "on-demand:LW-{numero}"`. Filterable in admin:
+
+```sql
+SELECT * FROM labwin_sync_synclog
+WHERE backup_filename LIKE 'on-demand:%'
+ORDER BY started_at DESC LIMIT 10;
+```
+
+Refusal outcomes mark the SyncLog as `failed` with the outcome name in
+`errors[0].error`. Successful imports + `already_imported` mark it
+`completed`.
+
+#### Notification
+
+`_dispatch_patient_notifications` is called on the `imported` path with
+`{patient_pk: [study_pk]}`. `Study.notification_sent_at` flag prevents
+re-emailing on a re-import. `DISABLE_PATIENT_EMAILS` and
+`PATIENT_EMAIL_ALLOWLIST_DOMAINS` apply unchanged.
+
+---
 
 ### FTP PDF Fetch (Phase 13)
 

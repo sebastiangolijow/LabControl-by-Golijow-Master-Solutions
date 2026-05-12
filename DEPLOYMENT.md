@@ -1,6 +1,6 @@
 # LabControl Production Deployment Guide
 
-**Last Updated**: May 8, 2026
+**Last Updated**: May 12, 2026
 **Environment**: Staging/Production
 **Server**: Hostinger VPS
 
@@ -24,6 +24,56 @@
 ---
 
 ## 🔧 Recent Updates & Fixes
+
+### May 12, 2026: biological_sex split, SEXO_FLD inversion fix, on-demand protocol import + UAT polish
+
+**Biggest day of the project so far.** Five distinct shippable units, all in production by EOD:
+
+1. **biological_sex split from gender** (migration `users.0003_user_biological_sex`):
+   - New `User.biological_sex` field (M/F, blank). Sourced from LabWin SEXO_FLD; read-only on the patient API. `User.gender` (M/F/O/P) is now patient-self-declared and **never overwritten by sync**.
+   - Migration backfills `biological_sex` from existing `gender` for M/F users (1,700 + 481 patients).
+   - `mappers.map_patient` now returns `biological_sex` (not `gender`). `_get_or_create_patient` and `_refresh_existing_patient` updated. Frontend ProfileView / RegisterView / admin Editar Usuario modal all updated.
+
+2. **SEXO_FLD encoding inversion fixed** (was wrong from the connector's first commit):
+   - Verified against real PACIENTES rows: `SEXO_FLD=1`=female, `=2`=male (population skew 85/15 matches lab demographic).
+   - `apps/labwin_sync/mappers.py` flipped to `1→F, 2→M`. Mock data fixed.
+   - One-shot `correct_biological_sex` management command swapped 2,181 users (M↔F) + cleared `gender` for `role='patient'`. Distribution went from 1700 M / 481 F → 1700 F / 481 M.
+   - **REMOVE-ONCE-APPLIED** — see CLAUDE.md TODO 3b.
+
+3. **On-demand protocol import** — full new feature:
+   - `POST /api/v1/labwin-sync/import-protocol/` body `{numero: int, force?: bool}`. Admin types a NUMERO into the modal → Celery task pulls one protocol from the local Firebird container → runs through the same mappers + skip-filters as nightly sync. PDF is uploaded later via the existing FTP path.
+   - 8 outcome branches (`imported / already_imported / not_found / partial_validation / unpaid_skipped / derivacion_skipped / pet_skipped / already_importing`).
+   - `force=True` bypasses ONLY the `derivacion_skipped` filter (walk-in patients with NUMMEDICO_FLD=175). Other filters stay (data-quality reasons).
+   - On-demand-only fix: `Study.completed_at` backfilled to `service_date` after import so the frontend's "Completado" label shows the sample date instead of today's date for old studies. Frontend `ResultsView` updated to prefer `completed_at` when set.
+   - Each on-demand run tagged `SyncLog.backup_filename = "on-demand:LW-{numero}"` for audit (no migration needed; reused existing field).
+   - CreateStudyModal got a soft-deprecation banner pointing to the new flow.
+
+4. **`PATIENT_EMAIL_ALLOWLIST_DOMAINS` env var added** to `.env.production`:
+   ```env
+   PATIENT_EMAIL_ALLOWLIST_DOMAINS=labmolecular.com.ar
+   ```
+   When `DISABLE_PATIENT_EMAILS=True` (still on in prod), patients on these domains STILL get emails. Lets the lab team test the patient flow with their corporate accounts while real patients stay paused.
+
+5. **Multi-token search fix** in `apps/core/search.py::unaccent_icontains_q`:
+   - UAT bug: `"estefania s"` returned 0 results because `__icontains` matched the whole substring against each field.
+   - Fix: split on whitespace, AND tokens, OR fields-per-token. `"estefania schm"` now narrows to the Schmidts. Backward compatible with single-token queries.
+
+**Operational changes on the VPS:**
+- `.env.production` updated to add `PATIENT_EMAIL_ALLOWLIST_DOMAINS=labmolecular.com.ar` (backed up to `.env.production.bak.20260512-141049` first).
+- `users.0003_user_biological_sex` migration applied via `docker compose run --rm web python manage.py migrate` against prod DB.
+- `correct_biological_sex --confirm` ran in prod, swapped 2,181 users.
+- Manual one-time backfill of `LW-250957`'s `completed_at` from NULL to `2025-10-14 14:19 UTC` (the only on-demand-imported study from before the on-demand-completed_at fix landed).
+- Web / celery_worker / celery_beat images rebuilt + force-recreated multiple times throughout the day for each shippable unit.
+- nginx restarted ~10 times for various frontend deploys.
+
+**Test count**: ~475 → ~510 passing (12 new on-demand outcome tests + 8 API permission tests + 3 force tests + 1 completed_at test + ~10 new across biological_sex split + 8 new in `unaccent_icontains_q` multi-token + edge-case tests).
+
+**UAT polish** (small commits, separate from the above):
+- Email templates rewritten to LDM voice (Spanish, no Security Notice, no LabControl branding): `email_verification.html` + `result_ready.html` + `send_result_notification_email` subject line.
+- Registration: replaced inline success strip + 2s auto-redirect with a centered modal that requires manual click. Spam-folder hint included.
+- ResultsView patient name → clickable button (admin/lab_staff only) → tight detail popup with email/DNI/phone/birthday.
+- Profile birthday rendered in `es-AR` ("17 de diciembre de 1966").
+- "N° de Carnet" → "N° de Afiliado" across all 3 forms.
 
 ### May 7, 2026: PDF upload pipeline rebuilt (LabWin FTP plugin → script-on-lab-PC)
 
@@ -1206,11 +1256,17 @@ docker exec -i labcontrol_db psql -U labcontrol_user -d labcontrol_db < backup.s
 
 ---
 
-**Document Version**: 4.1
+**Document Version**: 4.2
 **Maintained By**: Development Team
-**Last Reviewed**: May 8, 2026
+**Last Reviewed**: May 12, 2026
 
 ## 📜 Change Log
+
+### Version 4.2 - May 12, 2026
+- New "May 12, 2026" entry in Recent Updates documenting the biggest day of the project so far: biological_sex split, SEXO_FLD inversion fix, on-demand protocol import, PATIENT_EMAIL_ALLOWLIST_DOMAINS env var, multi-token search, and assorted UAT polish.
+- `.env.production` on the VPS now carries `PATIENT_EMAIL_ALLOWLIST_DOMAINS=labmolecular.com.ar`. Backed up to `.env.production.bak.20260512-141049` before the change.
+- New API endpoint `POST /api/v1/labwin-sync/import-protocol/` (admin/lab_staff only). Status polling reuses existing `/labwin-sync/status/<task_id>/`.
+- Migration `users.0003_user_biological_sex` applied in prod. One-shot `correct_biological_sex` management command applied in prod (2,181 users corrected). Removal of that script tracked under CLAUDE.md TODO 3b.
 
 ### Version 4.1 - May 8, 2026
 - §FTP Server Configuration shrunk to a pointer to the new [`PDF_UPLOAD_PIPELINE.md`](./PDF_UPLOAD_PIPELINE.md); kept only server-side vsftpd config that was duplicated.
