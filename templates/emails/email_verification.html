@@ -205,15 +205,11 @@
 
             <!-- Email Body -->
             <div class="email-body">
-                <p class="greeting">Estimado/a {{ user_name }},</p>
+                <p class="greeting"><strong>Hola {{ user_name }},</strong></p>
 
                 <p class="content-text">
-                    ¡Gracias por registrarte en el Laboratorio de Diagnóstico Molecular! Para completar la configuración de tu cuenta y acceder a tu portal de paciente, por favor verificá tu dirección de email.
+                    Tu acceso al portal del paciente de LDM - Laboratorio de Diagnóstico Molecular - está casi listo. Para activarlo, verificá tu dirección de email.
                 </p>
-
-                <div class="highlight-box">
-                    <p>Hacé clic en el botón de abajo para verificar tu email:</p>
-                </div>
 
                 <div class="button-container">
                     <a href="{{ verification_url }}" class="cta-button">Verificar mi Email</a>
@@ -226,26 +222,10 @@
                     {{ verification_url }}
                 </div>
 
-                <div class="security-notice">
-                    <strong>⚠️ Aviso de Seguridad:</strong>
-                    Este enlace de verificación expirará en 24 horas. Si no creaste una cuenta en el Laboratorio de Diagnóstico Molecular, por favor ignorá este email o contactanos si tenés alguna preocupación.
-                </div>
-
-                <p class="content-text">Después de la verificación, podrás:</p>
-                <ul class="benefits-list">
-                    <li>Ver tus resultados de laboratorio</li>
-                    <li>Descargar PDFs de resultados de forma segura</li>
-                    <li>Recibir notificaciones cuando nuevos resultados estén disponibles</li>
-                    <li>Gestionar la configuración de tu cuenta</li>
-                </ul>
-
-                <p class="content-text">
-                    Si tenés alguna pregunta, no dudes en contactar a nuestro equipo de soporte.
-                </p>
+                <p class="content-text">¡Muchas gracias!</p>
 
                 <div class="signature">
-                    <p>Saludos cordiales,</p>
-                    <p><strong>Equipo del Laboratorio de Diagnóstico Molecular</strong></p>
+                    <p><strong>Equipo de LDM</strong></p>
                 </div>
             </div>
 
