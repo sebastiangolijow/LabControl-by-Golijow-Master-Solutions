@@ -14,22 +14,35 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Filter invoices based on user role."""
+        """Filter invoices based on user role.
+
+        Invoices belonging to soft-deleted patients are hidden by default;
+        admin/lab_manager opt-in via ?include_deleted=true (mirrors users
+        + studies).
+        """
         user = self.request.user
 
         if user.is_superuser or user.role in ["admin", "lab_manager"]:
-            # Admins and lab managers see all invoices in their lab
             if user.lab_client_id:
-                return Invoice.objects.filter(lab_client_id=user.lab_client_id)
-            return Invoice.objects.all()
+                qs = Invoice.objects.filter(lab_client_id=user.lab_client_id)
+            else:
+                qs = Invoice.objects.all()
         elif user.is_patient:
-            # Patients only see their own invoices
-            return Invoice.objects.filter(patient=user)
+            qs = Invoice.objects.filter(patient=user)
         else:
-            # Staff see all invoices in their lab
             if user.lab_client_id:
-                return Invoice.objects.filter(lab_client_id=user.lab_client_id)
-            return Invoice.objects.none()
+                qs = Invoice.objects.filter(lab_client_id=user.lab_client_id)
+            else:
+                return Invoice.objects.none()
+
+        include_deleted = (
+            self.request.query_params.get("include_deleted", "").lower() == "true"
+        )
+        can_see_deleted = user.is_superuser or user.role in ("admin", "lab_manager")
+        if not (include_deleted and can_see_deleted):
+            qs = qs.filter(patient__deleted_at__isnull=True)
+
+        return qs
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -40,19 +53,31 @@ class PaymentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Filter payments based on user role."""
+        """Filter payments based on user role.
+
+        Payments inherit visibility from their invoice's patient — same
+        soft-delete filter as InvoiceViewSet.
+        """
         user = self.request.user
 
         if user.is_superuser or user.role in ["admin", "lab_manager"]:
-            # Admins see all payments in their lab
             if user.lab_client_id:
-                return Payment.objects.filter(invoice__lab_client_id=user.lab_client_id)
-            return Payment.objects.all()
+                qs = Payment.objects.filter(invoice__lab_client_id=user.lab_client_id)
+            else:
+                qs = Payment.objects.all()
         elif user.is_patient:
-            # Patients see payments for their invoices
-            return Payment.objects.filter(invoice__patient=user)
+            qs = Payment.objects.filter(invoice__patient=user)
         else:
-            # Staff see all payments in their lab
             if user.lab_client_id:
-                return Payment.objects.filter(invoice__lab_client_id=user.lab_client_id)
-            return Payment.objects.none()
+                qs = Payment.objects.filter(invoice__lab_client_id=user.lab_client_id)
+            else:
+                return Payment.objects.none()
+
+        include_deleted = (
+            self.request.query_params.get("include_deleted", "").lower() == "true"
+        )
+        can_see_deleted = user.is_superuser or user.role in ("admin", "lab_manager")
+        if not (include_deleted and can_see_deleted):
+            qs = qs.filter(invoice__patient__deleted_at__isnull=True)
+
+        return qs

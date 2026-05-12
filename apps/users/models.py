@@ -351,19 +351,42 @@ class User(AbstractBaseUser, PermissionsMixin):
             return False
         return not is_token_expired(self.verification_token_created_at)
 
-    def soft_delete(self):
+    def soft_delete(self, user=None):
         """
         Soft delete the user by setting deleted_at timestamp and is_active=False.
 
-        This preserves the user record and all related data (studies, appointments, etc.)
-        while preventing login and marking the account as deleted.
+        This preserves the user record and all related data (studies,
+        appointments, etc.) while preventing login and marking the
+        account as deleted. Querysets across the app filter on
+        deleted_at__isnull=True by default to hide soft-deleted users
+        and their related data; an ?include_deleted=true admin toggle
+        reveals them with a "Restaurar" button.
+
+        Note: User does NOT inherit SoftDeletableModel — it has its
+        own deleted_at column + this method. is_deleted is a
+        @property below derived from deleted_at, not a DB column.
+
+        Args:
+            user: The actor performing the deletion (for audit logs).
+                Captured by the caller's logger.info — no DB column
+                stored. If you need a persistent actor trail, log it
+                at the caller or add a deleted_by FK in a future
+                migration.
         """
         self.deleted_at = timezone.now()
         self.is_active = False
         self.save(update_fields=["deleted_at", "is_active"])
 
     def restore(self):
-        """Restore a soft-deleted user."""
+        """Restore a soft-deleted user.
+
+        Flips is_active back to True so login works again. Resets
+        deleted_at to NULL so default querysets stop hiding them.
+        Their studies, appointments, invoices, notifications come
+        back automatically because those viewsets filter on
+        patient__deleted_at__isnull=True (transitively respect this
+        flag).
+        """
         self.deleted_at = None
         self.is_active = True
         self.save(update_fields=["deleted_at", "is_active"])

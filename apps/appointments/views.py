@@ -25,22 +25,35 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return AppointmentSerializer
 
     def get_queryset(self):
-        """Filter appointments based on user role."""
+        """Filter appointments based on user role.
+
+        Appointments belonging to soft-deleted patients are hidden by
+        default. Admin/lab_manager can opt-in with ?include_deleted=true
+        for the same audit-recovery toggle used on the users list.
+        """
         user = self.request.user
 
         if user.is_superuser or user.role in ["admin", "lab_manager"]:
-            # Admins and lab managers see all appointments in their lab
             if user.lab_client_id:
-                return Appointment.objects.filter(lab_client_id=user.lab_client_id)
-            return Appointment.objects.all()
+                qs = Appointment.objects.filter(lab_client_id=user.lab_client_id)
+            else:
+                qs = Appointment.objects.all()
         elif user.is_patient:
-            # Patients only see their own appointments
-            return Appointment.objects.filter(patient=user)
+            qs = Appointment.objects.filter(patient=user)
         else:
-            # Staff see all appointments in their lab
             if user.lab_client_id:
-                return Appointment.objects.filter(lab_client_id=user.lab_client_id)
-            return Appointment.objects.none()
+                qs = Appointment.objects.filter(lab_client_id=user.lab_client_id)
+            else:
+                return Appointment.objects.none()
+
+        include_deleted = (
+            self.request.query_params.get("include_deleted", "").lower() == "true"
+        )
+        can_see_deleted = user.is_superuser or user.role in ("admin", "lab_manager")
+        if not (include_deleted and can_see_deleted):
+            qs = qs.filter(patient__deleted_at__isnull=True)
+
+        return qs
 
     def create(self, request, *args, **kwargs):
         """

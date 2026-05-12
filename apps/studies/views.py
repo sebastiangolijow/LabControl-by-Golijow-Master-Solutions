@@ -251,7 +251,14 @@ class StudyViewSet(viewsets.ModelViewSet):
         return Response({"last_protocol_number": last})
 
     def get_queryset(self):
-        """Filter studies based on user role."""
+        """Filter studies based on user role.
+
+        Studies belonging to soft-deleted patients (User.deleted_at IS NOT
+        NULL) are hidden across the board so they don't leak into the
+        results table after the patient is removed. Admin/lab_staff can
+        opt-in with ?include_deleted=true to see them again, mirroring
+        the toggle on the users list.
+        """
         user = self.request.user
 
         # Base queryset: exclude soft-deleted studies, prefetch practices
@@ -261,23 +268,27 @@ class StudyViewSet(viewsets.ModelViewSet):
         )
 
         if user.is_superuser or user.role == "admin":
-            # Admins see all non-deleted studies in their lab
-            # if user.lab_client_id:
-            #     return base_queryset.filter(lab_client_id=user.lab_client_id)
-            return base_queryset
+            qs = base_queryset
         elif user.role == "lab_staff":
-            # Lab staff see all non-deleted studies in their lab
             if user.lab_client_id:
-                return base_queryset.filter(lab_client_id=user.lab_client_id)
-            return base_queryset
+                qs = base_queryset.filter(lab_client_id=user.lab_client_id)
+            else:
+                qs = base_queryset
         elif user.is_patient:
-            # Patients only see their own non-deleted studies
-            return base_queryset.filter(patient=user)
+            qs = base_queryset.filter(patient=user)
         elif user.is_doctor:
-            # Doctors only see studies they ordered
-            return base_queryset.filter(ordered_by=user)
+            qs = base_queryset.filter(ordered_by=user)
         else:
             return Study.objects.none()
+
+        include_deleted = (
+            self.request.query_params.get("include_deleted", "").lower() == "true"
+        )
+        can_see_deleted = user.is_superuser or user.role in ("admin", "lab_staff")
+        if not (include_deleted and can_see_deleted):
+            qs = qs.filter(patient__deleted_at__isnull=True)
+
+        return qs
 
     def destroy(self, request, *args, **kwargs):
         """

@@ -59,8 +59,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         """Set permissions based on action."""
-        if self.action == "destroy":
-            # Only admins and superusers can delete users
+        if self.action in ("destroy", "restore"):
+            # Only admins and superusers can delete or restore users
             return [IsAdmin()]
         return super().get_permissions()
 
@@ -77,18 +77,33 @@ class UserViewSet(viewsets.ModelViewSet):
         - Doctors see only their own active patients — they should never see
           unactivated rows.
         - Everyone else sees only themselves.
+
+        Soft-deleted users (deleted_at IS NOT NULL) are hidden by default
+        for everyone. Admin/lab_staff can opt-in with ?include_deleted=true
+        to power the "Mostrar usuarios eliminados" toggle in PatientsView.
         """
         user = self.request.user
 
         if user.is_superuser or user.role == "admin":
-            return User.objects.all()
+            qs = User.objects.all()
         elif user.role == "lab_staff" and user.lab_client_id:
-            return User.objects.filter(lab_client_id=user.lab_client_id)
+            qs = User.objects.filter(lab_client_id=user.lab_client_id)
         elif user.role == "doctor":
-            # Doctors can only see their own patients (patients with studies ordered by them)
-            return user.patients.filter(is_active=True)
+            qs = user.patients.filter(is_active=True)
         else:
-            return User.objects.filter(pk=user.pk)
+            qs = User.objects.filter(pk=user.pk)
+
+        # Hide soft-deleted users unless explicit opt-in via query string.
+        # The toggle is only meaningful for admin / lab_staff; doctors and
+        # patient self-view never get soft-deleted rows regardless.
+        include_deleted = (
+            self.request.query_params.get("include_deleted", "").lower() == "true"
+        )
+        can_see_deleted = user.is_superuser or user.role in ("admin", "lab_staff")
+        if not (include_deleted and can_see_deleted):
+            qs = qs.filter(deleted_at__isnull=True)
+
+        return qs
 
     def destroy(self, request, *args, **kwargs):
         """
@@ -121,13 +136,16 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Soft delete - deactivate the user instead of deleting
-        user_to_delete.is_active = False
-        user_to_delete.save(update_fields=["is_active"])
+        # Soft delete via User.soft_delete() — sets deleted_at +
+        # is_active=False. Querysets across the app filter on
+        # deleted_at__isnull=True by default (PatientsView, search-*,
+        # Study/Invoice/Appointment/Notification viewsets) so the row
+        # disappears from the lab's UI. is_deleted is a property
+        # derived from deleted_at, not a DB column.
+        user_to_delete.soft_delete(user=request.user)
 
-        # Log the deactivation for audit trail
         logger.info(
-            "User soft-deleted (deactivated) — target_pk=%s target_role=%s "
+            "User soft-deleted — target_pk=%s target_role=%s "
             "by_user_pk=%s",
             user_to_delete.pk,
             user_to_delete.role,
@@ -135,9 +153,52 @@ class UserViewSet(viewsets.ModelViewSet):
         )
         return Response(
             {
-                "message": f"User {user_to_delete.email} has been deactivated successfully.",
+                "message": f"User {user_to_delete.email} has been deleted successfully.",
                 "user_id": str(user_to_delete.pk),
                 "email": user_to_delete.email,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        """Restore a soft-deleted user (admin only).
+
+        POST /api/v1/users/{uuid}/restore/
+
+        Flips deleted_at back to NULL + is_active=True. The user's
+        studies, appointments, invoices, notifications come back
+        automatically because those viewsets filter on
+        patient__deleted_at__isnull=True (transitive).
+        """
+        # Need to bypass the default get_queryset() filter to find a
+        # soft-deleted user. Look up directly on the unfiltered manager.
+        try:
+            user_to_restore = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not user_to_restore.is_deleted:
+            return Response(
+                {"error": "User is not deleted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_to_restore.restore()
+        logger.info(
+            "User restored — target_pk=%s target_role=%s by_user_pk=%s",
+            user_to_restore.pk,
+            user_to_restore.role,
+            request.user.pk,
+        )
+        return Response(
+            {
+                "message": f"User {user_to_restore.email} has been restored successfully.",
+                "user_id": str(user_to_restore.pk),
+                "email": user_to_restore.email,
             },
             status=status.HTTP_200_OK,
         )

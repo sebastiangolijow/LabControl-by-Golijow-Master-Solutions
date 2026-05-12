@@ -902,3 +902,156 @@ class UserViewSetVisibilityTests(BaseTestCase):
             pks,
             "Doctors should not see un-activated patients",
         )
+
+
+class UserSoftDeleteTests(BaseTestCase):
+    """Soft-delete: User.soft_delete() / restore() + viewset filtering.
+
+    The DELETE /api/v1/users/{uuid}/ endpoint stamps deleted_at and flips
+    is_active=False. Soft-deleted users are hidden from the list view by
+    default; admin/lab_staff can opt-in via ?include_deleted=true.
+    POST /api/v1/users/{uuid}/restore/ undoes both flags.
+    """
+
+    def _viewset_qs_for(self, user, query_params=None):
+        from rest_framework.test import APIRequestFactory
+
+        from apps.users.views import UserViewSet
+
+        factory = APIRequestFactory()
+        request = factory.get("/api/v1/users/", query_params or {})
+        request.user = user
+        viewset = UserViewSet()
+        viewset.request = request
+        viewset.action = "list"
+        return viewset.get_queryset()
+
+    def test_soft_delete_sets_deleted_at_and_deactivates(self):
+        from django.utils import timezone
+
+        patient = self.create_patient(email="todelete@x.com", is_active=True)
+        before = timezone.now()
+        patient.soft_delete()
+        patient.refresh_from_db()
+
+        self.assertFalse(patient.is_active)
+        self.assertIsNotNone(patient.deleted_at)
+        self.assertGreaterEqual(patient.deleted_at, before)
+        self.assertTrue(patient.is_deleted)
+
+    def test_restore_clears_deleted_at_and_reactivates(self):
+        patient = self.create_patient(email="torestore@x.com", is_active=True)
+        patient.soft_delete()
+        patient.refresh_from_db()
+        self.assertTrue(patient.is_deleted)
+
+        patient.restore()
+        patient.refresh_from_db()
+        self.assertTrue(patient.is_active)
+        self.assertIsNone(patient.deleted_at)
+        self.assertFalse(patient.is_deleted)
+
+    def test_admin_does_not_see_soft_deleted_by_default(self):
+        admin = self.create_admin()
+        active = self.create_patient(email="active@x.com")
+        deleted = self.create_patient(email="deleted@x.com")
+        deleted.soft_delete()
+
+        qs = self._viewset_qs_for(admin)
+        pks = set(qs.values_list("pk", flat=True))
+        self.assertIn(active.pk, pks)
+        self.assertNotIn(
+            deleted.pk,
+            pks,
+            "Soft-deleted users must be hidden by default",
+        )
+
+    def test_admin_sees_soft_deleted_with_include_deleted_true(self):
+        admin = self.create_admin()
+        active = self.create_patient(email="active@x.com")
+        deleted = self.create_patient(email="deleted@x.com")
+        deleted.soft_delete()
+
+        qs = self._viewset_qs_for(admin, query_params={"include_deleted": "true"})
+        pks = set(qs.values_list("pk", flat=True))
+        self.assertIn(active.pk, pks)
+        self.assertIn(deleted.pk, pks)
+
+    def test_destroy_endpoint_soft_deletes_user(self):
+        from rest_framework import status
+
+        admin = self.create_admin()
+        patient = self.create_patient(email="todelete@x.com")
+        client = self.authenticate(admin)
+
+        response = client.delete(f"/api/v1/users/{patient.pk}/")
+
+        self.assertIn(
+            response.status_code,
+            (status.HTTP_200_OK, status.HTTP_204_NO_CONTENT),
+        )
+        patient.refresh_from_db()
+        self.assertFalse(patient.is_active)
+        self.assertIsNotNone(patient.deleted_at)
+
+    def test_restore_endpoint_undoes_soft_delete(self):
+        from rest_framework import status
+
+        admin = self.create_admin()
+        patient = self.create_patient(email="torestore@x.com")
+        patient.soft_delete()
+        client = self.authenticate(admin)
+
+        response = client.post(f"/api/v1/users/{patient.pk}/restore/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        patient.refresh_from_db()
+        self.assertTrue(patient.is_active)
+        self.assertIsNone(patient.deleted_at)
+
+    def test_restore_endpoint_rejects_non_admin(self):
+        from rest_framework import status
+
+        lab_staff = self.create_lab_staff()
+        patient = self.create_patient(email="x@x.com")
+        patient.soft_delete()
+        client = self.authenticate(lab_staff)
+
+        response = client.post(f"/api/v1/users/{patient.pk}/restore/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_studies_of_soft_deleted_patient_are_hidden_by_default(self):
+        from apps.studies.views import StudyViewSet
+        from rest_framework.test import APIRequestFactory
+
+        admin = self.create_admin()
+        patient = self.create_patient(email="todelete@x.com")
+        study = self.create_study(patient=patient)
+
+        factory = APIRequestFactory()
+        request = factory.get("/api/v1/studies/")
+        request.user = admin
+        viewset = StudyViewSet()
+        viewset.request = request
+        viewset.action = "list"
+
+        # Visible before delete
+        self.assertIn(study.pk, set(viewset.get_queryset().values_list("pk", flat=True)))
+
+        patient.soft_delete()
+        # Hidden after delete (default behaviour)
+        self.assertNotIn(
+            study.pk,
+            set(viewset.get_queryset().values_list("pk", flat=True)),
+            "Studies of soft-deleted patients must not leak into the default list",
+        )
+
+        # Visible again with include_deleted=true
+        request_with = factory.get("/api/v1/studies/", {"include_deleted": "true"})
+        request_with.user = admin
+        viewset.request = request_with
+        self.assertIn(
+            study.pk,
+            set(viewset.get_queryset().values_list("pk", flat=True)),
+        )
