@@ -103,15 +103,23 @@ def map_patient(paciente_row):
     """
     first_name, last_name = parse_name(paciente_row.get("NOMBRE_FLD"))
 
-    # SEXO_FLD encodes biological sex (1=male, 2=female). Maps to
-    # User.biological_sex — NOT to User.gender. Gender is the patient's
-    # self-declared identity, set by them through registration / profile,
-    # and sync must never touch it.
+    # SEXO_FLD encodes biological sex: 1=female, 2=male. Verified
+    # 2026-05-12 against real PACIENTES rows — every "FABRIS,NORA",
+    # "ALTAMIRANO,CLAUDIA", "PEREZ,MARIA VIRGINIA" etc. has SEXO_FLD=1,
+    # population is 85% =1 / 15% =2 (matches lab demographic of mostly
+    # female patients), and SEXO_FLD=8 is the pet/vet sentinel. The
+    # original mapper had this inverted (1→M, 2→F) and corrupted ~2,180
+    # records before the fix. A one-shot script (correct_biological_sex)
+    # restored the existing data after this commit.
+    #
+    # Maps to User.biological_sex — NOT to User.gender. Gender is the
+    # patient's self-declared identity, set by them through registration
+    # or profile-edit, and sync must never touch it.
     sexo = paciente_row.get("SEXO_FLD")
     if sexo == 1:
-        biological_sex = "M"
-    elif sexo == 2:
         biological_sex = "F"
+    elif sexo == 2:
+        biological_sex = "M"
     else:
         biological_sex = ""
 

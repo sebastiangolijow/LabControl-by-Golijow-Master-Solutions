@@ -3778,7 +3778,8 @@ class SyncBiologicalSexNeverTouchesGenderTests(BaseTestCase):
 
     def test_sync_writes_biological_sex_on_create(self):
         """First sync of a new patient populates biological_sex from SEXO_FLD."""
-        # Sample data has SEXO_FLD=2 for patient 100001 (= Female).
+        # Sample data has SEXO_FLD=1 for patient 100001 (Maria) which
+        # maps to "F" per the corrected encoding (1=female, 2=male).
         sync_labwin_results(lab_client_id=1, full_sync=True)
 
         from apps.users.models import User
@@ -3831,8 +3832,9 @@ class SyncBiologicalSexNeverTouchesGenderTests(BaseTestCase):
         existing.gender = "F"
         existing.save()
 
-        # Mock data SEXO_FLD=2 for this patient = "F", so sync should
-        # correct biological_sex from M -> F.
+        # Mock data SEXO_FLD=1 for Maria (patient 100001) maps to "F"
+        # under the corrected encoding, so sync should refresh
+        # biological_sex from M -> F.
         sync_labwin_results(lab_client_id=1, full_sync=True)
 
         existing.refresh_from_db()

@@ -18,7 +18,10 @@ SAMPLE_PACIENTES = {
         "NUMERO_FLD": 100001,
         "NOMBRE_FLD": "Garcia, Maria",
         "HCLIN_FLD": "30123456",
-        "SEXO_FLD": 2,
+        # SEXO_FLD: 1=female, 2=male per the real LabWin schema (verified
+        # 2026-05-12). Mock previously had this flipped, masking the
+        # mapper inversion bug that corrupted ~2,180 prod records.
+        "SEXO_FLD": 1,
         "FNACIM_FLD": "19850315",
         "MUTUAL_FLD": 1,
         "MEDICO_FLD": "Lopez, Juan",
@@ -35,7 +38,7 @@ SAMPLE_PACIENTES = {
         "NUMERO_FLD": 100002,
         "NOMBRE_FLD": "Rodriguez Pedro",
         "HCLIN_FLD": "28987654",
-        "SEXO_FLD": 1,
+        "SEXO_FLD": 2,
         "FNACIM_FLD": "19780620",
         "MUTUAL_FLD": 2,
         "MEDICO_FLD": "Lopez, Juan",
@@ -52,7 +55,7 @@ SAMPLE_PACIENTES = {
         "NUMERO_FLD": 100003,
         "NOMBRE_FLD": "Fernandez Ana",
         "HCLIN_FLD": "35456789",
-        "SEXO_FLD": 2,
+        "SEXO_FLD": 1,
         "FNACIM_FLD": "19920101",
         "MUTUAL_FLD": 1,
         "MEDICO_FLD": "Martinez, Carlos",
