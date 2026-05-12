@@ -33,6 +33,11 @@ SAMPLE_PACIENTES = {
         "LOCALIDAD_FLD": "CABA",
         "EMAIL_FLD": "maria.garcia@test.com",
         "DEBEBONO_FLD": "",  # insurance-covered (most common in real DB)
+        # FECHA_FLD/HORA_FLD on PACIENTES are the protocol's order
+        # date/time. Used as a fallback when DETERS rows have
+        # FECHA_FLD=None (older data — see _get_or_create_study_with_practices).
+        "FECHA_FLD": "20260120",
+        "HORA_FLD": "09:00",
     },
     100002: {
         "NUMERO_FLD": 100002,
@@ -50,6 +55,8 @@ SAMPLE_PACIENTES = {
         "LOCALIDAD_FLD": "La Plata",
         "EMAIL_FLD": "",
         "DEBEBONO_FLD": "1",  # self-pay, owes the bono → sync skips this protocol
+        "FECHA_FLD": "20260121",
+        "HORA_FLD": "10:30",
     },
     100003: {
         "NUMERO_FLD": 100003,
@@ -67,6 +74,8 @@ SAMPLE_PACIENTES = {
         "LOCALIDAD_FLD": "Rosario",
         "EMAIL_FLD": "ana.fernandez@test.com",
         "DEBEBONO_FLD": "1",  # self-pay, owes the bono → study.is_paid=False
+        "FECHA_FLD": "20260122",
+        "HORA_FLD": "11:15",
     },
 }
 

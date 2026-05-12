@@ -68,7 +68,7 @@ PACIENTES_QUERY = """
     SELECT NUMERO_FLD, NOMBRE_FLD, HCLIN_FLD, SEXO_FLD, FNACIM_FLD,
            MUTUAL_FLD, MEDICO_FLD, NUMMEDICO_FLD, CARNET_FLD,
            TELEFONO_FLD, CELULAR_FLD, DIRECCION_FLD, LOCALIDAD_FLD, EMAIL_FLD,
-           DEBEBONO_FLD
+           DEBEBONO_FLD, FECHA_FLD, HORA_FLD
     FROM PACIENTES
     WHERE NUMERO_FLD IN ({placeholders})
 """
@@ -116,6 +116,14 @@ PACIENTES_COLUMNS = [
     "LOCALIDAD_FLD",
     "EMAIL_FLD",
     "DEBEBONO_FLD",  # paid/owes-bono flag → maps to Study.is_paid
+    # PACIENTES.FECHA_FLD / HORA_FLD are the protocol's order date —
+    # used as a fallback when DETERS rows have FECHA_FLD=None (older
+    # protocols where the lab didn't backfill per-row dates). Without
+    # this, those studies land with solicited_date=NULL and the
+    # frontend renders "1 de enero de 1970" (UAT 2026-05-12,
+    # LW-198689 from 2022).
+    "FECHA_FLD",
+    "HORA_FLD",
 ]
 
 MEDICOS_COLUMNS = [
@@ -275,7 +283,7 @@ class FirebirdLabWinConnector(LabWinConnector):
                 SELECT NUMERO_FLD, NOMBRE_FLD, HCLIN_FLD, SEXO_FLD, FNACIM_FLD,
                        MUTUAL_FLD, MEDICO_FLD, NUMMEDICO_FLD, CARNET_FLD,
                        TELEFONO_FLD, CELULAR_FLD, DIRECCION_FLD, LOCALIDAD_FLD,
-                       EMAIL_FLD, DEBEBONO_FLD
+                       EMAIL_FLD, DEBEBONO_FLD, FECHA_FLD, HORA_FLD
                 FROM PACIENTES
                 WHERE NUMERO_FLD = ?
                 """,

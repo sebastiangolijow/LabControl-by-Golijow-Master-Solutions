@@ -417,6 +417,11 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                             is_validated=True,
                             patient_sex=patient_sex,
                             patient_dob_raw=patient_dob_raw,
+                            # Fallback for protocols where DETERS rows
+                            # have FECHA_FLD=None (older data — see
+                            # _get_or_create_study_with_practices).
+                            paciente_fecha=pac_row.get("FECHA_FLD") if pac_row else None,
+                            paciente_hora=pac_row.get("HORA_FLD") if pac_row else None,
                         )
 
                         # Queue this study for patient notification if we
@@ -980,6 +985,8 @@ def _get_or_create_study_with_practices(
     is_validated=True,
     patient_sex=None,
     patient_dob_raw=None,
+    paciente_fecha=None,
+    paciente_hora=None,
 ):
     """Get or create a Study and its StudyPractice records for a protocol.
 
@@ -1009,14 +1016,23 @@ def _get_or_create_study_with_practices(
     from apps.labwin_sync.services.practice_layout import resolve_valnor_for_patient
     from apps.studies.models import Practice, Study, StudyPractice
 
-    # Use first row for dates (all rows in a protocol share the same date)
+    # Use first DETERS row for dates (all rows in a protocol share the
+    # same date in modern data). For OLD protocols the lab didn't
+    # always backfill DETERS.FECHA_FLD — those rows have None, and the
+    # source of truth becomes PACIENTES.FECHA_FLD which the caller
+    # passes via paciente_fecha. UAT 2026-05-12 found LW-198689 from
+    # 2022 with NULL DETERS.FECHA_FLD; without this fallback the Study
+    # landed with solicited_date=NULL and the frontend rendered
+    # "1 de enero de 1970" (Date(undefined)).
     first_row = deters_rows[0]
+    fecha = first_row.get("FECHA_FLD") or paciente_fecha
+    hora = first_row.get("HORA_FLD") or paciente_hora
     study_fields = mappers.map_study(
         numero,
         patient_pk,
         doctor_pk,
-        fecha=first_row.get("FECHA_FLD"),
-        hora=first_row.get("HORA_FLD"),
+        fecha=fecha,
+        hora=hora,
         is_paid=is_paid,
         is_validated=is_validated,
     )
@@ -1933,6 +1949,10 @@ def import_protocol_by_numero(self, numero, lab_client_id=None, force=False):
             is_validated=True,
             patient_sex=paciente.get("SEXO_FLD"),
             patient_dob_raw=paciente.get("FNACIM_FLD"),
+            # Fallback for protocols where DETERS.FECHA_FLD is None
+            # (older data — see _get_or_create_study_with_practices).
+            paciente_fecha=paciente.get("FECHA_FLD"),
+            paciente_hora=paciente.get("HORA_FLD"),
         )
 
         # On-demand-only fix (UAT 2026-05-12): the mapper deliberately
