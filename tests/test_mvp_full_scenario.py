@@ -194,13 +194,15 @@ class MVPFullScenarioTest(BaseTestCase):
         assert notification.status == "sent"
         print(f"✓ In-app notification created: '{notification.title}'")
 
-        # Check email notification was sent
+        # Check email notification was sent. Subject is the static
+        # LDM-voice string per UAT 2026-05-12 — protocol_number is no
+        # longer part of subject or body. The in-app Notification
+        # asserted above still carries the protocol_number for users
+        # browsing their notification feed.
         assert len(mail.outbox) >= 1
-        email = mail.outbox[-1]  # Get most recent email
+        email = mail.outbox[-1]
         assert "patient@mvptest.com" in email.to
-        assert study.protocol_number in email.subject
-        assert "Results Are Ready" in email.subject
-        assert study.protocol_number in email.body
+        assert email.subject == "Tus resultados están listos"
         print(f"✓ Email notification sent to: {email.to[0]}")
         print(f"  Subject: {email.subject}")
 
@@ -628,7 +630,9 @@ Email Notifications: ✓ Verified
         assert len(mail.outbox) >= 1
         email_obj = mail.outbox[-1]
         assert "newflow@test.com" in email_obj.to
-        assert "2026-NF002" in email_obj.subject
+        # Static LDM-voice subject per UAT 2026-05-12 — protocol_number
+        # is intentionally not in the subject anymore.
+        assert email_obj.subject == "Tus resultados están listos"
         print("✓ Notification + email sent on study creation with file")
 
         # Patient can download immediately

@@ -54,11 +54,14 @@ class EmailNotificationTests(BaseTestCase):
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
 
-        # Verify email content
-        self.assertIn(self.study.protocol_number, email.subject)
-        self.assertIn("Results Are Ready", email.subject)
+        # Verify email content. The subject is the static LDM-voice
+        # string (no protocol_number in the subject, by design — UAT
+        # 2026-05-12). The body is HTML rendered from result_ready.html
+        # which doesn't include the protocol_number either — instead
+        # it shows the patient name + a "Ver mis resultados" CTA.
+        self.assertEqual(email.subject, "Tus resultados están listos")
         self.assertEqual(email.to, [self.patient.email])
-        self.assertIn(self.study.protocol_number, email.body)
+        self.assertIn(self.patient.get_full_name() or self.patient.email, email.body)
 
         # Verify in-app notification was also created
         notification_exists = Notification.objects.filter(
@@ -80,8 +83,11 @@ class EmailNotificationTests(BaseTestCase):
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
 
-        # Verify email content
-        self.assertIn("Blood Test", email.subject)
+        # Subject is the static LDM-voice string (UAT 2026-05-12) — the
+        # `study_type_name` arg is still passed through to the template
+        # context for backward compatibility but is no longer rendered
+        # in the subject or body.
+        self.assertEqual(email.subject, "Tus resultados están listos")
         self.assertEqual(email.to, [self.patient.email])
 
         # Verify result message
