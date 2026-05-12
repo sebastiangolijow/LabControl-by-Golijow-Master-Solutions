@@ -33,6 +33,7 @@ class TestPatientWorkflow(BaseTestCase):
             "phone_number": "+1234567890",
             "dni": "12345678",
             "birthday": "1995-08-10",
+            "biological_sex": "M",
             "lab_client_id": 1,
         }
 
@@ -262,6 +263,7 @@ class TestPatientWorkflow(BaseTestCase):
             "phone_number": "+1234567890",
             "dni": "12345678",
             "birthday": "1990-01-01",
+            "biological_sex": "M",
             "lab_client_id": 1,
         }
 

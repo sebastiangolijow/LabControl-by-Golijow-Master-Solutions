@@ -70,6 +70,7 @@ class MVPFullScenarioTest(BaseTestCase):
             "phone_number": "+525512345678",
             "dni": "12345678",
             "birthday": "1992-03-15",
+            "biological_sex": "F",
             "lab_client_id": lab_client_id,
         }
 
@@ -452,6 +453,7 @@ Email Notifications: ✓ Verified
             "phone_number": "+1234567890",
             "dni": "99887766",
             "birthday": "1985-07-20",
+            "biological_sex": "M",
             "lab_client_id": 1,
         }
 

@@ -25,6 +25,7 @@ class EmailVerificationTests(BaseTestCase):
             "phone_number": "+1234567890",
             "dni": "12345678",
             "birthday": "1990-05-15",
+            "biological_sex": "M",
             "lab_client_id": 1,
         }
 
@@ -284,6 +285,7 @@ class EmailVerificationIntegrationTests(BaseTestCase):
             "phone_number": "+1234567890",
             "dni": "11223344",
             "birthday": "1988-12-01",
+            "biological_sex": "F",
             "lab_client_id": 1,
         }
 

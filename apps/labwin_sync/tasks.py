@@ -654,7 +654,10 @@ def _get_or_create_patient(pac_row, lab_client_id, sync_log, counters):
             first_name=fields.get("first_name", ""),
             last_name=fields.get("last_name", ""),
             dni=fields.get("dni", ""),
-            gender=fields.get("gender", ""),
+            # Sync sets biological_sex (sourced from SEXO_FLD via the
+            # mapper). User.gender stays empty — that's the patient's
+            # self-declared identity, only set via registration / profile.
+            biological_sex=fields.get("biological_sex", ""),
             birthday=fields.get("birthday"),
             mutual_code=fields.get("mutual_code"),
             carnet=fields.get("carnet", ""),
