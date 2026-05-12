@@ -144,3 +144,124 @@ class UserFilterAccentInsensitiveTests(TestCase):
         self.assertIn("moises@example.com", emails)
         self.assertIn("sira@example.com", emails)
         self.assertNotIn("ainara@example.com", emails)
+
+
+class UnaccentIcontainsQMultiTokenTests(TestCase):
+    """Whitespace-tokenized search semantics.
+
+    Each whitespace-separated token must match SOME field; ALL tokens
+    must match. Without this, 'estefania s' returned 0 results because
+    no single field contained the exact substring 'estefania s' — the
+    UAT bug reported 2026-05-12.
+    """
+
+    def setUp(self):
+        super().setUp()
+        # Three Estefanias with different surnames.
+        self.schmidt = User.objects.create_user(
+            email="estefania.schmidt@example.com",
+            first_name="Estefania",
+            last_name="Schmidt",
+            role="patient",
+        )
+        self.villarejo = User.objects.create_user(
+            email="estefania.villarejo@example.com",
+            first_name="Estefania",
+            last_name="Villarejo",
+            role="patient",
+        )
+        self.battafarano = User.objects.create_user(
+            email="estefania.battafarano@example.com",
+            first_name="Estefania",
+            last_name="Battafarano",
+            role="patient",
+        )
+        # Control: a different first name that should never appear in
+        # an "estefania *" search.
+        self.maria = User.objects.create_user(
+            email="maria@example.com",
+            first_name="Maria",
+            last_name="Lopez",
+            role="patient",
+        )
+
+    def _search(self, term):
+        return set(
+            User.objects.filter(role="patient")
+            .filter(unaccent_icontains_q(term, "first_name", "last_name", "email"))
+            .values_list("email", flat=True)
+        )
+
+    def test_single_token_unchanged(self):
+        """A query with no whitespace behaves exactly as before — OR across fields."""
+        emails = self._search("estefania")
+        self.assertIn(self.schmidt.email, emails)
+        self.assertIn(self.villarejo.email, emails)
+        self.assertIn(self.battafarano.email, emails)
+        self.assertNotIn(self.maria.email, emails)
+
+    def test_two_tokens_first_name_and_last_name(self):
+        """'estefania schmidt' narrows to Estefania Schmidt only."""
+        emails = self._search("estefania schmidt")
+        self.assertEqual(emails, {self.schmidt.email})
+
+    def test_two_tokens_can_match_different_fields(self):
+        """One token in first_name, another in email — both via OR-across-fields."""
+        emails = self._search("estefania villarejo")
+        self.assertEqual(emails, {self.villarejo.email})
+
+    def test_extra_whitespace_collapsed(self):
+        """'estefania   schmidt' (multiple spaces) and 'estefania schmidt' equivalent."""
+        a = self._search("estefania   schmidt")
+        b = self._search("estefania schmidt")
+        self.assertEqual(a, b)
+        self.assertEqual(a, {self.schmidt.email})
+
+    def test_trailing_space_does_not_break(self):
+        """'estefania ' (trailing space) tokenizes to ['estefania'] — no empty token."""
+        emails = self._search("estefania ")
+        self.assertEqual(emails, self._search("estefania"))
+
+    def test_whitespace_only_returns_everything(self):
+        """A whitespace-only query is treated like an empty query — no filter applied."""
+        all_patients = set(
+            User.objects.filter(role="patient").values_list("email", flat=True)
+        )
+        self.assertEqual(self._search("   "), all_patients)
+
+    def test_unmatched_second_token_returns_nothing(self):
+        """If one of the tokens matches no field on any user, result is empty."""
+        emails = self._search("estefania xyzzz")
+        self.assertEqual(emails, set())
+
+    def test_accent_insensitive_per_token(self):
+        """Each token is independently accent-insensitive."""
+        # 'munoz' should match 'Muñoz' even when paired with another token.
+        User.objects.create_user(
+            email="jose.munoz@example.com",
+            first_name="José",
+            last_name="Muñoz",
+            role="patient",
+        )
+        emails = self._search("jose munoz")
+        self.assertIn("jose.munoz@example.com", emails)
+
+
+class UnaccentIcontainsQEdgeCaseTests(TestCase):
+    """Edge cases: empty value, None, whitespace-only — all should produce
+    a no-op Q() so the caller's queryset is returned unchanged."""
+
+    def test_empty_string_returns_noop_q(self):
+        from django.db.models import Q
+
+        self.assertEqual(unaccent_icontains_q("", "first_name"), Q())
+
+    def test_none_returns_noop_q(self):
+        from django.db.models import Q
+
+        self.assertEqual(unaccent_icontains_q(None, "first_name"), Q())
+
+    def test_whitespace_only_returns_noop_q(self):
+        from django.db.models import Q
+
+        self.assertEqual(unaccent_icontains_q("   ", "first_name"), Q())

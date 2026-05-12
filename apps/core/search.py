@@ -24,22 +24,49 @@ TextField.register_lookup(Unaccent)
 
 def unaccent_icontains_q(value, *fields):
     """Build a Q() matching `value` against any of `fields`, case- and
-    accent-insensitive.
+    accent-insensitive, with whitespace-tokenized AND semantics.
+
+    The input is split on whitespace into tokens. Each token must match
+    *some* field (OR across fields), and ALL tokens must match (AND across
+    tokens). This makes searches like "estefania s" behave the way users
+    expect: it matches "Estefania Schmidt" because "estefania" matches
+    first_name AND "s" matches last_name. Pre-2026-05-12 the helper
+    treated the whole string as one substring, so any space in the query
+    silently returned 0 results unless a single field happened to contain
+    that exact substring.
+
+    A single-token query (no whitespace) behaves identically to the old
+    helper — just an OR across fields with the substring lookup.
 
     Args:
-        value: search term (Python str). Empty/None returns Q() (always-true).
+        value: search term (Python str). Empty/None/whitespace-only
+               returns Q() (always-true).
         *fields: one or more Django field paths
                  (e.g. "first_name", "patient__email", "study_practices__practice__name").
 
     Returns:
-        Q: OR of `field__unaccent__icontains=value` for each field.
+        Q: AND across whitespace-split tokens, each an OR across fields
+           via `field__unaccent__icontains=token`.
 
-    Example:
-        User.objects.filter(unaccent_icontains_q("si", "first_name", "last_name"))
+    Examples:
+        User.objects.filter(
+            unaccent_icontains_q("si", "first_name", "last_name")
+        )  # ← matches "Sí", "Asunción", "Síngela", etc.
+
+        User.objects.filter(
+            unaccent_icontains_q("estefania s", "first_name", "last_name")
+        )  # ← matches "Estefania Schmidt" (1st token first_name,
+           #   2nd token last_name)
     """
     if not value:
         return Q()
-    q = Q()
-    for field in fields:
-        q |= Q(**{f"{field}__unaccent__icontains": value})
-    return q
+    tokens = value.split()
+    if not tokens:
+        return Q()
+    q_all = Q()
+    for token in tokens:
+        q_token = Q()
+        for field in fields:
+            q_token |= Q(**{f"{field}__unaccent__icontains": token})
+        q_all &= q_token
+    return q_all
