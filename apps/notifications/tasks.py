@@ -73,8 +73,9 @@ def send_result_notification_email(self, user_id, study_id, study_type_name):
         html_content = render_to_string("emails/result_ready.html", context)
         text_content = strip_tags(html_content)  # Fallback plain text
 
-        # Create email
-        subject = f"Your {study_type_name} Results Are Ready"
+        # Create email — Spanish subject to match the LDM-voice template
+        # (UAT 2026-05-12).
+        subject = "Tus resultados están listos"
         email = EmailMultiAlternatives(
             subject=subject,
             body=text_content,
