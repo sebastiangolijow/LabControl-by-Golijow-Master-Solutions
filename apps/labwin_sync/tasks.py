@@ -420,7 +420,9 @@ def sync_labwin_results(self, lab_client_id=None, full_sync=False):
                             # Fallback for protocols where DETERS rows
                             # have FECHA_FLD=None (older data — see
                             # _get_or_create_study_with_practices).
-                            paciente_fecha=pac_row.get("FECHA_FLD") if pac_row else None,
+                            paciente_fecha=(
+                                pac_row.get("FECHA_FLD") if pac_row else None
+                            ),
                             paciente_hora=pac_row.get("HORA_FLD") if pac_row else None,
                         )
 
