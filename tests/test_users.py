@@ -1022,8 +1022,9 @@ class UserSoftDeleteTests(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_studies_of_soft_deleted_patient_are_hidden_by_default(self):
-        from apps.studies.views import StudyViewSet
         from rest_framework.test import APIRequestFactory
+
+        from apps.studies.views import StudyViewSet
 
         admin = self.create_admin()
         patient = self.create_patient(email="todelete@x.com")
@@ -1037,7 +1038,9 @@ class UserSoftDeleteTests(BaseTestCase):
         viewset.action = "list"
 
         # Visible before delete
-        self.assertIn(study.pk, set(viewset.get_queryset().values_list("pk", flat=True)))
+        self.assertIn(
+            study.pk, set(viewset.get_queryset().values_list("pk", flat=True))
+        )
 
         patient.soft_delete()
         # Hidden after delete (default behaviour)

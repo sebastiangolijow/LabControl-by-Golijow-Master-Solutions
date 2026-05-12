@@ -145,8 +145,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user_to_delete.soft_delete(user=request.user)
 
         logger.info(
-            "User soft-deleted — target_pk=%s target_role=%s "
-            "by_user_pk=%s",
+            "User soft-deleted — target_pk=%s target_role=%s " "by_user_pk=%s",
             user_to_delete.pk,
             user_to_delete.role,
             request.user.pk,
