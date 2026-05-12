@@ -1666,7 +1666,7 @@ IMPORT_OUTCOME_LOCKED = "already_importing"
 
 
 @shared_task(bind=True, max_retries=0, time_limit=120)
-def import_protocol_by_numero(self, numero, lab_client_id=None):
+def import_protocol_by_numero(self, numero, lab_client_id=None, force=False):
     """Fetch ONE protocol from Firebird by NUMERO_FLD and ingest it.
 
     Used when an admin needs to import an old study (older than the
@@ -1688,6 +1688,14 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
     Args:
         numero: LabWin NUMERO_FLD (positive integer).
         lab_client_id: Defaults to LABWIN_DEFAULT_LAB_CLIENT_ID.
+        force: When True, BYPASS the derivacion_skipped filter only.
+            UAT 2026-05-12: lab needs to import old studies whose
+            NUMMEDICO_FLD is the "Sin Consigna" sentinel (175) — those
+            are walk-in patients who still want their results. The
+            study lands without an ordered_by doctor (doctor_pk=None,
+            same as a doctor-less nightly-sync row). Other filters
+            (partial_validation / unpaid / pet / already_imported)
+            still apply — those have data-quality reasons behind them.
 
     Returns:
         Dict with `outcome` field plus outcome-specific fields. The API
@@ -1700,7 +1708,7 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
           - not_found          — NUMERO doesn't exist in Firebird
           - partial_validation — see pending_practices list
           - unpaid_skipped     — patient owes the bono
-          - derivacion_skipped — no real referring doctor
+          - derivacion_skipped — no real referring doctor (try force=True)
           - pet_skipped        — vet patient
           - already_importing  — concurrency lock held by another task
     """
@@ -1848,11 +1856,24 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
             counters["unpaid_skipped"] = 1
             return _finalize(IMPORT_OUTCOME_UNPAID)
 
-        # Skip-filter: derivacion / no real doctor.
+        # Skip-filter: derivacion / no real doctor. force=True bypasses
+        # this single filter (admin's explicit override for walk-in
+        # patients) — and clears `medico` so the rest of the path
+        # doesn't create a "No Consigna" User. The Study lands with
+        # ordered_by=None.
         num_medico = paciente.get("NUMMEDICO_FLD")
         if mappers.is_derivacion_doctor(num_medico, medico):
-            counters["derivacion_skipped"] = 1
-            return _finalize(IMPORT_OUTCOME_DERIVACION)
+            if not force:
+                counters["derivacion_skipped"] = 1
+                return _finalize(IMPORT_OUTCOME_DERIVACION)
+            logger.info(
+                "import_protocol_by_numero: force=True bypassing derivacion "
+                "filter for numero=%s (NUMMEDICO_FLD=%r, MEDICO=%r)",
+                numero,
+                num_medico,
+                medico.get("NOMBRE_FLD") if medico else None,
+            )
+            medico = None
 
         # Skip-filter: pet/vet patient.
         fields = mappers.map_patient(paciente)
@@ -1913,6 +1934,28 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
             patient_sex=paciente.get("SEXO_FLD"),
             patient_dob_raw=paciente.get("FNACIM_FLD"),
         )
+
+        # On-demand-only fix (UAT 2026-05-12): the mapper deliberately
+        # leaves Study.completed_at NULL because the frontend reads
+        # `created_at` as the "Completado" date. For nightly sync the
+        # gap between sample-taken and our-row-created is small enough
+        # to not matter — but for an on-demand import of an old study,
+        # `created_at = today` produces a misleading "Completado:
+        # <today's date>" on a study sampled a year ago. Set it to
+        # service_date here so the visible date is at least the sample
+        # date (a lower bound; the real validation timestamp isn't
+        # exposed by LabWin). Nightly sync stays untouched, so the
+        # historical "completed before solicited" visual bug the mapper
+        # comment warns about can't reappear there.
+        if study_pk:
+            from apps.studies.models import Study as _Study
+
+            _study_obj = _Study.objects.only("completed_at", "service_date").get(
+                pk=study_pk
+            )
+            if _study_obj.completed_at is None and _study_obj.service_date:
+                _study_obj.completed_at = _study_obj.service_date
+                _study_obj.save(update_fields=["completed_at", "updated_at"])
 
         # Notification: fire if the patient hasn't been emailed about
         # this study yet (Study.notification_sent_at flag).

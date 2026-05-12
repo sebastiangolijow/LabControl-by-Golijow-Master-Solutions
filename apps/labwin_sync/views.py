@@ -125,14 +125,19 @@ class TriggerImportProtocolView(APIView):
             )
 
         lab_client_id = request.user.lab_client_id or 1
+        # `force` lets the admin bypass the derivacion_skipped filter
+        # (walk-in patients with NUMMEDICO_FLD=175). All other filters
+        # still apply. Defaults to False — explicit second click only.
+        force = bool(request.data.get("force", False))
 
-        task = import_protocol_by_numero.delay(numero, lab_client_id)
+        task = import_protocol_by_numero.delay(numero, lab_client_id, force=force)
         logger.info(
             "import_protocol_by_numero triggered — task_id=%s numero=%s "
-            "lab_client_id=%s by_user_pk=%s",
+            "lab_client_id=%s force=%s by_user_pk=%s",
             task.id,
             numero,
             lab_client_id,
+            force,
             request.user.pk,
         )
 

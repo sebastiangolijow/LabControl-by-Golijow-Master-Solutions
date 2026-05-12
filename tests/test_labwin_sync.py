@@ -3966,7 +3966,7 @@ class UserSerializerBiologicalSexReadOnlyTests(BaseTestCase):
 # ======================
 
 
-def _run_import(numero, lab_client_id=1):
+def _run_import(numero, lab_client_id=1, force=False):
     """Helper: run the bind=True task synchronously via .apply().
 
     bind=True tasks expect `self` as the first positional arg, so a
@@ -3976,7 +3976,7 @@ def _run_import(numero, lab_client_id=1):
     from apps.labwin_sync.tasks import import_protocol_by_numero
 
     return import_protocol_by_numero.apply(
-        args=[numero], kwargs={"lab_client_id": lab_client_id}
+        args=[numero], kwargs={"lab_client_id": lab_client_id, "force": force}
     ).result
 
 
@@ -4016,6 +4016,23 @@ class ImportProtocolByNumeroTests(BaseTestCase):
         self.assertEqual(study.sample_id, "100001")
         self.assertGreater(study.study_practices.count(), 0)
         self.assertTrue(User.objects.filter(dni="30123456").exists())
+
+    def test_on_demand_import_sets_completed_at_to_service_date(self):
+        """On-demand imports backfill completed_at to service_date so the
+        frontend's "Completado" label shows the sample date instead of
+        today's date (UAT 2026-05-12). Nightly sync isn't touched."""
+        from apps.studies.models import Study
+
+        result = _run_import(100001)
+        self.assertEqual(result["outcome"], "imported")
+
+        study = Study.objects.get(protocol_number="LW-100001")
+        self.assertIsNotNone(study.service_date)
+        self.assertIsNotNone(
+            study.completed_at,
+            "on-demand import should backfill completed_at",
+        )
+        self.assertEqual(study.completed_at, study.service_date)
 
     def test_partial_validation_returns_pending_practices(self):
         from apps.studies.models import Study
@@ -4145,6 +4162,67 @@ class ImportProtocolByNumeroDerivacionPetTests(BaseTestCase):
             result = _run_import(100001)
 
         self.assertEqual(result["outcome"], "derivacion_skipped")
+
+    def test_force_bypasses_derivacion_filter(self):
+        """force=True imports a "Sin Consigna" protocol with ordered_by=None."""
+        from apps.labwin_sync.connectors.mock import (
+            SAMPLE_DETERS,
+            SAMPLE_NOMEN,
+            SAMPLE_PACIENTES,
+            MockLabWinConnector,
+        )
+        from apps.studies.models import Study
+
+        derivacion_paciente = dict(SAMPLE_PACIENTES[100001])
+        derivacion_paciente["NUMMEDICO_FLD"] = 175
+        deters_for_100001 = [
+            r for r in SAMPLE_DETERS if r["NUMERO_FLD"] == 100001
+        ]
+        nomens = {
+            r["ABREV_FLD"]: SAMPLE_NOMEN[r["ABREV_FLD"]]
+            for r in deters_for_100001
+            if r["ABREV_FLD"] in SAMPLE_NOMEN
+        }
+        fake_data = {
+            "deters": deters_for_100001,
+            "paciente": derivacion_paciente,
+            # Connector returns the "No Consigna" MEDICOS row when
+            # NUMMEDICO_FLD=175. force=True should still result in
+            # ordered_by=None on the Study (no User created for the
+            # sentinel doctor).
+            "medico": {
+                "NUMERO_FLD": 175,
+                "NOMBRE_FLD": "No Consigna",
+                "MATNAC_FLD": "",
+                "MATPROV_FLD": "",
+                "ESPECIALIDAD_FLD": "",
+                "TELEFONO_FLD": "",
+                "EMAIL_FLD": "",
+            },
+            "nomens": nomens,
+        }
+
+        with patch.object(
+            MockLabWinConnector, "fetch_one_protocol", lambda self, n: fake_data
+        ):
+            result = _run_import(100001, force=True)
+
+        self.assertEqual(result["outcome"], "imported")
+        study = Study.objects.get(protocol_number="LW-100001")
+        self.assertIsNone(
+            study.ordered_by_id,
+            "force-imported derivacion study must have no ordered_by doctor",
+        )
+
+    def test_force_does_not_bypass_unpaid_filter(self):
+        """force=True is derivacion-only. Unpaid still refuses."""
+        result = _run_import(100002, force=True)
+        self.assertEqual(result["outcome"], "unpaid_skipped")
+
+    def test_force_does_not_bypass_partial_validation_filter(self):
+        """force=True doesn't override partial-validation either."""
+        result = _run_import(100003, force=True)
+        self.assertEqual(result["outcome"], "partial_validation")
 
     def test_pet_protocol_skipped(self):
         """A protocol where the patient has dni='' AND a vet practice."""
