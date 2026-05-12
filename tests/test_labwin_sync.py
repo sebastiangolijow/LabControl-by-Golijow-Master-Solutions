@@ -4175,9 +4175,7 @@ class ImportProtocolByNumeroDerivacionPetTests(BaseTestCase):
 
         derivacion_paciente = dict(SAMPLE_PACIENTES[100001])
         derivacion_paciente["NUMMEDICO_FLD"] = 175
-        deters_for_100001 = [
-            r for r in SAMPLE_DETERS if r["NUMERO_FLD"] == 100001
-        ]
+        deters_for_100001 = [r for r in SAMPLE_DETERS if r["NUMERO_FLD"] == 100001]
         nomens = {
             r["ABREV_FLD"]: SAMPLE_NOMEN[r["ABREV_FLD"]]
             for r in deters_for_100001
