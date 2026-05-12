@@ -80,17 +80,38 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
 
     # Additional user information
+    BIOLOGICAL_SEX_CHOICES = [
+        ("M", _("Male")),
+        ("F", _("Female")),
+    ]
+    biological_sex = models.CharField(
+        _("biological sex"),
+        max_length=1,
+        choices=BIOLOGICAL_SEX_CHOICES,
+        blank=True,
+        help_text=_(
+            "Biological sex (M/F). Sourced from LabWin SEXO_FLD; used for "
+            "clinical reference ranges. Read-only for patients — only admin "
+            "or sync can change it. Distinct from `gender`, which is the "
+            "patient's self-declared identity and never used clinically."
+        ),
+    )
     GENDER_CHOICES = [
         ("M", _("Male")),
         ("F", _("Female")),
         ("O", _("Other")),
+        ("P", _("Prefer not to say")),
     ]
     gender = models.CharField(
         _("gender"),
         max_length=1,
         choices=GENDER_CHOICES,
         blank=True,
-        help_text=_("User's gender"),
+        help_text=_(
+            "Self-declared gender. Optional, patient-editable, never "
+            "overwritten by sync. NOT used for clinical reference ranges — "
+            "see `biological_sex` for that."
+        ),
     )
     location = models.CharField(
         _("location"),

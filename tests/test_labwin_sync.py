@@ -166,7 +166,10 @@ class MapPatientTests(BaseTestCase):
         self.assertEqual(result["first_name"], "Maria")
         self.assertEqual(result["last_name"], "Garcia")
         self.assertEqual(result["dni"], "30123456")
-        self.assertEqual(result["gender"], "F")
+        # SEXO_FLD maps to biological_sex (NOT gender — sync must never
+        # touch gender, which is patient-self-declared).
+        self.assertEqual(result["biological_sex"], "F")
+        self.assertNotIn("gender", result)
         self.assertEqual(result["birthday"], date(1985, 3, 15))
         self.assertEqual(result["mutual_code"], 1)
         self.assertEqual(result["carnet"], "ABC123")
@@ -176,10 +179,11 @@ class MapPatientTests(BaseTestCase):
         self.assertEqual(result["email"], "maria.garcia@test.com")
         self.assertEqual(result["role"], "patient")
 
-    def test_male_gender(self):
+    def test_male_biological_sex(self):
         row = SAMPLE_PACIENTES[100002]
         result = map_patient(row)
-        self.assertEqual(result["gender"], "M")
+        self.assertEqual(result["biological_sex"], "M")
+        self.assertNotIn("gender", result)
 
     def test_empty_email_returns_none(self):
         row = SAMPLE_PACIENTES[100002]
@@ -3756,3 +3760,196 @@ class DETERSQueryPartialValidationFilterTests(BaseTestCase):
         self.assertEqual(captured["sql"], DETERS_QUERY)
         self.assertIn("NUMERO_FLD NOT IN", captured["sql"])
         self.assertEqual(captured["params"], ("20260101", "20260101", 0))
+
+
+# ======================
+# biological_sex split (PR 2 — UAT feedback 2026-05-12)
+# ======================
+
+
+class SyncBiologicalSexNeverTouchesGenderTests(BaseTestCase):
+    """Sync writes biological_sex from SEXO_FLD and never overwrites gender.
+
+    The lab needs biological_sex on file for clinical reference ranges,
+    sourced from LabWin's SEXO_FLD. Patients can self-declare a different
+    gender through the profile/registration flows, and sync MUST NOT
+    overwrite that.
+    """
+
+    def test_sync_writes_biological_sex_on_create(self):
+        """First sync of a new patient populates biological_sex from SEXO_FLD."""
+        # Sample data has SEXO_FLD=2 for patient 100001 (= Female).
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        from apps.users.models import User
+
+        user = User.objects.filter(dni="30123456").first()
+        self.assertIsNotNone(user, "sample patient should have been created")
+        self.assertEqual(user.biological_sex, "F")
+        # gender should be empty — sync never sets it.
+        self.assertEqual(user.gender, "")
+
+    def test_sync_does_not_overwrite_self_declared_gender(self):
+        """Patient sets gender='O', sync runs, gender stays 'O'."""
+        from apps.users.models import User
+
+        # Pre-create the user that mock data will match by DNI.
+        existing = self.create_patient(
+            email="maria.garcia@test.com",
+            dni="30123456",
+            lab_client_id=1,
+        )
+        existing.gender = "O"
+        existing.biological_sex = ""
+        existing.save()
+
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        existing.refresh_from_db()
+        self.assertEqual(existing.gender, "O", "sync must not touch self-declared gender")
+        self.assertEqual(
+            existing.biological_sex,
+            "F",
+            "sync should populate biological_sex from SEXO_FLD",
+        )
+
+    def test_sync_refreshes_biological_sex_when_source_changes(self):
+        """If LabWin's SEXO_FLD changes (e.g. data correction), the
+        next sync updates biological_sex but still leaves gender alone."""
+        from apps.users.models import User
+
+        # User starts with biological_sex='M' (wrong) and gender='F'
+        # (their self-declaration).
+        existing = self.create_patient(
+            email="maria.garcia@test.com",
+            dni="30123456",
+            lab_client_id=1,
+        )
+        existing.biological_sex = "M"
+        existing.gender = "F"
+        existing.save()
+
+        # Mock data SEXO_FLD=2 for this patient = "F", so sync should
+        # correct biological_sex from M -> F.
+        sync_labwin_results(lab_client_id=1, full_sync=True)
+
+        existing.refresh_from_db()
+        self.assertEqual(existing.biological_sex, "F", "sync should refresh biological_sex")
+        self.assertEqual(existing.gender, "F", "self-declared gender stays put")
+
+
+class PatientRegistrationBiologicalSexRequiredTests(BaseTestCase):
+    """biological_sex is REQUIRED on patient self-registration.
+
+    The lab's whole point: every new patient needs a biological_sex on
+    file. Optional gender is fine — but biological_sex blocks the form
+    if missing.
+    """
+
+    def _payload(self, **overrides):
+        base = {
+            "email": "newpatient@example.com",
+            "password": "SecurePass123!",
+            "password_confirm": "SecurePass123!",
+            "first_name": "Test",
+            "last_name": "Patient",
+            "phone_number": "1122334455",
+            "dni": "99887766",
+            "birthday": "1990-05-15",
+            "biological_sex": "F",
+            "lab_client_id": 1,
+        }
+        base.update(overrides)
+        return base
+
+    def test_register_with_biological_sex_succeeds(self):
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        response = client.post(
+            "/api/v1/users/register/", self._payload(), format="json"
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+
+        from apps.users.models import User
+
+        user = User.objects.get(email="newpatient@example.com")
+        self.assertEqual(user.biological_sex, "F")
+
+    def test_register_without_biological_sex_fails(self):
+        from rest_framework.test import APIClient
+
+        payload = self._payload()
+        payload.pop("biological_sex")
+
+        client = APIClient()
+        response = client.post("/api/v1/users/register/", payload, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("biological_sex", response.data)
+
+    def test_register_with_blank_biological_sex_fails(self):
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        response = client.post(
+            "/api/v1/users/register/",
+            self._payload(biological_sex=""),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("biological_sex", response.data)
+
+
+class UserSerializerBiologicalSexReadOnlyTests(BaseTestCase):
+    """biological_sex is exposed by UserSerializer but is read-only.
+
+    A patient PATCHing their profile cannot change their biological_sex
+    even by passing it in the body — the serializer silently ignores it.
+    """
+
+    def test_biological_sex_in_serialized_output(self):
+        patient = self.create_patient(lab_client_id=1)
+        patient.biological_sex = "M"
+        patient.save()
+
+        client = self.authenticate(patient)
+        response = client.get("/api/v1/auth/user/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get("biological_sex"), "M")
+
+    def test_patient_cannot_patch_biological_sex(self):
+        patient = self.create_patient(lab_client_id=1)
+        patient.biological_sex = "M"
+        patient.save()
+
+        client = self.authenticate(patient)
+        response = client.patch(
+            "/api/v1/auth/user/",
+            {"biological_sex": "F"},
+            format="json",
+        )
+        # PATCH succeeds (other fields could change), but biological_sex
+        # is silently ignored because it's in read_only_fields.
+        self.assertIn(response.status_code, (200, 202))
+        patient.refresh_from_db()
+        self.assertEqual(
+            patient.biological_sex,
+            "M",
+            "PATCH must not be able to change biological_sex",
+        )
+
+    def test_patient_can_still_patch_gender(self):
+        """Sanity check: gender is still patient-editable."""
+        patient = self.create_patient(lab_client_id=1)
+        patient.gender = ""
+        patient.save()
+
+        client = self.authenticate(patient)
+        response = client.patch(
+            "/api/v1/auth/user/",
+            {"gender": "O"},
+            format="json",
+        )
+        self.assertIn(response.status_code, (200, 202))
+        patient.refresh_from_db()
+        self.assertEqual(patient.gender, "O")

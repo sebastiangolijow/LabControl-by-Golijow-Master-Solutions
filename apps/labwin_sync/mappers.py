@@ -103,13 +103,17 @@ def map_patient(paciente_row):
     """
     first_name, last_name = parse_name(paciente_row.get("NOMBRE_FLD"))
 
+    # SEXO_FLD encodes biological sex (1=male, 2=female). Maps to
+    # User.biological_sex — NOT to User.gender. Gender is the patient's
+    # self-declared identity, set by them through registration / profile,
+    # and sync must never touch it.
     sexo = paciente_row.get("SEXO_FLD")
     if sexo == 1:
-        gender = "M"
+        biological_sex = "M"
     elif sexo == 2:
-        gender = "F"
+        biological_sex = "F"
     else:
-        gender = ""
+        biological_sex = ""
 
     email = _clean_str(paciente_row.get("EMAIL_FLD")) or None
     phone = _clean_str(paciente_row.get("CELULAR_FLD")) or _clean_str(
@@ -122,7 +126,7 @@ def map_patient(paciente_row):
         "first_name": first_name,
         "last_name": last_name,
         "dni": _clean_str(paciente_row.get("HCLIN_FLD")),
-        "gender": gender,
+        "biological_sex": biological_sex,
         "birthday": parse_date(paciente_row.get("FNACIM_FLD")),
         "mutual_code": mutual_code if mutual_code else None,
         "carnet": _clean_str(paciente_row.get("CARNET_FLD")),

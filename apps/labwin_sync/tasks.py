@@ -740,7 +740,16 @@ def _refresh_existing_patient(user, fields, new_email, counters):
             )
 
     # Routine field refresh from the latest PACIENTES snapshot.
-    for field_name in ["phone_number", "direction", "location", "carnet"]:
+    # NOTE: `gender` is deliberately NOT in this list — it's the patient's
+    # self-declared identity and sync must never overwrite it. Biological
+    # sex (sourced from SEXO_FLD) is a separate, sync-owned field.
+    for field_name in [
+        "phone_number",
+        "direction",
+        "location",
+        "carnet",
+        "biological_sex",
+    ]:
         new_val = fields.get(field_name)
         if new_val and new_val != getattr(user, field_name, ""):
             setattr(user, field_name, new_val)

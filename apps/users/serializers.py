@@ -28,6 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
             "birthday",
             "profile_picture",
             "language",
+            "biological_sex",
             "gender",
             "location",
             "direction",
@@ -40,7 +41,16 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "date_joined",
         ]
-        read_only_fields = ["id", "uuid", "date_joined", "is_verified"]
+        # biological_sex is read-only on the patient-facing API: it's set
+        # at registration or by sync, and only admins (via Django Admin or
+        # the AdminUserCreate path) can change it afterwards.
+        read_only_fields = [
+            "id",
+            "uuid",
+            "date_joined",
+            "is_verified",
+            "biological_sex",
+        ]
 
 
 class UserDetailSerializer(UserSerializer):
@@ -71,6 +81,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             "phone_number",
             "dni",
             "birthday",
+            "biological_sex",
             "gender",
             "location",
             "direction",
@@ -100,7 +111,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for updating user information."""
+    """Serializer for updating user information.
+
+    Note: `biological_sex` is intentionally NOT in this list. Patients
+    cannot change their biological sex through profile-edit; admins use
+    AdminUserCreateSerializer / Django Admin if a correction is needed.
+    """
 
     class Meta:
         model = User
@@ -138,6 +154,9 @@ class CustomRegisterSerializer(RegisterSerializer):
     phone_number = serializers.CharField(required=True)
     dni = serializers.CharField(required=True)
     birthday = serializers.DateField(required=True)
+    # biological_sex required — drives clinical reference ranges.
+    # Only M/F accepted (validated by the model's choices).
+    biological_sex = serializers.CharField(required=True, allow_blank=False)
     gender = serializers.CharField(required=False, allow_blank=True)
     location = serializers.CharField(required=False, allow_blank=True)
     direction = serializers.CharField(required=False, allow_blank=True)
@@ -156,6 +175,7 @@ class CustomRegisterSerializer(RegisterSerializer):
                 "phone_number": self.validated_data.get("phone_number", ""),
                 "dni": self.validated_data.get("dni", ""),
                 "birthday": self.validated_data.get("birthday", None),
+                "biological_sex": self.validated_data.get("biological_sex", ""),
                 "gender": self.validated_data.get("gender", ""),
                 "location": self.validated_data.get("location", ""),
                 "direction": self.validated_data.get("direction", ""),
@@ -178,6 +198,7 @@ class CustomRegisterSerializer(RegisterSerializer):
         user.phone_number = self.validated_data.get("phone_number", "")
         user.dni = self.validated_data.get("dni", "")
         user.birthday = self.validated_data.get("birthday", None)
+        user.biological_sex = self.validated_data.get("biological_sex", "")
         user.gender = self.validated_data.get("gender", "")
         user.location = self.validated_data.get("location", "")
         user.direction = self.validated_data.get("direction", "")
@@ -191,7 +212,13 @@ class CustomRegisterSerializer(RegisterSerializer):
 
 
 class PatientRegistrationSerializer(serializers.ModelSerializer):
-    """Serializer for patient self-registration."""
+    """Serializer for patient self-registration.
+
+    biological_sex is REQUIRED — every new patient must have a
+    biological sex on file because it drives clinical reference
+    ranges. gender stays optional (patient self-declared identity,
+    never used clinically).
+    """
 
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
@@ -207,6 +234,7 @@ class PatientRegistrationSerializer(serializers.ModelSerializer):
             "phone_number",
             "dni",
             "birthday",
+            "biological_sex",
             "gender",
             "location",
             "direction",
@@ -221,6 +249,7 @@ class PatientRegistrationSerializer(serializers.ModelSerializer):
             "phone_number": {"required": True, "allow_blank": False},
             "dni": {"required": True, "allow_blank": False},
             "birthday": {"required": True, "allow_null": False},
+            "biological_sex": {"required": True, "allow_blank": False},
         }
 
     def validate(self, attrs):
@@ -273,6 +302,7 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
             "phone_number",
             "dni",
             "birthday",
+            "biological_sex",
             "gender",
             "location",
             "direction",
