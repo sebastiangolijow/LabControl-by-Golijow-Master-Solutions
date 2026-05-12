@@ -123,13 +123,12 @@ class Command(BaseCommand):
                 f"\nAfter: biological_sex distribution\n{self._format_dist(after_dist)}"
             )
         )
-        self.stdout.write(
-            self.style.SUCCESS(f"\nDone. Swapped {swapped} users.")
-        )
+        self.stdout.write(self.style.SUCCESS(f"\nDone. Swapped {swapped} users."))
 
     def _distribution(self):
-        from apps.users.models import User
         from django.db.models import Count
+
+        from apps.users.models import User
 
         rows = (
             User.objects.values("biological_sex")
