@@ -1813,9 +1813,7 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
         # request even fired).
         protocol_number = f"LW-{numero}"
         existing_study = (
-            Study.objects.filter(protocol_number=protocol_number)
-            .only("uuid")
-            .first()
+            Study.objects.filter(protocol_number=protocol_number).only("uuid").first()
         )
         if existing_study:
             return _finalize(
@@ -1833,8 +1831,7 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
                 {
                     row.get("ABREV_FLD", "").strip()
                     for row in deters
-                    if row.get("VALIDADO_FLD") != "1"
-                    or row.get("CARGADO_FLD") != "1"
+                    if row.get("VALIDADO_FLD") != "1" or row.get("CARGADO_FLD") != "1"
                 }
                 - {""}
             )
@@ -1887,9 +1884,7 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
 
         doctor_pk = None
         if medico:
-            doctor_pk = _get_or_create_doctor(
-                medico, lab_client_id, sync_log, counters
-            )
+            doctor_pk = _get_or_create_doctor(medico, lab_client_id, sync_log, counters)
 
         patient_pk, needs_password_setup = _get_or_create_patient(
             paciente, lab_client_id, sync_log, counters
@@ -1930,9 +1925,7 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
                 .exists()
             )
             if not already_notified:
-                users_needing = (
-                    {patient_pk} if needs_password_setup else set()
-                )
+                users_needing = {patient_pk} if needs_password_setup else set()
                 queued, skipped = _dispatch_patient_notifications(
                     studies_to_notify={patient_pk: [study_pk]},
                     users_needing_password_setup=users_needing,
@@ -1943,8 +1936,8 @@ def import_protocol_by_numero(self, numero, lab_client_id=None):
         # Pull the patient's name fields off the just-created/updated User
         # so the success card can show "Imported LW-257008 — María García,
         # DNI 30123456" without the frontend having to do another fetch.
-        from apps.users.models import User
         from apps.studies.models import Study as _Study
+        from apps.users.models import User
 
         patient = User.objects.only("first_name", "last_name", "dni").get(pk=patient_pk)
         study = _Study.objects.only("uuid").get(pk=study_pk)

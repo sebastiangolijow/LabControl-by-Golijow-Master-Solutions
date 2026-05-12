@@ -4056,9 +4056,7 @@ class ImportProtocolByNumeroTests(BaseTestCase):
         self.assertEqual(second["study_uuid"], existing_uuid)
         self.assertEqual(second["study_protocol_number"], "LW-100001")
         # No second Study row was created
-        self.assertEqual(
-            Study.objects.filter(protocol_number="LW-100001").count(), 1
-        )
+        self.assertEqual(Study.objects.filter(protocol_number="LW-100001").count(), 1)
 
     def test_concurrent_import_returns_already_importing(self):
         """When the cache lock is already held, the second call refuses immediately."""
@@ -4123,9 +4121,7 @@ class ImportProtocolByNumeroDerivacionPetTests(BaseTestCase):
 
         derivacion_paciente = dict(SAMPLE_PACIENTES[100001])
         derivacion_paciente["NUMMEDICO_FLD"] = 175  # Sin Consigna sentinel
-        deters_for_100001 = [
-            r for r in SAMPLE_DETERS if r["NUMERO_FLD"] == 100001
-        ]
+        deters_for_100001 = [r for r in SAMPLE_DETERS if r["NUMERO_FLD"] == 100001]
         nomens = {
             r["ABREV_FLD"]: SAMPLE_NOMEN[r["ABREV_FLD"]]
             for r in deters_for_100001
@@ -4152,10 +4148,7 @@ class ImportProtocolByNumeroDerivacionPetTests(BaseTestCase):
 
     def test_pet_protocol_skipped(self):
         """A protocol where the patient has dni='' AND a vet practice."""
-        from apps.labwin_sync.connectors.mock import (
-            SAMPLE_DETERS,
-            MockLabWinConnector,
-        )
+        from apps.labwin_sync.connectors.mock import SAMPLE_DETERS, MockLabWinConnector
 
         pet_paciente = {
             "NUMERO_FLD": 100001,
@@ -4224,9 +4217,7 @@ class TriggerImportProtocolViewTests(BaseTestCase):
         cache.clear()
 
     def _post(self, client, body):
-        return client.post(
-            "/api/v1/labwin-sync/import-protocol/", body, format="json"
-        )
+        return client.post("/api/v1/labwin-sync/import-protocol/", body, format="json")
 
     def test_admin_can_trigger(self):
         client, _user = self.authenticate_as_admin()
