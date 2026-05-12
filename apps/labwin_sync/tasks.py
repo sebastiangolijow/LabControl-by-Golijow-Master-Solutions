@@ -1645,3 +1645,333 @@ def cleanup_misplaced_uploads(self):
         memory_summary(),
     )
     return result
+
+
+# ---------------------------------------------------------------------------
+# On-demand protocol import (admin types a NUMERO into the UI)
+# ---------------------------------------------------------------------------
+
+
+# Outcome enum the task returns. The frontend ImportProtocolModal branches
+# on these to render distinct messages — keep the strings in sync with the
+# `results.import_modal.outcomes.*` i18n keys in es.yaml.
+IMPORT_OUTCOME_IMPORTED = "imported"
+IMPORT_OUTCOME_ALREADY_IMPORTED = "already_imported"
+IMPORT_OUTCOME_NOT_FOUND = "not_found"
+IMPORT_OUTCOME_PARTIAL = "partial_validation"
+IMPORT_OUTCOME_UNPAID = "unpaid_skipped"
+IMPORT_OUTCOME_DERIVACION = "derivacion_skipped"
+IMPORT_OUTCOME_PET = "pet_skipped"
+IMPORT_OUTCOME_LOCKED = "already_importing"
+
+
+@shared_task(bind=True, max_retries=0, time_limit=120)
+def import_protocol_by_numero(self, numero, lab_client_id=None):
+    """Fetch ONE protocol from Firebird by NUMERO_FLD and ingest it.
+
+    Used when an admin needs to import an old study (older than the
+    nightly 90-day window) — patient calls in asking for a study from
+    8 months ago, admin types the protocol number into the UI, this
+    task pulls it from the local Firebird container and runs it through
+    the same mappers and skip-filters as the nightly sync. Patient
+    notification fires on success (same _dispatch_patient_notifications
+    path, so DISABLE_PATIENT_EMAILS / PATIENT_EMAIL_ALLOWLIST_DOMAINS
+    apply unchanged).
+
+    The local Firebird container holds the lab's full DB since 2011,
+    so any historical NUMERO is reachable. `not_found` always means
+    "typo / wrong number," never "older than backup."
+
+    max_retries=0: outcome-driven failures are non-transient (re-firing
+    would duplicate emails / work). Connection-level failures bubble.
+
+    Args:
+        numero: LabWin NUMERO_FLD (positive integer).
+        lab_client_id: Defaults to LABWIN_DEFAULT_LAB_CLIENT_ID.
+
+    Returns:
+        Dict with `outcome` field plus outcome-specific fields. The API
+        layer / management command pretty-print the dict; the frontend
+        modal switches on `outcome` to render a result card. Possible
+        outcomes (constants above):
+
+          - imported           — Study created, see study_uuid + names
+          - already_imported   — Study already in DB, see study_uuid
+          - not_found          — NUMERO doesn't exist in Firebird
+          - partial_validation — see pending_practices list
+          - unpaid_skipped     — patient owes the bono
+          - derivacion_skipped — no real referring doctor
+          - pet_skipped        — vet patient
+          - already_importing  — concurrency lock held by another task
+    """
+    from django.core.cache import cache
+
+    from apps.studies.models import Study
+
+    if lab_client_id is None:
+        lab_client_id = getattr(settings, "LABWIN_DEFAULT_LAB_CLIENT_ID", 1)
+
+    try:
+        numero = int(numero)
+    except (TypeError, ValueError):
+        return {"outcome": IMPORT_OUTCOME_NOT_FOUND, "numero": numero}
+
+    task_id = self.request.id if hasattr(self, "request") else None
+    logger.info(
+        "import_protocol_by_numero START — numero=%s lab_client_id=%s task_id=%s | %s",
+        numero,
+        lab_client_id,
+        task_id or "<sync>",
+        memory_summary(),
+    )
+
+    # SyncLog: tag with backup_filename = "on-demand:LW-{numero}" so it's
+    # filterable in admin (no migration; field is a CharField on the
+    # existing model).
+    sync_log = SyncLog.objects.create(
+        status="started",
+        lab_client_id=lab_client_id,
+        celery_task_id=task_id,
+        backup_filename=f"on-demand:LW-{numero}",
+    )
+
+    # Concurrency lock — two admins clicking submit simultaneously, or a
+    # rage-clicked button. cache.add returns False if the key already
+    # exists. 180s TTL covers worst-case task time (limit is 120s).
+    lock_key = f"labwin:on-demand:{numero}"
+    if not cache.add(lock_key, task_id or "sync", timeout=180):
+        sync_log.status = "failed"
+        sync_log.completed_at = timezone.now()
+        sync_log.errors = [{"type": "lock", "error": "another import in progress"}]
+        sync_log.error_count = 1
+        sync_log.save()
+        logger.info(
+            "import_protocol_by_numero LOCKED — numero=%s (another task holds the lock)",
+            numero,
+        )
+        return {"outcome": IMPORT_OUTCOME_LOCKED, "numero": numero}
+
+    counters = {
+        "patients_created": 0,
+        "patients_updated": 0,
+        "doctors_created": 0,
+        "doctors_updated": 0,
+        "practices_created": 0,
+        "studies_created": 0,
+        "studies_updated": 0,
+        "study_practices_created": 0,
+        "notifications_queued": 0,
+        "emails_skipped": 0,
+        "derivacion_skipped": 0,
+        "partial_validation_skipped": 0,
+        "partial_validation_deleted": 0,
+        "unpaid_skipped": 0,
+        "unpaid_deleted": 0,
+        "pets_skipped": 0,
+    }
+
+    def _finalize(outcome, **extra):
+        """Write SyncLog + release lock + return the result dict."""
+        cache.delete(lock_key)
+        sync_log.completed_at = timezone.now()
+        if outcome == IMPORT_OUTCOME_IMPORTED:
+            sync_log.status = "completed"
+        elif outcome == IMPORT_OUTCOME_ALREADY_IMPORTED:
+            sync_log.status = "completed"
+        else:
+            sync_log.status = "failed"
+            sync_log.errors = [{"type": "outcome", "error": outcome}]
+            sync_log.error_count = 1
+        for key, val in counters.items():
+            if hasattr(sync_log, key):
+                setattr(sync_log, key, val)
+        sync_log.save()
+        result = {"outcome": outcome, "numero": numero, **extra}
+        logger.info(
+            "import_protocol_by_numero END — numero=%s outcome=%s | %s",
+            numero,
+            outcome,
+            memory_summary(),
+        )
+        return result
+
+    try:
+        with get_connector() as connector:
+            data = connector.fetch_one_protocol(numero)
+
+        if data is None:
+            return _finalize(IMPORT_OUTCOME_NOT_FOUND)
+
+        deters = data["deters"]
+        paciente = data["paciente"]
+        medico = data["medico"]
+        nomens = data["nomens"]
+
+        # Already-imported: refuse, return existing UUID. Updates belong
+        # to the nightly sync path (and the existing study's data is
+        # likely fresher anyway since it was synced before this on-demand
+        # request even fired).
+        protocol_number = f"LW-{numero}"
+        existing_study = (
+            Study.objects.filter(protocol_number=protocol_number)
+            .only("uuid")
+            .first()
+        )
+        if existing_study:
+            return _finalize(
+                IMPORT_OUTCOME_ALREADY_IMPORTED,
+                study_uuid=str(existing_study.uuid),
+                study_protocol_number=protocol_number,
+            )
+
+        # Skip-filter: partial validation. Surface the pending ABREVs
+        # back to the admin so they can tell the lab "you still owe me
+        # GLU-Bi on this protocol."
+        if not mappers.is_protocol_fully_validated(deters):
+            counters["partial_validation_skipped"] = 1
+            pending = sorted(
+                {
+                    row.get("ABREV_FLD", "").strip()
+                    for row in deters
+                    if row.get("VALIDADO_FLD") != "1"
+                    or row.get("CARGADO_FLD") != "1"
+                }
+                - {""}
+            )
+            return _finalize(IMPORT_OUTCOME_PARTIAL, pending_practices=pending)
+
+        if not paciente:
+            # Defensive: DETERS exists but no PACIENTES row. Real LabWin
+            # data shouldn't see this, but treat as not_found rather than
+            # crashing.
+            return _finalize(IMPORT_OUTCOME_NOT_FOUND)
+
+        # Skip-filter: unpaid bono.
+        if not mappers.map_is_paid(paciente):
+            counters["unpaid_skipped"] = 1
+            return _finalize(IMPORT_OUTCOME_UNPAID)
+
+        # Skip-filter: derivacion / no real doctor.
+        num_medico = paciente.get("NUMMEDICO_FLD")
+        if mappers.is_derivacion_doctor(num_medico, medico):
+            counters["derivacion_skipped"] = 1
+            return _finalize(IMPORT_OUTCOME_DERIVACION)
+
+        # Skip-filter: pet/vet patient.
+        fields = mappers.map_patient(paciente)
+        has_vet = any(
+            mappers.is_vet_practice(
+                nomens.get(row.get("ABREV_FLD", "").strip(), {}).get("ABREV_FLD"),
+                nomens.get(row.get("ABREV_FLD", "").strip(), {}).get("NOMBRE_FLD"),
+            )
+            for row in deters
+            if row.get("ABREV_FLD")
+        )
+        if mappers.is_pet_candidate(
+            fields.get("first_name"),
+            fields.get("last_name"),
+            fields.get("dni"),
+            has_vet_practice=has_vet,
+        ):
+            counters["pets_skipped"] = 1
+            return _finalize(IMPORT_OUTCOME_PET)
+
+        # ----- Happy path: create patient + doctor + practices + study -----
+
+        practice_cache = {}
+        for abrev, nomen_row in nomens.items():
+            practice_pk = _get_or_create_practice(
+                nomen_row, lab_client_id, sync_log, counters
+            )
+            practice_cache[abrev] = practice_pk
+
+        doctor_pk = None
+        if medico:
+            doctor_pk = _get_or_create_doctor(
+                medico, lab_client_id, sync_log, counters
+            )
+
+        patient_pk, needs_password_setup = _get_or_create_patient(
+            paciente, lab_client_id, sync_log, counters
+        )
+
+        # Any DETERS row whose ABREV wasn't in NOMEN: create a minimal
+        # Practice so the StudyPractice link doesn't fail.
+        for row in deters:
+            abrev = row["ABREV_FLD"]
+            if abrev not in practice_cache:
+                practice_cache[abrev] = _create_minimal_practice(
+                    abrev, lab_client_id, sync_log, counters
+                )
+
+        study_pk = _get_or_create_study_with_practices(
+            numero,
+            deters,
+            patient_pk,
+            doctor_pk,
+            practice_cache,
+            lab_client_id,
+            sync_log,
+            counters,
+            is_paid=True,
+            is_validated=True,
+            patient_sex=paciente.get("SEXO_FLD"),
+            patient_dob_raw=paciente.get("FNACIM_FLD"),
+        )
+
+        # Notification: fire if the patient hasn't been emailed about
+        # this study yet (Study.notification_sent_at flag).
+        if study_pk and patient_pk:
+            from apps.studies.models import Study as _Study
+
+            already_notified = (
+                _Study.objects.filter(pk=study_pk)
+                .exclude(notification_sent_at=None)
+                .exists()
+            )
+            if not already_notified:
+                users_needing = (
+                    {patient_pk} if needs_password_setup else set()
+                )
+                queued, skipped = _dispatch_patient_notifications(
+                    studies_to_notify={patient_pk: [study_pk]},
+                    users_needing_password_setup=users_needing,
+                )
+                counters["notifications_queued"] = queued
+                counters["emails_skipped"] = skipped
+
+        # Pull the patient's name fields off the just-created/updated User
+        # so the success card can show "Imported LW-257008 — María García,
+        # DNI 30123456" without the frontend having to do another fetch.
+        from apps.users.models import User
+        from apps.studies.models import Study as _Study
+
+        patient = User.objects.only("first_name", "last_name", "dni").get(pk=patient_pk)
+        study = _Study.objects.only("uuid").get(pk=study_pk)
+
+        return _finalize(
+            IMPORT_OUTCOME_IMPORTED,
+            study_uuid=str(study.uuid),
+            study_protocol_number=protocol_number,
+            patient_first_name=patient.first_name,
+            patient_last_name=patient.last_name,
+            patient_dni=patient.dni,
+            is_new_patient=needs_password_setup,
+            notifications_queued=counters["notifications_queued"],
+        )
+
+    except Exception as e:
+        # Connection-level / unexpected failures land here. The lock
+        # would otherwise stick for 180s — release it explicitly.
+        cache.delete(lock_key)
+        logger.exception(
+            "import_protocol_by_numero FAILED — numero=%s | %s",
+            numero,
+            memory_summary(),
+        )
+        sync_log.status = "failed"
+        sync_log.completed_at = timezone.now()
+        sync_log.errors = [{"type": "fatal", "error": str(e)}]
+        sync_log.error_count = 1
+        sync_log.save()
+        raise

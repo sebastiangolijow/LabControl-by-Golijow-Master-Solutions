@@ -246,6 +246,93 @@ class FirebirdLabWinConnector(LabWinConnector):
         finally:
             cursor.close()
 
+    def fetch_one_protocol(self, numero):
+        # On-demand import path (admin types a NUMERO into the UI). See
+        # base.LabWinConnector.fetch_one_protocol for the contract — in
+        # particular: NO partial-validation NOT IN guard here, the task
+        # layer needs to see partial state to report it back to the
+        # admin.
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT NUMERO_FLD, ABREV_FLD, RESULT_FLD, RESULTREP_FLD,
+                       VALIDADO_FLD, CARGADO_FLD,
+                       FECHA_FLD, HORA_FLD, ORDEN_FLD, OPERADOR_FLD, SUCURSAL_FLD
+                FROM DETERS
+                WHERE NUMERO_FLD = ?
+                ORDER BY ABREV_FLD
+                """,
+                (numero,),
+            )
+            deters_rows = cursor.fetchall()
+            if not deters_rows:
+                return None
+            deters = _rows_to_dicts(deters_rows, DETERS_COLUMNS)
+
+            cursor.execute(
+                """
+                SELECT NUMERO_FLD, NOMBRE_FLD, HCLIN_FLD, SEXO_FLD, FNACIM_FLD,
+                       MUTUAL_FLD, MEDICO_FLD, NUMMEDICO_FLD, CARNET_FLD,
+                       TELEFONO_FLD, CELULAR_FLD, DIRECCION_FLD, LOCALIDAD_FLD,
+                       EMAIL_FLD, DEBEBONO_FLD
+                FROM PACIENTES
+                WHERE NUMERO_FLD = ?
+                """,
+                (numero,),
+            )
+            pac_rows = cursor.fetchall()
+            paciente = (
+                _rows_to_dicts(pac_rows, PACIENTES_COLUMNS)[0] if pac_rows else None
+            )
+
+            medico = None
+            if paciente:
+                num_medico = paciente.get("NUMMEDICO_FLD")
+                # 0 / None / 175 are derivacion sentinels; we still fetch
+                # so the task can report it back, but skip the SELECT
+                # when it's plainly None/0 (no MEDICOS row to find).
+                if num_medico:
+                    cursor.execute(
+                        """
+                        SELECT NUMERO_FLD, NOMBRE_FLD, MATNAC_FLD, MATPROV_FLD,
+                               ESPECIALIDAD_FLD, TELEFONO_FLD, EMAIL_FLD
+                        FROM MEDICOS
+                        WHERE NUMERO_FLD = ?
+                        """,
+                        (num_medico,),
+                    )
+                    med_rows = cursor.fetchall()
+                    if med_rows:
+                        medico = _rows_to_dicts(med_rows, MEDICOS_COLUMNS)[0]
+
+            abrevs = sorted({d["ABREV_FLD"] for d in deters if d.get("ABREV_FLD")})
+            nomens = {}
+            if abrevs:
+                placeholders = ",".join("?" * len(abrevs))
+                cursor.execute(
+                    f"""
+                    SELECT ABREV_FLD, NOMBRE_FLD, SECCION_FLD,
+                           DIASTARDA_FLD, MATERIAL_FLD
+                    FROM NOMEN
+                    WHERE ABREV_FLD IN ({placeholders})
+                    """,
+                    abrevs,
+                )
+                nomens = {
+                    n["ABREV_FLD"]: n
+                    for n in _rows_to_dicts(cursor.fetchall(), NOMEN_COLUMNS)
+                }
+
+            return {
+                "deters": deters,
+                "paciente": paciente,
+                "medico": medico,
+                "nomens": nomens,
+            }
+        finally:
+            cursor.close()
+
     def fetch_pacientes(self, numero_fld_list):
         if not numero_fld_list:
             return {}

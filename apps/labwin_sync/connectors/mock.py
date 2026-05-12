@@ -297,3 +297,25 @@ class MockLabWinConnector(LabWinConnector):
             for abrev in abrev_fld_list
             if abrev in SAMPLE_NOMEN
         }
+
+    def fetch_one_protocol(self, numero):
+        # Mirror the Firebird impl: return the full row set for one
+        # NUMERO, or None if it doesn't exist. No partial-validation
+        # filter — the task layer handles that branch.
+        deters = [row for row in SAMPLE_DETERS if row["NUMERO_FLD"] == numero]
+        if not deters:
+            return None
+        paciente = SAMPLE_PACIENTES.get(numero)
+        medico = None
+        if paciente:
+            num_medico = paciente.get("NUMMEDICO_FLD")
+            if num_medico:
+                medico = SAMPLE_MEDICOS.get(num_medico)
+        abrevs = sorted({d["ABREV_FLD"] for d in deters if d.get("ABREV_FLD")})
+        nomens = {a: SAMPLE_NOMEN[a] for a in abrevs if a in SAMPLE_NOMEN}
+        return {
+            "deters": deters,
+            "paciente": paciente,
+            "medico": medico,
+            "nomens": nomens,
+        }

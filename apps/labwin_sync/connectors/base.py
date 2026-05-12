@@ -81,6 +81,37 @@ class LabWinConnector(ABC):
             ABREV_FLD, NOMBRE_FLD, SECCION_FLD, DIASTARDA_FLD, MATERIAL_FLD
         """
 
+    @abstractmethod
+    def fetch_one_protocol(self, numero):
+        """Fetch a single protocol's full row set, identified by NUMERO_FLD.
+
+        Used by the on-demand import flow (admin types a NUMERO into the
+        UI, we look it up in Firebird and run it through the sync
+        helpers). Distinct from fetch_validated_deters in two ways:
+
+          1. No date-window filter — old protocols (<90 days ago) are
+             reachable. The local Firebird container holds the full lab
+             DB since 2011.
+          2. No partial-validation NOT IN guard — the task layer needs
+             to *see* a partial protocol to report it back to the admin
+             ("the lab still has GLU-Bi pending"), not silently get
+             zero rows.
+
+        Args:
+            numero: NUMERO_FLD integer (the LabWin protocol number).
+
+        Returns:
+            None if no DETERS rows exist for this NUMERO (typo / never
+            existed). Otherwise a dict:
+
+                {
+                    "deters":   [<DETERS row dicts>],         # 1+ rows
+                    "paciente": <PACIENTES row dict | None>,
+                    "medico":   <MEDICOS row dict | None>,
+                    "nomens":   {ABREV_FLD: <NOMEN row dict>},
+                }
+        """
+
     # The following two methods are not @abstractmethod because they are only
     # used by the standalone `sync_practice_layouts` management command, not
     # by the regular nightly sync. The mock connector raises NotImplementedError.

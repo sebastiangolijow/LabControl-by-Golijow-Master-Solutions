@@ -90,6 +90,62 @@ class TriggerFTPFetchView(APIView):
         )
 
 
+class TriggerImportProtocolView(APIView):
+    """
+    Trigger an on-demand import of ONE LabWin protocol by NUMERO_FLD
+    (admin and lab staff only). Used for studies older than the
+    nightly 90-day window — patient calls in asking for an old study,
+    admin types the protocol number into the UI, this kicks off
+    `import_protocol_by_numero` and returns a task_id to poll via the
+    existing /labwin-sync/status/<task_id>/ endpoint.
+
+    POST /api/v1/labwin-sync/import-protocol/
+        body: { "numero": <int> }
+    """
+
+    permission_classes = [IsAdminOrLabManager]
+
+    def post(self, request):
+        from .tasks import import_protocol_by_numero
+
+        raw = request.data.get("numero")
+        # Accept str or int from JSON; reject anything that doesn't
+        # parse as a positive integer.
+        try:
+            numero = int(raw)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "numero must be a positive integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if numero < 1 or numero > 99_999_999:
+            return Response(
+                {"error": "numero out of range (1..99_999_999)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        lab_client_id = request.user.lab_client_id or 1
+
+        task = import_protocol_by_numero.delay(numero, lab_client_id)
+        logger.info(
+            "import_protocol_by_numero triggered — task_id=%s numero=%s "
+            "lab_client_id=%s by_user_pk=%s",
+            task.id,
+            numero,
+            lab_client_id,
+            request.user.pk,
+        )
+
+        return Response(
+            {
+                "message": "Import task queued successfully.",
+                "task_id": task.id,
+                "numero": numero,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
 class SyncStatusView(APIView):
     """
     Check status of a LabWin sync task.

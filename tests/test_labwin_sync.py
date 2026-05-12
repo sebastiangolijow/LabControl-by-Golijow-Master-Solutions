@@ -3959,3 +3959,324 @@ class UserSerializerBiologicalSexReadOnlyTests(BaseTestCase):
         self.assertIn(response.status_code, (200, 202))
         patient.refresh_from_db()
         self.assertEqual(patient.gender, "O")
+
+
+# ======================
+# import_protocol_by_numero (on-demand import)
+# ======================
+
+
+def _run_import(numero, lab_client_id=1):
+    """Helper: run the bind=True task synchronously via .apply().
+
+    bind=True tasks expect `self` as the first positional arg, so a
+    direct function call would fail. .apply() runs the task in-process
+    and binds `self` correctly.
+    """
+    from apps.labwin_sync.tasks import import_protocol_by_numero
+
+    return import_protocol_by_numero.apply(
+        args=[numero], kwargs={"lab_client_id": lab_client_id}
+    ).result
+
+
+class ImportProtocolByNumeroTests(BaseTestCase):
+    """Each outcome branch of the on-demand import task.
+
+    Reuses the existing mock fixtures (apps/labwin_sync/connectors/mock.py):
+      - 100001: Maria Garcia, female, paid, fully validated  → imports cleanly
+      - 100002: Pedro Rodriguez, male, OWES BONO, validated  → unpaid_skipped
+      - 100003: Ana Fernandez, female, PARTIALLY validated   → partial_validation
+    """
+
+    def setUp(self):
+        super().setUp()
+        # Clear the concurrency lock between tests — Django's locmem
+        # cache persists across tests in the same process otherwise.
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def test_imports_validated_protocol(self):
+        from apps.studies.models import Study
+        from apps.users.models import User
+
+        result = _run_import(100001)
+
+        self.assertEqual(result["outcome"], "imported")
+        self.assertEqual(result["study_protocol_number"], "LW-100001")
+        self.assertIn("study_uuid", result)
+        self.assertEqual(result["patient_first_name"], "Maria")
+        self.assertEqual(result["patient_last_name"], "Garcia")
+        self.assertEqual(result["patient_dni"], "30123456")
+        # Side effects: Study + StudyPractices + User landed in DB
+        study = Study.objects.get(protocol_number="LW-100001")
+        self.assertTrue(study.is_paid)
+        self.assertTrue(study.is_validated)
+        self.assertEqual(study.sample_id, "100001")
+        self.assertGreater(study.study_practices.count(), 0)
+        self.assertTrue(User.objects.filter(dni="30123456").exists())
+
+    def test_partial_validation_returns_pending_practices(self):
+        from apps.studies.models import Study
+
+        result = _run_import(100003)
+
+        self.assertEqual(result["outcome"], "partial_validation")
+        # Mock fixture: ABREV "PCR" is the unvalidated one in 100003
+        self.assertIn("pending_practices", result)
+        self.assertGreater(len(result["pending_practices"]), 0)
+        self.assertFalse(Study.objects.filter(protocol_number="LW-100003").exists())
+
+    def test_unpaid_protocol_refused(self):
+        from apps.studies.models import Study
+
+        result = _run_import(100002)
+
+        self.assertEqual(result["outcome"], "unpaid_skipped")
+        self.assertFalse(Study.objects.filter(protocol_number="LW-100002").exists())
+
+    def test_not_found_for_unknown_numero(self):
+        result = _run_import(999999)
+        self.assertEqual(result["outcome"], "not_found")
+        self.assertEqual(result["numero"], 999999)
+
+    def test_already_imported_returns_existing_uuid(self):
+        from apps.studies.models import Study
+
+        # First call creates the study
+        first = _run_import(100001)
+        self.assertEqual(first["outcome"], "imported")
+        existing_uuid = first["study_uuid"]
+
+        # Second call: same NUMERO, refuses with the existing UUID,
+        # does NOT update the existing row.
+        second = _run_import(100001)
+        self.assertEqual(second["outcome"], "already_imported")
+        self.assertEqual(second["study_uuid"], existing_uuid)
+        self.assertEqual(second["study_protocol_number"], "LW-100001")
+        # No second Study row was created
+        self.assertEqual(
+            Study.objects.filter(protocol_number="LW-100001").count(), 1
+        )
+
+    def test_concurrent_import_returns_already_importing(self):
+        """When the cache lock is already held, the second call refuses immediately."""
+        from django.core.cache import cache
+
+        # Pre-acquire the lock as if another task were running
+        cache.add("labwin:on-demand:100001", "fake-task-id", timeout=180)
+        try:
+            result = _run_import(100001)
+            self.assertEqual(result["outcome"], "already_importing")
+        finally:
+            cache.delete("labwin:on-demand:100001")
+
+    def test_invalid_numero_string_returns_not_found(self):
+        """A non-int numero (defensive) returns not_found rather than crashing."""
+        result = _run_import("not-a-number")
+        self.assertEqual(result["outcome"], "not_found")
+
+    def test_imported_protocol_creates_synclog_with_on_demand_tag(self):
+        """SyncLog row uses backup_filename='on-demand:LW-{numero}' for filtering."""
+        _run_import(100001)
+        log = (
+            SyncLog.objects.filter(backup_filename="on-demand:LW-100001")
+            .order_by("-started_at")
+            .first()
+        )
+        self.assertIsNotNone(log)
+        self.assertEqual(log.status, "completed")
+
+    def test_failed_outcome_creates_failed_synclog(self):
+        """A skip outcome (e.g. unpaid) marks the SyncLog as failed for audit."""
+        _run_import(100002)
+        log = (
+            SyncLog.objects.filter(backup_filename="on-demand:LW-100002")
+            .order_by("-started_at")
+            .first()
+        )
+        self.assertIsNotNone(log)
+        self.assertEqual(log.status, "failed")
+        self.assertEqual(log.error_count, 1)
+        self.assertEqual(log.errors[0]["error"], "unpaid_skipped")
+
+
+class ImportProtocolByNumeroDerivacionPetTests(BaseTestCase):
+    """derivacion_skipped + pet_skipped require fixtures the mock doesn't
+    have natively. We patch the connector to inject the right shape."""
+
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def test_derivacion_protocol_skipped(self):
+        """A protocol with NUMMEDICO_FLD=175 is the 'Sin Consigna' sentinel."""
+        from apps.labwin_sync.connectors.mock import (
+            SAMPLE_DETERS,
+            SAMPLE_NOMEN,
+            SAMPLE_PACIENTES,
+            MockLabWinConnector,
+        )
+
+        derivacion_paciente = dict(SAMPLE_PACIENTES[100001])
+        derivacion_paciente["NUMMEDICO_FLD"] = 175  # Sin Consigna sentinel
+        deters_for_100001 = [
+            r for r in SAMPLE_DETERS if r["NUMERO_FLD"] == 100001
+        ]
+        nomens = {
+            r["ABREV_FLD"]: SAMPLE_NOMEN[r["ABREV_FLD"]]
+            for r in deters_for_100001
+            if r["ABREV_FLD"] in SAMPLE_NOMEN
+        }
+        fake_data = {
+            "deters": deters_for_100001,
+            "paciente": derivacion_paciente,
+            "medico": None,  # Sin Consigna has no MEDICOS row
+            "nomens": nomens,
+        }
+
+        original_fetch = MockLabWinConnector.fetch_one_protocol
+
+        def patched(self, numero):
+            if numero == 100001:
+                return fake_data
+            return original_fetch(self, numero)
+
+        with patch.object(MockLabWinConnector, "fetch_one_protocol", patched):
+            result = _run_import(100001)
+
+        self.assertEqual(result["outcome"], "derivacion_skipped")
+
+    def test_pet_protocol_skipped(self):
+        """A protocol where the patient has dni='' AND a vet practice."""
+        from apps.labwin_sync.connectors.mock import (
+            SAMPLE_DETERS,
+            MockLabWinConnector,
+        )
+
+        pet_paciente = {
+            "NUMERO_FLD": 100001,
+            "NOMBRE_FLD": "167PET, Rex",  # last_name starts with '167'
+            "HCLIN_FLD": "",  # empty DNI
+            "SEXO_FLD": 1,
+            "FNACIM_FLD": "20180101",
+            "MUTUAL_FLD": 1,
+            "MEDICO_FLD": "Lopez, Juan",
+            "NUMMEDICO_FLD": 501,
+            "CARNET_FLD": "",
+            "TELEFONO_FLD": "",
+            "CELULAR_FLD": "",
+            "DIRECCION_FLD": "",
+            "LOCALIDAD_FLD": "",
+            "EMAIL_FLD": "",
+            "DEBEBONO_FLD": "",
+        }
+        # Inject a DETERS row whose ABREV maps to a vet practice
+        vet_deters = [
+            {
+                "NUMERO_FLD": 100001,
+                "ABREV_FLD": "VETHEM",
+                "RESULT_FLD": "",
+                "RESULTREP_FLD": "",
+                "VALIDADO_FLD": "1",
+                "CARGADO_FLD": "1",
+                "FECHA_FLD": "20260101",
+                "HORA_FLD": "10:00",
+                "ORDEN_FLD": 1,
+                "OPERADOR_FLD": "",
+                "SUCURSAL_FLD": 0,
+            }
+        ]
+        vet_nomens = {
+            "VETHEM": {
+                "ABREV_FLD": "VETHEM",
+                "NOMBRE_FLD": "Hemograma veterinario",
+                "SECCION_FLD": "VET",
+                "DIASTARDA_FLD": 1,
+                "MATERIAL_FLD": "Sangre",
+            }
+        }
+        fake_data = {
+            "deters": vet_deters,
+            "paciente": pet_paciente,
+            "medico": {"NUMERO_FLD": 501, "NOMBRE_FLD": "Lopez, Juan"},
+            "nomens": vet_nomens,
+        }
+
+        with patch.object(
+            MockLabWinConnector, "fetch_one_protocol", lambda self, n: fake_data
+        ):
+            result = _run_import(100001)
+
+        self.assertEqual(result["outcome"], "pet_skipped")
+
+
+class TriggerImportProtocolViewTests(BaseTestCase):
+    """API endpoint: POST /api/v1/labwin-sync/import-protocol/."""
+
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def _post(self, client, body):
+        return client.post(
+            "/api/v1/labwin-sync/import-protocol/", body, format="json"
+        )
+
+    def test_admin_can_trigger(self):
+        client, _user = self.authenticate_as_admin()
+        with patch(
+            "apps.labwin_sync.tasks.import_protocol_by_numero.delay"
+        ) as mock_delay:
+            mock_delay.return_value.id = "fake-task-id"
+            response = self._post(client, {"numero": 257008})
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.data["task_id"], "fake-task-id")
+        self.assertEqual(response.data["numero"], 257008)
+        mock_delay.assert_called_once()
+
+    def test_lab_staff_can_trigger(self):
+        client, _user = self.authenticate_as_lab_staff()
+        with patch(
+            "apps.labwin_sync.tasks.import_protocol_by_numero.delay"
+        ) as mock_delay:
+            mock_delay.return_value.id = "fake-task-id"
+            response = self._post(client, {"numero": 257008})
+        self.assertEqual(response.status_code, 202)
+
+    def test_patient_cannot_trigger(self):
+        client, _user = self.authenticate_as_patient()
+        response = self._post(client, {"numero": 257008})
+        self.assertIn(response.status_code, (401, 403))
+
+    def test_anonymous_cannot_trigger(self):
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        response = self._post(client, {"numero": 257008})
+        self.assertIn(response.status_code, (401, 403))
+
+    def test_missing_numero_returns_400(self):
+        client, _user = self.authenticate_as_admin()
+        response = self._post(client, {})
+        self.assertEqual(response.status_code, 400)
+
+    def test_negative_numero_returns_400(self):
+        client, _user = self.authenticate_as_admin()
+        response = self._post(client, {"numero": -1})
+        self.assertEqual(response.status_code, 400)
+
+    def test_zero_numero_returns_400(self):
+        client, _user = self.authenticate_as_admin()
+        response = self._post(client, {"numero": 0})
+        self.assertEqual(response.status_code, 400)
+
+    def test_non_int_numero_returns_400(self):
+        client, _user = self.authenticate_as_admin()
+        response = self._post(client, {"numero": "abc"})
+        self.assertEqual(response.status_code, 400)

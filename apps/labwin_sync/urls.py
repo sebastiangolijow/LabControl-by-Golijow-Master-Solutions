@@ -12,6 +12,11 @@ urlpatterns = [
         name="labwin-ftp-fetch",
     ),
     path(
+        "import-protocol/",
+        views.TriggerImportProtocolView.as_view(),
+        name="labwin-import-protocol",
+    ),
+    path(
         "status/<str:task_id>/",
         views.SyncStatusView.as_view(),
         name="labwin-sync-status",
