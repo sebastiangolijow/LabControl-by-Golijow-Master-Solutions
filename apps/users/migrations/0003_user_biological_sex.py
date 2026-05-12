@@ -24,9 +24,7 @@ def backfill_biological_sex(apps, schema_editor):
     User = apps.get_model("users", "User")
     HistoricalUser = apps.get_model("users", "HistoricalUser")
 
-    User.objects.filter(gender__in=["M", "F"]).update(
-        biological_sex=models.F("gender")
-    )
+    User.objects.filter(gender__in=["M", "F"]).update(biological_sex=models.F("gender"))
     # Backfill the audit-trail rows too, otherwise as_of() reads will show
     # biological_sex='' for snapshots taken before this migration even
     # though the live row has it populated.

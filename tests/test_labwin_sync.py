@@ -3806,7 +3806,9 @@ class SyncBiologicalSexNeverTouchesGenderTests(BaseTestCase):
         sync_labwin_results(lab_client_id=1, full_sync=True)
 
         existing.refresh_from_db()
-        self.assertEqual(existing.gender, "O", "sync must not touch self-declared gender")
+        self.assertEqual(
+            existing.gender, "O", "sync must not touch self-declared gender"
+        )
         self.assertEqual(
             existing.biological_sex,
             "F",
@@ -3834,7 +3836,9 @@ class SyncBiologicalSexNeverTouchesGenderTests(BaseTestCase):
         sync_labwin_results(lab_client_id=1, full_sync=True)
 
         existing.refresh_from_db()
-        self.assertEqual(existing.biological_sex, "F", "sync should refresh biological_sex")
+        self.assertEqual(
+            existing.biological_sex, "F", "sync should refresh biological_sex"
+        )
         self.assertEqual(existing.gender, "F", "self-declared gender stays put")
 
 
