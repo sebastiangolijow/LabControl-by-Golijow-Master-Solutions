@@ -79,7 +79,7 @@
 
 After weeks of intermittent PDF delivery, root-caused on 2026-05-07: LabWin's built-in FTP plugin is hardcoded to active mode (UI passive toggle is decorative even after reinstall), and active FTP through the lab's NAT silently drops the server-initiated data SYN — every server-side fix tried (CT helper rules, `port_enable=NO`, `allow_writeable_chroot`, chroot path tweaks) was treating a symptom of an unfixable NAT issue.
 
-**Solution shipped 2026-05-07:** `deployment/lab_workstation/upload_pdfs.py` runs on the lab PC. LabWin exports PDFs to `C:\sistema\PDFlabwin\` at 02:00; the script (Task Scheduler at 02:15) pushes via **passive** FTP using `ftplib.set_pasv(True)`, with atomic `.uploading` → rename. End-to-end validated: 59 PDFs in ~2s, 13 attached to in-window Studies, 46 staying on FTP for future Study-window matches, 0 errors.
+**Solution shipped 2026-05-07:** `deployment/lab_workstation/upload_pdfs.py` runs on the lab PC. LabWin exports PDFs to `C:\sistema\PDFlabwin\` at 02:00; the script (Task Scheduler — **starts 03:30, repeats hourly for 12 h**, changed 2026-05-16 from a single 02:15 run) pushes via **passive** FTP using `ftplib.set_pasv(True)`, with atomic `.uploading` → rename. End-to-end validated: 59 PDFs in ~2s, 13 attached to in-window Studies, 46 staying on FTP for future Study-window matches, 0 errors.
 
 **Operational changes:**
 - `LABWIN_FTP_DIRECTORY=/` (chroot root, no `/results` subdir) in `.env.production`. `.env.production.template` updated to match.
@@ -566,7 +566,7 @@ The VPS runs a **vsftpd** FTP server that receives PDF result files pushed from 
 
 > **The full architecture, the why-active-FTP-failed story, the script that runs on the lab PC, and the failure-mode runbook live in [`PDF_UPLOAD_PIPELINE.md`](./PDF_UPLOAD_PIPELINE.md).** This section only covers the vsftpd server-side config — what the lab's script connects to and what the backend `fetch_ftp_pdfs` task reads from.
 
-**Quick recap:** LabWin exports PDFs locally on the lab PC at 02:00; `deployment/lab_workstation/upload_pdfs.py` (Task Scheduler at 02:15) pushes them via **passive** FTP to vsftpd; the backend's `fetch_ftp_pdfs` job (Celery Beat) attaches each one to its matching `Study`. Active mode is **not** an option — the lab's NAT can't do FTP-ALG.
+**Quick recap:** LabWin exports PDFs locally on the lab PC at 02:00; `deployment/lab_workstation/upload_pdfs.py` (Task Scheduler — starts 03:30, repeats hourly for 12 h) pushes them via **passive** FTP to vsftpd; the backend's `fetch_ftp_pdfs` job (Celery Beat) attaches each one to its matching `Study`. Active mode is **not** an option — the lab's NAT can't do FTP-ALG.
 
 ### FTP Credentials
 

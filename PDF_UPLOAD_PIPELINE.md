@@ -1,6 +1,6 @@
 # LabWin PDF Upload Pipeline
 
-**Status:** ✅ In production since 2026-05-07. LabWin exports PDFs locally on the lab PC at 02:00; our `upload_pdfs.py` script (running on the lab PC via Task Scheduler at 02:15) pushes them to the VPS via passive FTP. The backend `fetch_ftp_pdfs` task then pulls them and attaches each to its matching `Study`.
+**Status:** ✅ In production since 2026-05-07. LabWin exports PDFs locally on the lab PC at 02:00 (once daily); our `upload_pdfs.py` script (running on the lab PC via Task Scheduler from 03:30, then hourly for 12 hours) pushes them to the VPS via passive FTP. The backend `fetch_ftp_pdfs` task then pulls them and attaches each to its matching `Study`.
 **Owner:** Development Team
 **Última actualización:** 2026-05-08
 
@@ -39,8 +39,9 @@ This doc is the bridge between:
 │                                                                  │
 │  LabWin                                                          │
 │    └─ 02:00 — exports the day's PDFs to C:\sistema\PDFlabwin\    │
+│         (LabWin's own scheduler; runs once, can take ~1h+)       │
 │                                                                  │
-│  Task Scheduler — daily 02:15                                    │
+│  Task Scheduler — 03:30, then hourly for 12 h (03:30–15:30)      │
 │    └─ python upload_pdfs.py                                      │
 │         1. List *.pdf in C:\sistema\PDFlabwin\                   │
 │         2. ftp.set_pasv(True) → connect labwin_ftp@VPS           │
@@ -89,11 +90,19 @@ This doc is the bridge between:
 - Skips zero-byte files (LabWin sometimes leaves placeholders during export).
 
 **Task Scheduler config:**
-- Trigger: daily at 02:15 (gives LabWin's 02:00 export 15 minutes to finish writing).
+- Trigger: starts 03:30, repeats every 1 hour for 12 hours (so it fires 03:30, 04:30, … 15:30).
 - Action: `C:\Python312\python.exe C:\labcontrol_backup\upload_pdfs.py`
 - Run whether user is logged on or not, with highest privileges.
 
-**Why 02:15 specifically:** LabWin runs its own export at 02:00 that drops the day's PDFs into `C:\sistema\PDFlabwin\`. Our script needs to fire after that finishes, but well before the VPS Beat job at 04:00 ART that runs `sync_labwin_results` + `fetch_ftp_pdfs`. 15 minutes is plenty of headroom for the export and the upload (typical: a few dozen PDFs in ~2s).
+**Why 03:30 + hourly (changed 2026-05-16, was a single 02:15 run):** LabWin runs its own
+PDF export at 02:00 — but that export is **slow** (it can still be writing files well over
+an hour later). The original single 02:15 trigger fired *in the middle* of LabWin's export,
+so it uploaded only the PDFs written in the first 15 minutes and missed the rest. Moving the
+start to 03:30 clears LabWin's export, and the hourly repeats for 12 h catch any PDFs LabWin
+writes late (and re-attach any whose parent Study only later comes into the sync window). The
+run is idempotent — each fire only uploads files still present in `C:\sistema\PDFlabwin\`,
+and a successful upload deletes the local file, so later runs are cheap no-ops when there's
+nothing new.
 
 **`--dry-run`** lists the PDFs that would be uploaded without uploading or deleting anything.
 
